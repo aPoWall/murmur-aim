@@ -155,6 +155,28 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
     agentId: config.agentId, dataDir: c.dataDir, action, planId, configExisted: current.existed, restartRequired: true, ...(wakeHook ? { wakeHook } : {}) };
 }
 
+/**
+ * Read-only: what Claude Code carries for this profile, for doctor's wake stage (#293).
+ * `current` means the installed Stop hook is exactly the one this runtime writes; it says
+ * nothing about a live session having been woken, which is a separate proof.
+ */
+export async function claudeWakeHookState(c: ServiceContext, adapter: PlatformAdapter): Promise<'current' | 'outdated' | 'absent'> {
+  const client = (await adapter.detectClients(c).catch(() => []))
+    .find(item => item.id === 'claude-code' && item.installed && item.configPath && path.isAbsolute(item.configPath));
+  if (!client?.configPath) return 'absent';
+  const settings = await readClientFile(claudeSettingsPath(client.configPath)).catch(() => null);
+  if (!settings?.existed) return 'absent';
+  let parsed: unknown;
+  try { parsed = settings.text.trim() ? JSON.parse(settings.text) : {}; } catch { return 'absent'; }
+  if (!object(parsed) || !object(parsed.hooks) || !wakeGroups(parsed.hooks.Stop)) return 'absent';
+  // One settings file serves every profile on the machine, so only a hook that names this
+  // profile's store says anything about this doctor run; another profile's is not ours to judge.
+  const ours = parsed.hooks.Stop.flatMap(group => group.hooks.filter(isMurmurWakeHook))
+    .filter(hook => hook.command.includes(hookPath(c.storePath)));
+  if (!ours.length) return 'absent';
+  return ours.some(hook => isDeepStrictEqual(hook, desiredWakeHook(c))) ? 'current' : 'outdated';
+}
+
 /** Read-only preview: even a missing parent directory is not created. */
 export async function previewClientConfiguration(c: ServiceContext, adapter: PlatformAdapter, clientId: string) {
   const client = await selectedClient(c, adapter, clientId);
