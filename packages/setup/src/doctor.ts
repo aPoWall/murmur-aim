@@ -27,6 +27,23 @@ export function evaluatePeers(list: Array<{ agentId: string; paired: boolean | n
   return measured === list.length ? { detail: 'Fresh two-way proofs exist for configured peers' }
     : { state: 'warn', reason: 'peers.unmeasured', detail: `Fresh two-way proofs exist for ${measured} of ${list.length} configured peers; local keys alone do not prove mutual pairing`, fixHint: hint };
 }
+// How recent an ordinary signed message must be to say the transport was proven "now" rather
+// than once. An hour outlives a restart or a short outage without excusing a dead channel.
+const PEER_TRAFFIC_WINDOW_MS = 3600_000;
+/**
+ * How a silent probe reads. A daemon older than 2.11.0 never answers one, so silence alone is
+ * not the same finding as an unreachable peer (#292). A signed message this store persisted
+ * from that peer recently proves the transport in one direction; without that evidence the
+ * timeout stays a failure, and null tells the caller to let it through as one.
+ */
+export function evaluateSilentPeer(peer: string, lastInboundAt: string | null, now = Date.now())
+  : { state: string; reason: string; detail: string; fixHint: string } | null {
+  const at = lastInboundAt === null ? NaN : Date.parse(lastInboundAt);
+  if (!Number.isFinite(at) || now - at >= PEER_TRAFFIC_WINDOW_MS || at > now) return null;
+  return { state: 'warn', reason: 'roundtrip.peer-silent',
+    detail: `No probe reply from ${peer}; a signed message from it was persisted at ${lastInboundAt}`,
+    fixHint: `The channel may be fine: a daemon older than 2.11.0 does not answer probes. Ask ${peer} for murmur --version, and check an ordinary message both ways.` };
+}
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function probeRoundtrip(c: ServiceContext, config: AgentConfig, peerId: string, connection: NatsConnection, timeoutMs: number) {
   const peer = config.peers[peerId];
@@ -89,6 +106,7 @@ const failureHints = (serviceName: string): Record<string, string> => ({
   'config.missing': 'No profile here yet: run murmur join --data-dir <this profile> --agent-id <your-agent-id> --invite-file <invite file> --reply-out <new reply file>',
   'daemon.not-running': `Install or start the service: murmur service install --data-dir <this profile> --service-name ${serviceName} (or service start with the same options if installed; on Windows from an administrator terminal)`,
   'accepted-turn-unobservable': 'Inspect the Assistant session. After reviewing the unknown outcome, use murmur wake dismiss --data-dir <this profile> --msg-id <message-id> --expected-agent <your-identity> to acknowledge it without running it again.',
+  'roundtrip.timeout': 'The peer sent no probe reply. A daemon older than 2.11.0 never answers one, so the channel may still be fine: ask the peer for murmur --version, and check an ordinary message in both directions before treating this as a broken channel.',
 });
 
 export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: DoctorOptions) {
@@ -136,7 +154,15 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
     });
     await stage('roundtrip', 'Encrypted signed roundtrip', async () => {
       if (!peer) return { state: 'warn', reason: 'roundtrip.peer-required', detail: 'No diagnostic peer selected; no message sent', fixHint: 'Run murmur doctor --peer <configured-agent-id> --json' };
-      const proof = await probeRoundtrip(context, config!, peer, connection!, timeoutMs);
+      let proof: Awaited<ReturnType<typeof probeRoundtrip>>;
+      try {
+        proof = await probeRoundtrip(context, config!, peer, connection!, timeoutMs);
+      } catch (e) {
+        if (safeError(e) !== 'roundtrip.timeout') throw e;
+        const silent = evaluateSilentPeer(peer, snapshot?.peers.list?.find(row => row.agentId === peer)?.lastInboundAt ?? null);
+        if (!silent) throw e;
+        return silent;
+      }
       peerCheck = { peerId: peer, state: 'connected', lastExchangeAt: proof.verifiedAt,
         requestMsgId: proof.msgId, replyMsgId: proof.replyMsgId, reason: null };
       return { detail: `Authenticated reply persisted from ${proof.peerId}` };
@@ -166,7 +192,10 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
   } finally { await connection?.close(); }
   if (peerCheck && peerCheck.state !== 'connected') {
     peerCheck.state = 'failed';
-    peerCheck.reason = String(stages.find(s => s.state === 'fail')?.reason ?? 'roundtrip.not-checked');
+    // A silent peer with recent verified traffic leaves no failed stage, so carry that stage's
+    // own reason rather than saying the check never ran (#292).
+    const silent = stages.find(s => s.id === 'roundtrip' && s.state === 'warn')?.reason;
+    peerCheck.reason = String(stages.find(s => s.state === 'fail')?.reason ?? silent ?? 'roundtrip.not-checked');
   }
   // A local accepted-outcome fault is useful even when an earlier network stage
   // blocked the wake probe. This read sends no message and changes no state.
