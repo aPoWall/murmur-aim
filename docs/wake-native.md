@@ -42,6 +42,16 @@ does not affect the tray color. Doctor names `wake.no-responder` rather than
 claiming wake was tested successfully. This contract is for the pending setup
 implementation; this PR changes durable state and startup reporting only.
 
+A daemon without a responder of its own is not the whole picture for Claude Code,
+which is woken by the Stop hook `clients configure` writes. When the daemon reports
+no responder, doctor reads that profile's Claude Code settings and distinguishes
+three cases: the hook installed for this profile and equal to the one this version
+writes is `ok` (configuration only — a live session receipt is still separate proof);
+a hook for this profile that differs, such as the 2.11.0 entry without a `timeout`,
+is `warn` / `wake.hook-outdated` with `clients configure --client claude-code
+--replace` as the hint; no hook for this profile keeps `warn` / `wake.no-responder`.
+A hook that names another profile's store is not read as this profile's wake.
+
 `wake.enabled: false` remains explicit in status, and startup logs include the
 effective enabled/mode/hook presence plus `wake-disabled` with the preserve policy.
 Paused pending work stays pending; consumers must present pause as a mode, not

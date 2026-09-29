@@ -6,6 +6,7 @@ import { realpath } from 'node:fs/promises';
 import { buildNatsConnectionOptions } from '@murmurv2/broker-nats';
 import { channelSubjectRoutes, resolveMessageSubject, SQLiteDedupeOutboxStore, stableEnvelopePayload, isEnvelopeV1, type EnvelopeV1 } from '@murmurv2/core';
 import { encryptPayload, signEnvelope, verifyEnvelopeSignature, decryptPayload } from '@murmurv2/security';
+import { claudeWakeHookState } from './clients.js';
 import { loadConfig, readJson, safeError, type AgentConfig } from './config.js';
 import { pairFingerprint, readStatus } from './status.js';
 import { writeState } from './state.js';
@@ -146,7 +147,18 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
       if (s.wake.effective.enabled === null) return { state: 'warn', reason: 'wake.unmeasured', detail: 'No fresh runtime evidence' };
       if (s.wake.effective.needsRestart) return { state: 'warn', reason: 'wake.mode-mismatch', detail: 'Configured and effective wake differ', fixHint: 'Run murmur wake pause --apply or murmur wake resume --apply for the intended mode' };
       if (!s.wake.effective.enabled) return { state: 'warn', reason: 'wake.paused', detail: 'Wake is paused; pending messages remain queued' };
-      if (s.wake.config.mode === 'none' || s.wake.config.responder === 'none') return { state: 'warn', reason: 'wake.no-responder', detail: 'No wake responder configured' };
+      if (s.wake.config.mode === 'none' || s.wake.config.responder === 'none') {
+        // Claude Code is woken by the Stop hook clients configure writes, not by a responder in
+        // the daemon. Reporting no-responder there told a working setup it was misconfigured (#293).
+        const hook = await claudeWakeHookState(context, adapter);
+        if (hook === 'outdated') return { state: 'warn', reason: 'wake.hook-outdated',
+          detail: 'Claude Code Stop hook differs from the one this version installs',
+          fixHint: 'Run murmur clients configure --client claude-code --replace' };
+        if (hook === 'absent') return { state: 'warn', reason: 'wake.no-responder', detail: 'No wake responder configured' };
+        // This stage reads configuration: the hook is installed and current. Whether a live
+        // session was woken is the separate proof the responder branch below also withholds.
+        return { detail: 'Claude Code Stop hook installed for this profile; a live session receipt is separate proof' };
+      }
       if (s.wake.faults.lastFault) throw new Error(s.wake.faults.lastFault);
       // A reply is not evidence that a particular UI/session was awakened.
       return { state: 'warn', reason: 'wake.live-proof-required', detail: 'Wake configured; intended live-session receipt requires separate proof' };
