@@ -62,20 +62,46 @@ function desiredWakeHook(c: ServiceContext) {
   return { type: 'command', asyncRewake: true, timeout: WAKE_WINDOW_SECONDS,
     command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}` };
 }
-const isMurmurWakeHook = (hook: unknown) => object(hook) && typeof hook.command === 'string' && hook.command.includes('wake-drain-claude');
-/** Plan the Stop hook edit; only Murmur's own wake hook is ever added, kept or replaced. */
+const isMurmurWakeHook = (hook: unknown): hook is Record<string, any> & { command: string } =>
+  object(hook) && typeof hook.command === 'string' && hook.command.includes('wake-drain-claude');
+const wakeGroups = (value: unknown): value is Array<Record<string, any>> =>
+  Array.isArray(value) && value.every(group => object(group) && Array.isArray(group.hooks));
+// The drain path inside a hook command, quoted or bare. Outside Stop it is the only part we
+// rewrite, so flags and timeouts a person chose keep working.
+const wakeScript = /"[^"]*wake-drain-claude[^"]*"|[^\s"]*wake-drain-claude[^\s"]*/;
+const wakeScriptOf = (command: string) => command.match(wakeScript)?.[0].replaceAll('"', '').replaceAll('\\', '/');
+/**
+ * Plan the Stop hook edit; only Murmur's own wake hook is ever added, kept or replaced.
+ * Hooks under other events keep their own flags and are only repointed at the script this
+ * runtime ships, so one settings file never runs two versions of the drain against the same
+ * session cursors (#294). Their events are reported, because they were written by hand.
+ */
 function planWakeHook(c: ServiceContext, text: string) {
   let settings: Record<string, any>;
   try { settings = text.trim() ? JSON.parse(text) : {}; } catch { throw new Error('client.settings-parse-failed'); }
   if (!object(settings) || (settings.hooks !== undefined && !object(settings.hooks))
-    || (settings.hooks?.Stop !== undefined && (!Array.isArray(settings.hooks.Stop)
-      || !settings.hooks.Stop.every((group: unknown) => object(group) && Array.isArray(group.hooks))))) throw new Error('client.hooks-invalid');
+    || (settings.hooks?.Stop !== undefined && !wakeGroups(settings.hooks.Stop))) throw new Error('client.hooks-invalid');
   const entry = desiredWakeHook(c), groups: Array<Record<string, any>> = settings.hooks?.Stop ?? [];
   const ours = groups.flatMap(group => group.hooks.filter(isMurmurWakeHook));
-  if (ours.length === 1 && isDeepStrictEqual(ours[0], entry)) return { action: 'unchanged' as const, next: settings };
+  const drain = path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs');
+  const installed = drain.replaceAll('\\', '/');
+  // An event we cannot read as hook groups is left alone entirely: it is not ours to reshape.
+  const others = Object.entries(settings.hooks ?? {}).filter(([event, value]) => event !== 'Stop' && wakeGroups(value));
+  const repointed = others.filter(([, value]) => (value as Array<Record<string, any>>)
+    .some(group => group.hooks.some((hook: unknown) => isMurmurWakeHook(hook) && wakeScriptOf(hook.command) !== installed)))
+    .map(([event]) => String(event));
+  if (ours.length === 1 && isDeepStrictEqual(ours[0], entry) && !repointed.length) {
+    return { action: 'unchanged' as const, next: settings, repointed };
+  }
   const kept = groups.map(group => ({ ...group, hooks: group.hooks.filter((hook: unknown) => !isMurmurWakeHook(hook)) })).filter(group => group.hooks.length);
-  const next = { ...settings, hooks: { ...settings.hooks, Stop: [...kept, { hooks: [entry] }] } };
-  return { action: ours.length ? 'replace' as const : 'add' as const, next };
+  const hooks: Record<string, any> = { ...settings.hooks, Stop: [...kept, { hooks: [entry] }] };
+  for (const [event, value] of others) {
+    if (!repointed.includes(event)) continue;
+    hooks[event] = (value as Array<Record<string, any>>).map(group => ({ ...group, hooks: group.hooks.map((hook: unknown) =>
+      isMurmurWakeHook(hook) ? { ...hook, command: hook.command.replace(wakeScript, hookPath(drain)) } : hook) }));
+  }
+  const next = { ...settings, hooks };
+  return { action: ours.length || repointed.length ? 'replace' as const : 'add' as const, next, repointed };
 }
 /** Write settings.json the same guarded way as the MCP entry: lock, private backup, atomic rename. */
 async function configureWakeHook(c: ServiceContext, file: string, before: Awaited<ReturnType<typeof readClientFile>>) {
@@ -85,8 +111,8 @@ async function configureWakeHook(c: ServiceContext, file: string, before: Awaite
   try {
     const current = await readClientFile(file);
     if (!isDeepStrictEqual(current, before)) throw new Error('client.plan-stale');
-    const { action, next } = planWakeHook(c, current.text);
-    if (action === 'unchanged') return { settingsPath: file, action, changed: false, backup: null };
+    const { action, next, repointed } = planWakeHook(c, current.text);
+    if (action === 'unchanged') return { settingsPath: file, action, changed: false, backup: null, repointed };
     const serialized = JSON.stringify(next, null, 2) + '\n';
     const backup = current.existed ? `${file}.murmur-backup-${randomUUID()}` : null;
     if (backup) {
@@ -100,7 +126,7 @@ async function configureWakeHook(c: ServiceContext, file: string, before: Awaite
       if (!isDeepStrictEqual(await readClientFile(file), current)) throw new Error('client.plan-stale');
       await rename(temporary, file);
     } finally { await unlink(temporary).catch(() => {}); }
-    return { settingsPath: file, action, changed: true, backup };
+    return { settingsPath: file, action, changed: true, backup, repointed };
   } finally { await rmdir(lock); }
 }
 function desiredEntry(c: ServiceContext) {
@@ -112,7 +138,11 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
   const config = await loadConfig(c), { original, key } = clientDocument(client, current.text);
   const entry = desiredEntry(c), previous = original[key]?.murmur;
   const entryAction = isDeepStrictEqual(previous, entry) ? 'unchanged' : previous === undefined ? 'add' : 'replace';
-  const wakeHook = settings && { settingsPath: claudeSettingsPath(client.configPath), action: planWakeHook(c, settings.text).action };
+  const plannedHook = settings && planWakeHook(c, settings.text);
+  // The preview names the hand-written events it would repoint, so the person reads them before
+  // confirming rather than finding a changed command afterwards (#294).
+  const wakeHook = plannedHook && { settingsPath: claudeSettingsPath(client.configPath), action: plannedHook.action,
+    ...(plannedHook.repointed.length ? { repointed: plannedHook.repointed } : {}) };
   // The plan's action speaks for both files: an app that sees 'replace' asks the person and
   // passes --replace, so a Stop hook written by an earlier version (no timeout, #273) is
   // upgraded instead of failing with client.wake-hook-conflict while the MCP entry is unchanged.
