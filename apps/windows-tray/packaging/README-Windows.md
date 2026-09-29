@@ -116,6 +116,24 @@ new bundle with the explicit selection. Keep the old bundle until client binding
 and a returned message are verified. `-Check` does not create shortcuts, change the
 saved launch binding or activate a running tray.
 
+## Upgrading with setup.exe over an installation that runs the Service
+
+Remove the Service **before** you close the tray. The installer runs unelevated, so it can
+neither stop nor remove a Service running as LocalSystem; it stops at preflight and names the
+Service instead. Quitting the tray first takes away the one place that can remove it without a
+terminal, so the order matters:
+
+1. In the running tray: **Service → Stop**, then **Service → Remove**. Windows asks for
+   administrator rights once. The Identity, keys and messages stay where they are.
+2. Quit the tray.
+3. Run `setup.exe`.
+4. Open Murmur from the Start menu and install the Service again from the tray menu.
+
+With a terminal the same removal is `murmur service uninstall --service-name <name>
+--data-dir <Identity folder>` from an administrator prompt; the installer's message carries
+the Service name it found. A Service installed from a **different** bundle does not block this
+installer: preflight only refuses a Service whose image sits inside the folder being replaced.
+
 ## Manual upgrade from 2.9.0 to 2.10.0
 
 The update badge opens the release page; it does not download, install or restart

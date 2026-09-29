@@ -71,6 +71,10 @@ english.NodeRequired=Murmur needs Node.js 22.13.0 or newer. A compatible install
 russian.NodeRequired=Для Murmur нужен Node.js 22.13.0 или новее. Подходящая установка не найдена. Открыть официальную страницу скачивания?%n%nУстановку Murmur можно завершить сейчас. После установки Node.js снова откройте Murmur, чтобы продолжить настройку.
 english.NodeDownloadFailed=Could not open the browser. Download Node.js from https://nodejs.org/en/download, then reopen Murmur.
 russian.NodeDownloadFailed=Не удалось открыть браузер. Скачайте Node.js с https://nodejs.org/en/download, затем снова откройте Murmur.
+english.ServiceHoldsInstall=The Windows service "%1" runs from this Murmur installation, so these files cannot be replaced while it is registered. Your Identity, keys and messages are kept either way.%n%nRemove it one of these two ways, then run this installer again:%n%n1. In the Murmur tray, before you close it: Service, then Stop, then Remove. Windows asks for administrator rights once.%n2. Or in an administrator terminal: murmur service uninstall --service-name %1 --data-dir <your Identity folder>
+russian.ServiceHoldsInstall=Служба Windows «%1» работает из этой установки Murmur, поэтому заменить эти файлы, пока она зарегистрирована, нельзя. Личность, ключи и переписка сохраняются в любом случае.%n%nСнимите её одним из двух способов и запустите установщик снова:%n%n1. В трее Murmur, пока вы его не закрыли: «Служба», затем «Стоп», затем «Удалить». Windows один раз спросит права администратора.%n2. Либо в терминале с правами администратора: murmur service uninstall --service-name %1 --data-dir <папка вашей Личности>
+english.ServiceCheckFailed=Windows service dependencies could not be checked. No installation files were changed. Try again from an account that can read the service configuration.
+russian.ServiceCheckFailed=Не удалось проверить, какие службы Windows зависят от этой установки. Файлы установки не изменялись. Попробуйте снова из учётной записи, которая может читать настройки служб.
 
 [Icons]
 Name: "{userprograms}\{#InstallerName}\Murmur"; Filename: "{app}\murmur-tray.exe"; WorkingDir: "{app}"; IconFilename: "{app}\murmur.ico"; Comment: "Open Murmur controls (managed by Murmur)"
@@ -207,14 +211,16 @@ begin
       if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Services\' + Names[I], 'ImagePath', ImagePath) then begin
         ImagePath := Shell.ExpandEnvironmentStrings(ImagePath);
         if ReferencesInstall(ImagePath, ExpandConstant('{app}')) then begin
-          Result := 'Windows service "' + Names[I] + '" still uses this Murmur installation. ' +
-            'Remove that service through Murmur service management before updating or uninstalling these files, then try again. Your profile will be kept.';
+          { This installer runs unelevated (PrivilegesRequired=lowest), so it cannot stop or
+            remove a service running as LocalSystem. Name both routes that can, and name the
+            service, instead of pointing at "service management" the person has just closed. }
+          Result := FmtMessage(CustomMessage('ServiceHoldsInstall'), [Names[I]]);
           exit;
         end;
       end;
     end;
   except
-    Result := 'Windows service dependencies could not be checked. No installation files were changed. Try again from an account that can read the service configuration.';
+    Result := CustomMessage('ServiceCheckFailed');
   end;
 end;
 
