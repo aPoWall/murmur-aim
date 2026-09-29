@@ -159,3 +159,61 @@ test('the released runtime and npm package carry the script the installed hook r
   assert.ok(SCRIPTS.includes('wake-drain-claude.mjs'));
   for (const script of SCRIPTS) assert.ok((await fs.stat(path.join(repoRoot, 'scripts', script))).isFile(), script);
 });
+
+// A ten-minute Stop window made people add their own drain hooks under other events. After an
+// upgrade those kept an older script and shared one session cursor with the new one, silently.
+test('hand-written drain hooks under other events are repointed at this runtime, keeping their flags', async t => {
+  const f = await fixture(t);
+  await main(['init', '--agent-id', 'hook-repoint', '--broker-url', 'nats://127.0.0.1:4222', '--data-dir', f.context.dataDir], { manager: 'none' });
+  await fs.mkdir(path.dirname(f.settingsPath), { recursive: true });
+  const stale = '/opt/murmur-2.11/scripts/wake-drain-claude.mjs';
+  const before = JSON.stringify({ hooks: {
+    PostToolUse: [{ hooks: [{ type: 'command', command: `node --no-warnings ${stale} --once`, asyncRewake: true }] }],
+    SessionStart: [{ matcher: '', hooks: [{ type: 'command', command: `node ${stale} --session`, timeout: 120 },
+      { type: 'command', command: 'unrelated-tool' }] }],
+  } });
+  await fs.writeFile(f.settingsPath, before);
+
+  const plan = await previewClientConfiguration(f.context, f.adapter, 'claude-code');
+  assert.equal(plan.wakeHook.action, 'replace');
+  assert.deepEqual(plan.wakeHook.repointed, ['PostToolUse', 'SessionStart'], 'the preview names the events it would touch');
+  // Hooks a person wrote are never rewritten without the same consent the Stop hook needs.
+  await assert.rejects(configureClient(f.context, f.adapter, 'claude-code'), /client\.wake-hook-conflict/);
+  assert.equal(await fs.readFile(f.settingsPath, 'utf8'), before);
+
+  const result = await configureClient(f.context, f.adapter, 'claude-code', true);
+  assert.deepEqual(result.wakeHook.repointed, ['PostToolUse', 'SessionStart']);
+  const next = await f.settings(), drain = slash(path.join(repoRoot, 'scripts', 'wake-drain-claude.mjs'));
+  const post = next.hooks.PostToolUse[0].hooks[0], [session, untouched] = next.hooks.SessionStart[0].hooks;
+  assert.equal(post.command, `node --no-warnings "${drain}" --once`, 'only the script path moves');
+  assert.equal(post.asyncRewake, true);
+  assert.equal(session.command, `node "${drain}" --session`);
+  assert.equal(session.timeout, 120, 'a timeout the person chose is not overwritten');
+  assert.deepEqual(untouched, { type: 'command', command: 'unrelated-tool' });
+  assert.equal(next.hooks.SessionStart[0].matcher, '');
+  // One script version in the file now, and a second run has nothing left to do.
+  const commands = Object.values(next.hooks).flatMap(groups => groups.flatMap(group => group.hooks))
+    .filter(hook => hook.command.includes('wake-drain-claude')).map(hook => hook.command);
+  assert.equal(commands.length, 3);
+  for (const command of commands) assert.ok(command.includes(drain), command);
+  const settled = await previewClientConfiguration(f.context, f.adapter, 'claude-code');
+  assert.equal(settled.wakeHook.action, 'unchanged');
+  assert.equal(settled.wakeHook.repointed, undefined);
+});
+
+test('a drain hook already on this runtime, and an event that is not hook groups, are both left alone', async t => {
+  const f = await fixture(t);
+  await main(['init', '--agent-id', 'hook-settled', '--broker-url', 'nats://127.0.0.1:4222', '--data-dir', f.context.dataDir], { manager: 'none' });
+  await configureClient(f.context, f.adapter, 'claude-code');
+  const drain = slash(path.join(repoRoot, 'scripts', 'wake-drain-claude.mjs'));
+  const current = await f.settings();
+  current.hooks.PostToolUse = [{ hooks: [{ type: 'command', command: `node "${drain}" --once` }] }];
+  current.hooks.Notification = { channel: 'desktop' }; // not hook groups: another product's shape
+  await fs.writeFile(f.settingsPath, JSON.stringify(current));
+  const plan = await previewClientConfiguration(f.context, f.adapter, 'claude-code');
+  assert.equal(plan.wakeHook.action, 'unchanged', 'a hook already pointing here is not a reason to ask for --replace');
+  assert.equal(plan.wakeHook.repointed, undefined);
+  const after = await f.settings();
+  assert.deepEqual(after.hooks.Notification, { channel: 'desktop' });
+  assert.equal(after.hooks.PostToolUse[0].hooks[0].command, `node "${drain}" --once`);
+});

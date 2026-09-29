@@ -233,6 +233,9 @@ Same env and the same per-session cursor as the shell version (`MURMUR_DB`,
 non-polling check (e.g. a PostToolUse hook). Requires Node with `node:sqlite`
 (22.13.0+).
 
+Without a flag the command polls and does not return until its window ends, which is what the
+Stop hook wants and a surprise in a terminal: use `--once` to check the store by hand.
+
 Its default cursor, lock and anchor names carry a store key, the first 8 hex digits of the
 SHA-256 of the store's absolute path (`~/.murmur-wake-cursor-<store>-<session>`,
 `~/.murmur-wake-lock-<store>-<session>`, `~/.murmur-wake-anchor-<store>`), so two profiles
