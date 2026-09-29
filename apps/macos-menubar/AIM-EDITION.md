@@ -57,3 +57,16 @@ claimed by these fixture/offscreen checks.
 
 Upstream release updates open the upstream page. They do not rebuild the AIM
 edition; rebuild this fork to retain the customization.
+
+
+## AIM 2 – server companion, 2026-09-29
+
+The default Overview reads an owner-only projection over the existing `ws-povalyaev` SSH alias, once per minute while running. It uses `~/mesh-comms/companion.py` from team-ai-infrastructure. No daemon, timer, local identity, broker key or responder is created. Profile onboarding remains in Local.
+
+The server retains delivery and native WakeMonitor ownership. A live systemd service is displayed independently from the dated budget receipt. Unknown/stale data remains visibly stale. People show observed message dates, not online presence. Alex decisions and incoming review candidates are separate counts.
+
+Opt-in macOS notifications contain counts only, use a quiet first baseline and persisted SHA-256 event fingerprints. The app keeps people/questions in memory. It opens the private dashboard, topic deep links and the dedicated Vasiliev–JARVIS Codex session; it does not copy session context or choose a responder from the foreground app.
+
+Prerequisites: existing SSH alias and host trust, Tailscale, server projection. A failed SSH read times out after 20 seconds and cannot start a second overlapping read. UI refresh uses no model calls. Disconnect stops only this app's read loop.
+
+Runtime remains upstream 2.12.0; AIM shell edition 2. The local app and source are an AIM fork, not a second server deployment.

@@ -13,7 +13,7 @@ import MurmurTrayCore
     static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
-        return "\(v) · aim 1"
+        return "\(v) · aim 2"
     }
     static func registerFonts() {
         for weight in [400, 500, 600] {
@@ -85,7 +85,8 @@ struct AIMHeaderBridge: NSViewRepresentable {
 struct AIMTabsBridge: NSViewRepresentable {
     @Binding var page: String
     func makeNSView(context: Context) -> AIMTabStrip {
-        AIMTabStrip(tabs: [.init(id: "Home", title: L10n.text("Home").lowercased()),
+        AIMTabStrip(tabs: [.init(id: "Overview", title: L10n.text("Overview").lowercased()),
+                          .init(id: "Home", title: L10n.text("Local").lowercased()),
                           .init(id: "Help", title: L10n.text("Help").lowercased())],
                     selected: page, width: 708, tabWidth: 100, onSelect: { page = $0 })
     }
@@ -96,7 +97,7 @@ struct AIMFooterBridge: NSViewRepresentable {
     let status: String
     func makeNSView(context: Context) -> AIMFooterLine {
         AIMFooterLine(keys: "⌃⌥⌘M toggle", status: status, width: 708,
-                      apps: { NSWorkspace.shared.open(URL(string: "https://apps.aimindset.org")!) })
+                      apps: { NSWorkspace.shared.open(URL(string: "https://content.aimindset.org/murmur/")!) })
     }
     func updateNSView(_ view: AIMFooterLine, context: Context) { view.setStatus(status) }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import Combine
+import UserNotifications
 import SwiftUI
 import MurmurTrayCore
 
@@ -54,7 +55,7 @@ private final class CommandMenuItem: NSMenuItem {
 }
 
 @MainActor
-private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     private let model = TrayModel()
     private var item: NSStatusItem?
     private var window: NSWindow?
@@ -89,6 +90,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
+        UNUserNotificationCenter.current().delegate = self
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // Preserve the preference written by the previous single MenuBarExtra.
         // This API stores the user's Cmd-drag position; it cannot reveal notch overflow.
@@ -120,10 +122,18 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
         observation?.cancel()
     }
 
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor in self.showWindow(); completionHandler() }
+    }
+
     private func refreshStatusItem() {
         item?.button?.image = AIMAppMarkView.image(.family, size: 18, mono: true)
         // Keep unread/failure/update visible independently of the family mark.
-        item?.button?.title = model.verdict.unread ? " ·" : (model.verdict.indicator == .failed ? " !" : (model.updateAvailable ? " ↑" : ""))
+        item?.button?.title = !model.companion.badge.isEmpty ? model.companion.badge : model.verdict.unread ? " ·" : (model.verdict.indicator == .failed ? " !" : (model.updateAvailable ? " ↑" : ""))
         let entrance = model.shortcutAvailable ? L10n.text("Open Murmur: Control–Option–Command–M")
             : L10n.text("Shortcut unavailable. Open Murmur from Finder.")
         item?.button?.toolTip = model.accessibleStatus + "\n" + entrance

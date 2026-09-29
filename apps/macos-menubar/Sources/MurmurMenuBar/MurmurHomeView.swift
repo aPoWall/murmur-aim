@@ -4,26 +4,30 @@ import MurmurTrayCore
 
 struct MurmurHomeView: View {
     @ObservedObject var model: TrayModel
-    @MurmurViewState private var page = "Home"
+    @MurmurViewState private var page = "Overview"
     @MurmurViewState private var entry = "welcome"
     @MurmurViewState private var showingNewConnection = false
 
-    init(model: TrayModel, initialPage: String = "Home") {
+    init(model: TrayModel, initialPage: String = "Overview") {
         self.model = model
         _page = State(initialValue: initialPage)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            AIMHeaderBridge(page: $page, status: model.isDemo ? "preview · synthetic data" : (model.agentID ?? "encrypted agent connections"))
+            AIMHeaderBridge(page: $page, status: model.isDemo ? "preview · synthetic data" : (page == "Overview" ? "VM105 · agent-sasha" : (model.agentID ?? "encrypted agent connections")))
                 .frame(width: 708, height: 40).padding(16)
             AIMTabsBridge(page: $page).frame(width: 708, height: 40).padding(.horizontal, 16)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if page == "Help" {
+                    if page == "Overview" {
+                        AIMCompanionView(model: model.companion)
+                    } else if page == "Help" {
+                        AIMCompanionHelp()
                         MurmurHelpView()
                     } else if page == "Settings" {
+                        AIMCompanionSettings(model: model.companion)
                         settingsContent
                     } else if model.hasPendingSetup {
                         savedSetup
@@ -44,7 +48,7 @@ struct MurmurHomeView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             }
             Divider()
-            AIMFooterBridge(status: model.isDemo ? "preview" : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh"))
+            AIMFooterBridge(status: model.isDemo ? "preview" : (page == "Overview" ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(Color.white)
             .tint(AIMTheme.signal).preferredColorScheme(.light).buttonStyle(AIMQuietButtonStyle())
