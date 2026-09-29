@@ -10,6 +10,7 @@ import MurmurTrayCore
     @Published var failed = false
     @Published var notifications = UserDefaults.standard.bool(forKey: "aimCompanionNotifications")
     @Published var notificationDenied = false
+    @Published var requestingNotifications = false
     private var timer: Timer?
     private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
     static let board = "https://content.aimindset.org/murmur/"
@@ -80,8 +81,11 @@ import MurmurTrayCore
         if notifications {
             notifications = false; UserDefaults.standard.set(false, forKey: "aimCompanionNotifications"); return
         }
+        NSApp.activate(ignoringOtherApps: true)
+        requestingNotifications = true
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             Task { @MainActor in
+                self.requestingNotifications = false
                 self.notifications = granted; self.notificationDenied = !granted
                 UserDefaults.standard.set(granted, forKey: "aimCompanionNotifications")
             }
@@ -108,6 +112,7 @@ import MurmurTrayCore
 struct AIMCompanionView: View {
     @ObservedObject var model: AIMCompanionModel
     @State private var query = ""
+    @State private var showAllQuestions = false
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
@@ -142,8 +147,13 @@ struct AIMCompanionView: View {
                     Button(L10n.text("Continue with Vasiliev / JARVIS in Codex")) { AIMCompanionModel.owner() }
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
+                    Text(L10n.text("People · last observed message")).font(AIMTheme.heading)
+                    ForEach(Array(data.people.filter { query.isEmpty || ($0.name + " " + $0.agents.joined(separator: " ")).localizedCaseInsensitiveContains(query) }.prefix(3))) { person in
+                        HStack { Text(person.name); Spacer(); Text(AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta) }
+                    }
+                    Divider()
                     Text(L10n.text("Questions to review")).font(AIMTheme.heading)
-                    ForEach(data.questions.filter { query.isEmpty || [$0.title, $0.peer, $0.next_action].compactMap { $0 }.joined(separator: " ").localizedCaseInsensitiveContains(query) }) { question in
+                    ForEach(Array(data.questions.filter { query.isEmpty || [$0.title, $0.peer, $0.next_action].compactMap { $0 }.joined(separator: " ").localizedCaseInsensitiveContains(query) }.prefix(showAllQuestions || !query.isEmpty ? 12 : 4))) { question in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(alignment: .top) {
                                 Text(question.title ?? question.id).font(AIMTheme.heading)
@@ -152,7 +162,7 @@ struct AIMCompanionView: View {
                             }
                             Text((question.peer ?? "") + " · " + AIMCompanionModel.stamp(question.source_date)).font(AIMTheme.meta)
                             Text(L10n.text("Reviewed") + " · " + AIMCompanionModel.stamp(question.reviewed_at)).font(AIMTheme.meta)
-                            if let action = question.next_action { Text(action).fixedSize(horizontal: false, vertical: true) }
+                            if let action = question.next_action { Text(action).lineLimit(2) }
                             Button(L10n.text("Read conversation")) {
                                 var parts = URLComponents(string: AIMCompanionModel.board)!
                                 parts.queryItems = [URLQueryItem(name: "topic", value: question.id)]
@@ -161,6 +171,7 @@ struct AIMCompanionView: View {
                         }
                         Divider()
                     }
+                    Button(showAllQuestions ? L10n.text("Show fewer questions") : L10n.text("Show more questions")) { showAllQuestions.toggle() }
                     Text(L10n.text("Incoming awaiting review") + ": \(data.incoming.reduce(0) { $0 + $1.ids.count })").font(AIMTheme.heading)
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
                         Text("\(row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
@@ -189,7 +200,7 @@ struct AIMCompanionSettings: View {
             Text(L10n.text("Reads existing observations once per minute while the app is running. Server monitoring continues when the app closes."))
             HStack {
                 Button(model.enabled ? L10n.text("Disconnect overview") : L10n.text("Connect my server overview")) { model.enabled ? model.disconnect() : model.connect() }
-                Button(model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications")) { model.toggleNotifications() }
+                Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.disabled(model.requestingNotifications)
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
             Text(L10n.text("Notifications contain counts only. The first snapshot is silent; new requests appear after it. Delivery does not close a question."))

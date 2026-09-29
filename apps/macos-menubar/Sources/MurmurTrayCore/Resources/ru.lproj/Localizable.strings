@@ -526,3 +526,9 @@
 "Server overview · 60s refresh" = "Серверный обзор · каждые 60 с";
 
 "Reviewed" = "Разобрано";
+
+"Show fewer questions" = "Свернуть вопросы";
+
+"Show more questions" = "Показать больше вопросов";
+
+"Waiting for macOS permission…" = "Ждём разрешения macOS…";
