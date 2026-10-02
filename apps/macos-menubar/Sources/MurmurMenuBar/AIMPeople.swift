@@ -27,7 +27,7 @@ struct AIMPeopleView: View {
                                 Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").font(AIMTheme.meta)
                                 if let policy = model.snapshot?.peer_policy?.peers[agent] {
                                     Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
-                                    if let reason = policy.wake_reason { Text(reason).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal) }
+                                    if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + reason).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal) }
                                 }
                             }
                             Text(person.agents.isEmpty ? L10n.text("No linked agent") : (L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at))).font(AIMTheme.meta)

@@ -579,3 +579,5 @@
 "Could not load rules. Nothing changed." = "Не удалось прочитать правила. Ничего не изменено.";
 "Rules saved. Filesystem access did not change." = "Правила сохранены. Доступ к файлам не менялся.";
 "Save not confirmed. Reload before trying again." = "Сохранение не подтверждено. Перечитайте перед повтором.";
+
+"Last wake" = "Последнее пробуждение";

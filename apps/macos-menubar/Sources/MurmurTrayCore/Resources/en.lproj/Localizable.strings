@@ -579,3 +579,5 @@
 "Could not load rules. Nothing changed." = "Could not load rules. Nothing changed.";
 "Rules saved. Filesystem access did not change." = "Rules saved. Filesystem access did not change.";
 "Save not confirmed. Reload before trying again." = "Save not confirmed. Reload before trying again.";
+
+"Last wake" = "Last wake";
