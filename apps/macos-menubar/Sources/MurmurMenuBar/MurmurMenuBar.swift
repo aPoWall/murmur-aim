@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import ServiceManagement
+import Combine
 import MurmurTrayCore
 
 private struct DoctorRead: Sendable { let value: DoctorSnapshot?; let error: String? }
@@ -78,9 +79,13 @@ final class TrayModel: ObservableObject {
     private var updatesClient: UpdatesClient?
     private var selectionID = UUID()
 
+    let companion = AIMCompanionModel()
+    private var companionObservation: AnyCancellable?
+
     init(startRuntime: Bool = true) {
         isDemo = ProcessInfo.processInfo.arguments.contains("--demo")
-        if startRuntime && !isDemo { prepareRuntime() }
+        companionObservation = companion.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        if startRuntime && !isDemo { prepareRuntime(); companion.start() }
     }
 
     func prepareRuntime() {

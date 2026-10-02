@@ -1,0 +1,31 @@
+{
+  "profile": "N1",
+  "source_repository": "ai-mindset-org/lab-sites",
+  "source_directory": "sites/apps/assets",
+  "files": [
+    {
+      "path": "AIMMiniAppTokens.swift",
+      "sha256": "c1a82af7aaf3b396d3e96b3624ff410df7a904c29e9260d4a82c94dfe76ad95c"
+    },
+    {
+      "path": "AIMAppMarks.swift",
+      "sha256": "301c38a05f1c7498b3335358f767c4d035a6a95a6bd9709157e0d66fdef31660"
+    },
+    {
+      "path": "AIMAppMarkView.swift",
+      "sha256": "2f659ddff3fb05dad645ef3e689d7b85b2ea3148ccfdafa0a2f237a71e7e25ab"
+    },
+    {
+      "path": "AIMAppShell.swift",
+      "sha256": "acce57ba0f511de635dbcd77b9d2cebbb1bd1f0a3747923fffa9cbbd1435c139"
+    },
+    {
+      "path": "AIMVoxelModels.swift",
+      "sha256": "e768261c53fe3e9283eb1da19f62ccfd2b7da82caefc437e9f9bcc1e03bb02b6"
+    },
+    {
+      "path": "AIMVoxelView.swift",
+      "sha256": "9d301d847ec040797a71a7163419b75b553ee825d6f98387affb94e66e87e41c"
+    }
+  ]
+}

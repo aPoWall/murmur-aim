@@ -17,14 +17,14 @@ struct MurmurDisclosure<Content: View>: View {
             Button { expanded.toggle() } label: {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(title).font(.headline)
+                        Text(title).font(AIMTheme.heading)
                         if let explanation {
-                            Text(explanation).font(.callout).foregroundStyle(.secondary)
+                            Text(explanation).font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
                         }
                     }.fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                        .font(.caption).accessibilityHidden(true)
+                        .font(AIMTheme.meta).accessibilityHidden(true)
                 }.padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }.buttonStyle(.plain)

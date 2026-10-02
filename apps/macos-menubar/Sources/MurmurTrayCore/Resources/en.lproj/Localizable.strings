@@ -481,3 +481,103 @@
 "The Server access key must be one line. Ask for the correct key and save it again." = "The Server access key must be one line. Ask for the correct key and save it again.";
 "The Server access file was not found. Choose it again." = "The Server access file was not found. Choose it again.";
 "The Server access file cannot be opened. Choose a file your account can read." = "The Server access file cannot be opened. Choose a file your account can read.";
+
+"Overview" = "Overview";
+"Local" = "Local";
+"Your communication desk" = "Your communication desk";
+"People, incoming requests and decisions. Continue the conversation in the owning Codex session." = "People, incoming requests and decisions. Continue the conversation in the owning Codex session.";
+"Dashboard" = "Dashboard";
+"History" = "History";
+"Search tools" = "Search tools";
+"Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created." = "Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created.";
+"Connect my server overview" = "Connect my server overview";
+"Reading server…" = "Reading server…";
+"Server overview unavailable. Check Tailscale and SSH ws-povalyaev. Retained observations are stale." = "Server overview unavailable. Check Tailscale and SSH ws-povalyaev. Retained observations are stale.";
+"Transport" = "Transport";
+"Codex service" = "Codex service";
+"Snapshot" = "Snapshot";
+"Stale snapshot" = "Stale snapshot";
+"Alex's decisions" = "Alex's decisions";
+"Open topics" = "Open topics";
+"Automatic replies need a fresh budget check. Receiving messages continues." = "Automatic replies need a fresh budget check. Receiving messages continues.";
+"Continue with Vasiliev / JARVIS in Codex" = "Continue with Vasiliev / JARVIS in Codex";
+"Filter people and questions" = "Filter people and questions";
+"Questions to review" = "Questions to review";
+"Your decision" = "Your decision";
+"Read conversation" = "Read conversation";
+"Incoming awaiting review" = "Incoming awaiting review";
+"People · last observed message" = "People · last observed message";
+"Message dates show observed activity, not online presence. Topic decisions are reviewed separately." = "Message dates show observed activity, not online presence. Topic decisions are reviewed separately.";
+"Server companion" = "Server companion";
+"Reads existing observations once per minute while the app is running. Server monitoring continues when the app closes." = "Reads existing observations once per minute while the app is running. Server monitoring continues when the app closes.";
+"Disconnect overview" = "Disconnect overview";
+"Enable notifications" = "Enable notifications";
+"Disable notifications" = "Disable notifications";
+"Allow Murmur AIM notifications in macOS System Settings." = "Allow Murmur AIM notifications in macOS System Settings.";
+"Notifications contain counts only. The first snapshot is silent; new requests appear after it. Delivery does not close a question." = "Notifications contain counts only. The first snapshot is silent; new requests appear after it. Delivery does not close a question.";
+"How these tools work together" = "How these tools work together";
+"Mac app: a quiet overview, notifications and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: messages, people, decisions and sources. Codex: the dedicated JARVIS session owns follow-up and decisions." = "Mac app: a quiet overview, notifications and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: messages, people, decisions and sources. Codex: the dedicated JARVIS session owns follow-up and decisions.";
+"Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder." = "Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder.";
+"Task archive (formerly Recovery) is a dated dispatcher snapshot. It does not restart tasks or confirm their current status." = "Task archive (formerly Recovery) is a dated dispatcher snapshot. It does not restart tasks or confirm their current status.";
+"Dashboard search covers accessible Murmur messages, people, topics, saved tasks and tool names. Other tools' private content is not indexed." = "Dashboard search covers accessible Murmur messages, people, topics, saved tasks and tool names. Other tools' private content is not indexed.";
+"New messages or decisions to review" = "New messages or decisions to review";
+"Not observed" = "Not observed";
+
+"Server overview · 60s refresh" = "Server overview · 60s refresh";
+
+"Reviewed" = "Reviewed";
+
+"Show fewer questions" = "Show fewer questions";
+
+"Show more questions" = "Show more questions";
+
+"Waiting for macOS permission…" = "Waiting for macOS permission…";
+
+"People" = "People";
+"People & agents" = "People & agents";
+"Choose a person, then their agent. Messages leave through your server as Alex." = "Choose a person, then their agent. Messages leave through your server as Alex.";
+"Name, nickname or agent" = "Name, nickname or agent";
+"No linked agent" = "No linked agent";
+"Last incoming" = "Last incoming";
+"Configured locally · two-way delivery not yet observed" = "Configured locally · two-way delivery not yet observed";
+"Write message" = "Write message";
+"Refresh the server overview before sending." = "Refresh the server overview before sending.";
+"Connect your server in Settings to load people." = "Connect your server in Settings to load people.";
+"An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply." = "An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply.";
+"Recipient agent" = "Recipient agent";
+"From Alex · agent-sasha · encrypted Murmur delivery" = "From Alex · agent-sasha · encrypted Murmur delivery";
+"Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy." = "Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy.";
+"Check delivery" = "Check delivery";
+"Send message" = "Send message";
+"Delivery status" = "Delivery status";
+"Send not confirmed. Check delivery before retrying." = "Send not confirmed. Check delivery before retrying.";
+"Refresh" = "Refresh";
+"Connection map" = "Connection map";
+
+"Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question.";
+
+"Access & context" = "Access & context";
+"Responder" = "Responder";
+"Not assigned · manual reply needed" = "Not assigned · manual reply needed";
+"Attach the approved brief" = "Attach the approved brief";
+"Sending is disabled by your contact policy." = "Sending is disabled by your contact policy.";
+"Budget observation is separate from each contact’s responder. Check People for missing responders." = "Budget observation is separate from each contact’s responder. Check People for missing responders.";
+"Allow sending from this app" = "Allow sending from this app";
+"Contact trust" = "Contact trust";
+"Review each request" = "Review each request";
+"Known contact · no extra permissions" = "Known contact · no extra permissions";
+"Preferred tone" = "Preferred tone";
+"Concise" = "Concise";
+"Friendly" = "Friendly";
+"Formal" = "Formal";
+"Shared context" = "Shared context";
+"Only the written message" = "Only the written message";
+"Allow this approved brief" = "Allow this approved brief";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.";
+"Reload" = "Reload";
+"Save rules" = "Save rules";
+"Could not load rules. Nothing changed." = "Could not load rules. Nothing changed.";
+"Rules saved. Filesystem access did not change." = "Rules saved. Filesystem access did not change.";
+"Save not confirmed. Reload before trying again." = "Save not confirmed. Reload before trying again.";
+
+"Last wake" = "Last wake";

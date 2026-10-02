@@ -17,8 +17,8 @@ struct MurmurHelpView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("Help")).font(.title2.weight(.semibold))
-            Text(L10n.text("Answers about connecting and using Murmur.")).foregroundStyle(.secondary)
+            Text(L10n.text("Help")).font(AIMTheme.title)
+            Text(L10n.text("Answers about connecting and using Murmur.")).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
             ForEach(questions.indices, id: \.self) { index in
                 MurmurDisclosure(title: L10n.text(questions[index].0)) {
                     Text(L10n.text(questions[index].1)).fixedSize(horizontal: false, vertical: true)

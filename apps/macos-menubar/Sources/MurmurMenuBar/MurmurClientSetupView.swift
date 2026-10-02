@@ -28,7 +28,7 @@ struct MurmurClientSetupView: View {
                             .disabled(model.busy || !choice.canConfigure)
                         if !choice.canConfigure {
                             Text(L10n.text("This application uses a custom configuration location that Murmur cannot verify yet."))
-                                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                .font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -38,21 +38,21 @@ struct MurmurClientSetupView: View {
             if let error = model.aiSetupError { Text(error).fixedSize(horizontal: false, vertical: true) }
             if let receipt = model.aiReceipt {
                 Divider()
-                Text(L10n.text("Connection saved for %@", receipt.client.title)).font(.headline)
+                Text(L10n.text("Connection saved for %@", receipt.client.title)).font(AIMTheme.heading)
                 Text(L10n.text("Reload your AI application or start a new session so it can load Murmur. Your current conversation is not closed automatically."))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(L10n.text("Saved settings are only the first step. Test a returned reply below."))
-                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
                 MurmurDisclosure(title: L10n.text("Changed file and backup")) {
-                    Text(receipt.configPath).font(.caption).textSelection(.enabled)
-                    if let backup = receipt.backup { Text(L10n.text("Backup: %@", backup)).font(.caption).textSelection(.enabled) }
+                    Text(receipt.configPath).font(AIMTheme.meta).textSelection(.enabled)
+                    if let backup = receipt.backup { Text(L10n.text("Backup: %@", backup)).font(AIMTheme.meta).textSelection(.enabled) }
                     if !receipt.changed { Text(L10n.text("The same connection was already saved; the file was not rewritten.")) }
                 }
             }
             Divider()
-            Text(L10n.text("Test a real reply")).font(.headline)
+            Text(L10n.text("Test a real reply")).font(AIMTheme.heading)
             Text(L10n.text("Keep both assistants open. The other participant needs their Murmur connection set up too. This test does not start a closed AI session."))
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
             if peers.isEmpty {
                 Text(L10n.text("No participant is available yet. Finish exchanging the invitation and reply files, then refresh the connection."))
                     .fixedSize(horizontal: false, vertical: true)
@@ -62,21 +62,21 @@ struct MurmurClientSetupView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Button(L10n.text(model.testPromptCopied ? "Request copied — paste it into your AI conversation" : "Copy test request")) { model.copyReplyTestPrompt() }
                 MurmurDisclosure(title: L10n.text("View the test request")) {
-                    Text(plan.prompt).font(.caption).textSelection(.enabled)
+                    Text(plan.prompt).font(AIMTheme.meta).textSelection(.enabled)
                 }
                 if let observation = model.replyObservation {
                     switch observation.state {
                     case .notSent:
-                        Text(L10n.text("The request has not appeared yet" )).font(.headline)
+                        Text(L10n.text("The request has not appeared yet" )).font(AIMTheme.heading)
                         Text(L10n.text("Paste the copied request into the AI application you connected. Let it use the Murmur tool, then check again."))
                     case .waiting:
-                        Text(L10n.text("Request recorded — waiting for a reply")).font(.headline)
+                        Text(L10n.text("Request recorded — waiting for a reply")).font(AIMTheme.heading)
                         Text(L10n.text("Ask the other participant to check their active assistant and usage limits. A recorded request alone does not prove delivery or a reply."))
                     case .replied:
-                        Label(L10n.text("Reply received from %@", plan.peerId), systemImage: "checkmark.circle").font(.headline)
+                        Label(L10n.text("Reply received from %@", plan.peerId), systemImage: "checkmark.circle").font(AIMTheme.heading)
                         Text(L10n.text("The request and reply match this test. Continue working in your AI application. Automatic wake is a separate setting."))
                     case .expired:
-                        Text(L10n.text("The test ended without a confirmed reply")).font(.headline)
+                        Text(L10n.text("The test ended without a confirmed reply")).font(AIMTheme.heading)
                         Text(L10n.text("Keep both assistants open, check their connections and limits, then start a new test."))
                     }
                 }

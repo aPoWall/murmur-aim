@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import Combine
+import UserNotifications
 import SwiftUI
 import MurmurTrayCore
 
@@ -54,7 +55,7 @@ private final class CommandMenuItem: NSMenuItem {
 }
 
 @MainActor
-private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     private let model = TrayModel()
     private var item: NSStatusItem?
     private var window: NSWindow?
@@ -63,7 +64,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The window is the primary entrance; the menu-bar item is a shortcut.
-        NSApp.applicationIconImage = MurmurMark.image(state: .ready, size: 512, description: "Murmur")
+        NSApp.applicationIconImage = AIMTheme.appIcon()
         let appMenu = NSMenu()
         appMenu.addItem(CommandMenuItem(L10n.text("Open Murmur")) { [weak self] in self?.showWindow() })
         appMenu.addItem(.separator())
@@ -89,6 +90,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
         editItem.submenu = editMenu
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
+        UNUserNotificationCenter.current().delegate = self
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // Preserve the preference written by the previous single MenuBarExtra.
         // This API stores the user's Cmd-drag position; it cannot reveal notch overflow.
@@ -105,7 +107,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
         model.shortcutAvailable = shortcut.register()
         refreshStatusItem()
         // A real window is an independent entrance when macOS hides the status item.
-        showWindow()
+        if !ProcessInfo.processInfo.arguments.contains("--background") { showWindow() }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -120,8 +122,18 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
         observation?.cancel()
     }
 
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor in self.showWindow(); completionHandler() }
+    }
+
     private func refreshStatusItem() {
-        item?.button?.image = model.icon
+        item?.button?.image = AIMAppMarkView.image(.family, size: 18, mono: true)
+        // Keep unread/failure/update visible independently of the family mark.
+        item?.button?.title = !model.companion.badge.isEmpty ? model.companion.badge : model.verdict.unread ? " ·" : (model.verdict.indicator == .failed ? " !" : (model.updateAvailable ? " ↑" : ""))
         let entrance = model.shortcutAvailable ? L10n.text("Open Murmur: Control–Option–Command–M")
             : L10n.text("Shortcut unavailable. Open Murmur from Finder.")
         item?.button?.toolTip = model.accessibleStatus + "\n" + entrance
@@ -141,25 +153,30 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
     func menuDidClose(_ menu: NSMenu) { item?.menu = nil }
 
     private func toggleWindow() {
-        if window?.isVisible == true && NSApp.isActive { window?.orderOut(nil) }
+        if window?.isVisible == true { AIMWindowState.shared.close(.menuBarItem) }
         else { showWindow() }
     }
 
     private func showWindow() {
         if window == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 640),
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 740, height: 700),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
-            window.title = "Murmur"
-            window.minSize = NSSize(width: 430, height: 400)
+            window.title = "Murmur AIM"
+            window.minSize = NSSize(width: 740, height: 560)
+            window.maxSize = NSSize(width: 740, height: 1100)
+            window.appearance = NSAppearance(named: .aqua)
+            window.backgroundColor = .white
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: MurmurHomeView(model: model))
             window.center()
             window.setFrameAutosaveName("MurmurMainWindow")
             self.window = window
+            AIMWindowState.shared.attach(window)
         }
         NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        AIMWindowState.shared.surface?.show()
+        window?.makeKey()
     }
 
     private func quickMenu() -> NSMenu {
@@ -202,6 +219,8 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
 struct MurmurMenuBarApp {
     @MainActor static func main() {
         let app = NSApplication.shared
+        AIMTheme.registerFonts()
+        if AIMPreview.runIfRequested() { return }
         app.setActivationPolicy(.regular)
         let delegate = MurmurAppDelegate()
         app.delegate = delegate

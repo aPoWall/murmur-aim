@@ -48,7 +48,7 @@ public enum BundledRuntime {
     public static func cli(in bundle: Bundle = .main) -> URL? {
         let helper = bundle.bundleURL.appendingPathComponent("Contents/MacOS/murmur")
         // A damaged distributed bundle must not silently switch to a global engine.
-        if bundle.bundleIdentifier == "org.murmur.mac" { return helper }
+        if ["org.murmur.mac", "org.aimindset.murmur"].contains(bundle.bundleIdentifier ?? "") { return helper }
         return FileManager.default.isExecutableFile(atPath: helper.path) ? helper : nil
     }
 
