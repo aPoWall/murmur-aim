@@ -34,6 +34,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let observed_at: String?
         public let fresh: Bool?
     }
+    public let peer_policy: AIMPeerPolicySnapshot?
     public let schema: String
     public let privacy: String
     public let snapshot_at: String?
@@ -83,4 +84,20 @@ public struct AIMCompanionCursor: Sendable {
         seen = (seen ?? []).union(keys)
         return added
     }
+}
+
+public struct AIMPeerPolicySnapshot: Decodable, Sendable {
+    public struct Policy: Decodable, Sendable {
+        public let revision: Int
+        public let send_allowed: Bool
+        public let trust: String
+        public let context: String
+        public let brief: String?
+        public let tone: String
+        public let responder: String
+        public let wake_status: String
+        public let wake_reason: String?
+    }
+    public let observed_at: String
+    public let peers: [String: Policy]
 }

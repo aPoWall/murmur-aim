@@ -555,3 +555,27 @@
 "Connection map" = "Карта связей";
 
 "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "В уведомлении – имена отправителей и количество, без текста сообщений. Первый снимок тихий. Доставка не закрывает вопрос.";
+
+"Access & context" = "Доступ и контекст";
+"Responder" = "Обработчик ответов";
+"Not assigned · manual reply needed" = "Не назначен · нужен ручной ответ";
+"Attach the approved brief" = "Приложить разрешённый бриф";
+"Sending is disabled by your contact policy." = "Отправка выключена в правилах контакта.";
+"Budget observation is separate from each contact’s responder. Check People for missing responders." = "Проверка бюджета отделена от обработчиков контактов. Отсутствующие обработчики показаны в People.";
+"Allow sending from this app" = "Разрешить отправку из приложения";
+"Contact trust" = "Доверие к контакту";
+"Review each request" = "Проверять каждый запрос";
+"Known contact · no extra permissions" = "Знакомый контакт · без новых прав";
+"Preferred tone" = "Предпочтительная тональность";
+"Concise" = "Кратко и по делу";
+"Friendly" = "Доброжелательно";
+"Formal" = "Формально";
+"Shared context" = "Передаваемый контекст";
+"Only the written message" = "Только написанное сообщение";
+"Allow this approved brief" = "Разрешить этот бриф";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Правила действуют для явной отправки из приложения. Бриф прикладывается отдельно. Права волтов, Telegram и существующие AI-обработчики управляются отдельно. Тональность – предпочтение; ручной текст не меняется.";
+"Reload" = "Перечитать";
+"Save rules" = "Сохранить правила";
+"Could not load rules. Nothing changed." = "Не удалось прочитать правила. Ничего не изменено.";
+"Rules saved. Filesystem access did not change." = "Правила сохранены. Доступ к файлам не менялся.";
+"Save not confirmed. Reload before trying again." = "Сохранение не подтверждено. Перечитайте перед повтором.";

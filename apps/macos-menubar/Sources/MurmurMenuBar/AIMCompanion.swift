@@ -151,10 +151,16 @@ struct AIMCompanionView: View {
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                     Text(L10n.text("Alex's decisions") + ": \(data.decision_count) · " + L10n.text("Open topics") + ": \(data.pending_count)").font(AIMTheme.heading)
                     if data.budget.allowed != true || data.budget.fresh != true {
-                        Text(L10n.text("Automatic replies need a fresh budget check. Receiving messages continues.")).foregroundStyle(AIMTheme.signal)
+                        Text(L10n.text("Budget observation is separate from each contact’s responder. Check People for missing responders.")).foregroundStyle(AIMTheme.signal)
                         Text((data.budget.reason ?? "unknown") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)).font(AIMTheme.meta)
                     }
-                    Button(L10n.text("Continue with Vasiliev / JARVIS in Codex")) { AIMCompanionModel.owner() }
+                    if let policies = data.peer_policy {
+                        ForEach(policies.peers.keys.sorted(), id: \.self) { peer in
+                            if policies.peers[peer]?.responder == "none" {
+                                Text(peer + " · " + L10n.text("Not assigned · manual reply needed")).font(AIMTheme.meta)
+                            }
+                        }
+                    }
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
                     Text(L10n.text("People · last observed message")).font(AIMTheme.heading)

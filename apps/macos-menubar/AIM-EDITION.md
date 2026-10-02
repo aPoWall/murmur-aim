@@ -95,3 +95,17 @@ recipient imported the pairing reply or can wake an agent.
 This build is an operator companion configured for Alex's SSH alias. The public catalog
 contains product documentation and synthetic previews only; it does not distribute
 credentials, connection invitations, private messages or a universal installer.
+
+## AIM 4 · peer-specific reply evidence and companion sharing
+
+People shows each peer's configured responder and the last wake outcome. A running
+Codex service or global budget receipt does not establish that a given peer has a
+responder. The Telegram button opens a human chat; it never sends a message.
+
+Access & context edits a server-owned, revisioned companion policy. It can disable
+companion sends and allow an owner-authored brief. Attaching that brief requires a
+separate send-time choice and matching policy revision. Trust and tone are preferences;
+they do not grant filesystem rights or silently rewrite manual text. The policy applies
+to this explicit companion send path, not existing native responders, raw MCP or the
+Telegram bridge. Automatic context export remains absent. The dashboard editor uses
+the same policy with owner authentication, exact Origin validation and CAS updates.

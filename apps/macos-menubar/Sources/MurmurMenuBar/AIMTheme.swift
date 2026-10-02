@@ -13,7 +13,7 @@ import MurmurTrayCore
     static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
-        return "\(v) · aim 3"
+        return "\(v) · aim 4"
     }
     static func registerFonts() {
         for weight in [400, 500, 600] {

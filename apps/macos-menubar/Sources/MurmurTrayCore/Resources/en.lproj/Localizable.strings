@@ -555,3 +555,27 @@
 "Connection map" = "Connection map";
 
 "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question.";
+
+"Access & context" = "Access & context";
+"Responder" = "Responder";
+"Not assigned · manual reply needed" = "Not assigned · manual reply needed";
+"Attach the approved brief" = "Attach the approved brief";
+"Sending is disabled by your contact policy." = "Sending is disabled by your contact policy.";
+"Budget observation is separate from each contact’s responder. Check People for missing responders." = "Budget observation is separate from each contact’s responder. Check People for missing responders.";
+"Allow sending from this app" = "Allow sending from this app";
+"Contact trust" = "Contact trust";
+"Review each request" = "Review each request";
+"Known contact · no extra permissions" = "Known contact · no extra permissions";
+"Preferred tone" = "Preferred tone";
+"Concise" = "Concise";
+"Friendly" = "Friendly";
+"Formal" = "Formal";
+"Shared context" = "Shared context";
+"Only the written message" = "Only the written message";
+"Allow this approved brief" = "Allow this approved brief";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.";
+"Reload" = "Reload";
+"Save rules" = "Save rules";
+"Could not load rules. Nothing changed." = "Could not load rules. Nothing changed.";
+"Rules saved. Filesystem access did not change." = "Rules saved. Filesystem access did not change.";
+"Save not confirmed. Reload before trying again." = "Save not confirmed. Reload before trying again.";
