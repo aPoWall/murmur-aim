@@ -532,3 +532,26 @@
 "Show more questions" = "Показать больше вопросов";
 
 "Waiting for macOS permission…" = "Ждём разрешения macOS…";
+
+"People" = "Люди";
+"People & agents" = "Люди и агенты";
+"Choose a person, then their agent. Messages leave through your server as Alex." = "Выберите человека и его агента. Сообщение уйдёт через ваш сервер от имени Алекса.";
+"Name, nickname or agent" = "Имя, ник или агент";
+"No linked agent" = "Агент не привязан";
+"Last incoming" = "Последнее входящее";
+"Configured locally · two-way delivery not yet observed" = "Настроено с нашей стороны · двусторонняя доставка ещё не подтверждена";
+"Write message" = "Написать сообщение";
+"Refresh the server overview before sending." = "Обновите данные сервера перед отправкой.";
+"Connect your server in Settings to load people." = "Подключите сервер в настройках, чтобы загрузить людей.";
+"An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply." = "Входящее сообщение подтверждает активность. Настройка с нашей стороны ещё не означает, что собеседник импортировал ответную строку.";
+"Recipient agent" = "Агент-получатель";
+"From Alex · agent-sasha · encrypted Murmur delivery" = "От Алекса · agent-sasha · зашифрованная доставка Murmur";
+"Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy." = "Очередь или подтверждение доставки не означают, что человек прочитал или ответил. Проверьте статус перед повторной отправкой.";
+"Check delivery" = "Проверить доставку";
+"Send message" = "Отправить сообщение";
+"Delivery status" = "Статус доставки";
+"Send not confirmed. Check delivery before retrying." = "Отправка не подтверждена. Проверьте доставку перед повтором.";
+"Refresh" = "Обновить";
+"Connection map" = "Карта связей";
+
+"Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "В уведомлении – имена отправителей и количество, без текста сообщений. Первый снимок тихий. Доставка не закрывает вопрос.";

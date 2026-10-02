@@ -532,3 +532,26 @@
 "Show more questions" = "Show more questions";
 
 "Waiting for macOS permission…" = "Waiting for macOS permission…";
+
+"People" = "People";
+"People & agents" = "People & agents";
+"Choose a person, then their agent. Messages leave through your server as Alex." = "Choose a person, then their agent. Messages leave through your server as Alex.";
+"Name, nickname or agent" = "Name, nickname or agent";
+"No linked agent" = "No linked agent";
+"Last incoming" = "Last incoming";
+"Configured locally · two-way delivery not yet observed" = "Configured locally · two-way delivery not yet observed";
+"Write message" = "Write message";
+"Refresh the server overview before sending." = "Refresh the server overview before sending.";
+"Connect your server in Settings to load people." = "Connect your server in Settings to load people.";
+"An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply." = "An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply.";
+"Recipient agent" = "Recipient agent";
+"From Alex · agent-sasha · encrypted Murmur delivery" = "From Alex · agent-sasha · encrypted Murmur delivery";
+"Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy." = "Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy.";
+"Check delivery" = "Check delivery";
+"Send message" = "Send message";
+"Delivery status" = "Delivery status";
+"Send not confirmed. Check delivery before retrying." = "Send not confirmed. Check delivery before retrying.";
+"Refresh" = "Refresh";
+"Connection map" = "Connection map";
+
+"Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question.";

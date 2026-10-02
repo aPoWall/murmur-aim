@@ -51,7 +51,14 @@ import MurmurTrayCore
                 // Only hashes are retained. Queue text and people are held in memory.
                 let retained = Array(cursor.seen ?? []).sorted().suffix(8192)
                 UserDefaults.standard.set(Array(retained), forKey: "aimCompanionSeen")
-                if notifications && !added.isEmpty { notify(count: added.count) }
+                if notifications && !added.isEmpty {
+                    let senders = data.incoming.filter { row in row.ids.contains { id in
+                        let key = "message:\(row.peer):\(id)"
+                        let hash = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
+                        return added.contains(hash)
+                    }}.map { row in data.people.first { $0.agents.contains(row.peer) }?.name ?? row.peer }
+                    notify(count: added.count, senders: Array(Set(senders)).sorted())
+                }
             }
         }
     }
@@ -91,10 +98,10 @@ import MurmurTrayCore
             }
         }
     }
-    private func notify(count: Int) {
+    private func notify(count: Int, senders: [String]) {
         let content = UNMutableNotificationContent()
         content.title = "Murmur AIM"
-        content.body = L10n.text("New messages or decisions to review") + ": \(count)"
+        content.body = L10n.text("New messages or decisions to review") + ": \(count)" + (senders.isEmpty ? "" : " · " + senders.prefix(2).joined(separator: ", "))
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { _ in }
     }
@@ -105,7 +112,10 @@ import MurmurTrayCore
     static func owner() { NSWorkspace.shared.open(URL(string: "codex://threads/01a0ed94-6541-7423-a18f-42545746f731")!) }
     static func stamp(_ raw: String?) -> String {
         guard let date = AIMCompanionSnapshot.date(raw) else { return L10n.text("Not observed") }
-        return date.formatted(date: .abbreviated, time: .shortened)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: L10n.language().rawValue)
+        formatter.dateStyle = .medium; formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
@@ -120,7 +130,7 @@ struct AIMCompanionView: View {
             HStack {
                 Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }
                 Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }
-                Button(L10n.text("Connections")) { AIMCompanionModel.open("?view=mesh&section=map") }
+                Button(L10n.text("Connection map")) { AIMCompanionModel.open("?view=mesh&section=map") }
                 Button(L10n.text("Search tools")) { AIMCompanionModel.open("?command=search") }
             }
             if !model.enabled {
@@ -176,14 +186,6 @@ struct AIMCompanionView: View {
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
                         Text("\(row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
                     }
-                    Divider()
-                    Text(L10n.text("People · last observed message")).font(AIMTheme.heading)
-                    ForEach(data.people.filter { query.isEmpty || ($0.name + " " + $0.agents.joined(separator: " ")).localizedCaseInsensitiveContains(query) }) { person in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(person.name).font(AIMTheme.heading)
-                            Text(person.agents.joined(separator: ", ") + " · " + AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta)
-                        }
-                    }
                     Text(L10n.text("Message dates show observed activity, not online presence. Topic decisions are reviewed separately.")).font(AIMTheme.meta)
                 }
             }
@@ -203,7 +205,7 @@ struct AIMCompanionSettings: View {
                 Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.disabled(model.requestingNotifications)
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
-            Text(L10n.text("Notifications contain counts only. The first snapshot is silent; new requests appear after it. Delivery does not close a question."))
+            Text(L10n.text("Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question."))
             Divider()
         }.fixedSize(horizontal: false, vertical: true)
     }

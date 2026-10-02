@@ -7,6 +7,9 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let name: String
         public let agents: [String]
         public let last_at: String?
+        public let nickname: String?
+        public let agent_labels: [String: String]?
+        public let writable_agents: [String]?
     }
     public struct Question: Decodable, Identifiable, Sendable {
         public let id: String

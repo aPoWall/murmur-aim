@@ -13,7 +13,7 @@ import MurmurTrayCore
     static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
-        return "\(v) · aim 2"
+        return "\(v) · aim 3"
     }
     static func registerFonts() {
         for weight in [400, 500, 600] {
@@ -86,6 +86,7 @@ struct AIMTabsBridge: NSViewRepresentable {
     @Binding var page: String
     func makeNSView(context: Context) -> AIMTabStrip {
         AIMTabStrip(tabs: [.init(id: "Overview", title: L10n.text("Overview").lowercased()),
+                          .init(id: "People", title: L10n.text("People").lowercased()),
                           .init(id: "Home", title: L10n.text("Local").lowercased()),
                           .init(id: "Help", title: L10n.text("Help").lowercased())],
                     selected: page, width: 708, tabWidth: 100, onSelect: { page = $0 })
@@ -97,7 +98,7 @@ struct AIMFooterBridge: NSViewRepresentable {
     let status: String
     func makeNSView(context: Context) -> AIMFooterLine {
         AIMFooterLine(keys: "⌃⌥⌘M toggle", status: status, width: 708,
-                      apps: { NSWorkspace.shared.open(URL(string: "https://content.aimindset.org/murmur/")!) })
+                      apps: { NSWorkspace.shared.open(URL(string: "https://apps.aimindset.org/murmur/")!) })
     }
     func updateNSView(_ view: AIMFooterLine, context: Context) { view.setStatus(status) }
 }
@@ -111,6 +112,10 @@ struct AIMFooterBridge: NSViewRepresentable {
         }
         guard let index = args.firstIndex(of: "--aim-render"), args.indices.contains(index + 1) else { return false }
         let model = TrayModel(startRuntime: false)
+        if let fixture = args.firstIndex(of: "--aim-fixture"), args.indices.contains(fixture + 1),
+           let data = try? Data(contentsOf: URL(fileURLWithPath: args[fixture + 1])) {
+            model.companion.snapshot = try? AIMCompanionSnapshot.decode(data)
+        }
         let page = args.firstIndex(of: "--aim-page").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil } ?? "Home"
         let view = NSHostingView(rootView: MurmurHomeView(model: model, initialPage: page))
         view.frame = NSRect(x: 0, y: 0, width: 740, height: 700)

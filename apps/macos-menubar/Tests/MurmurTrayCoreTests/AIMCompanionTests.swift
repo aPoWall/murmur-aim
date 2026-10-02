@@ -16,6 +16,9 @@ func runAIMCompanionChecks() throws -> Int {
     try check(value.isCurrent(now: now), "recent source remains current")
     try check(!value.isCurrent(now: now.addingTimeInterval(300)), "retained snapshots expire without refresh")
     try check(!value.isCurrent(now: now.addingTimeInterval(-120)), "future timestamps fail closed")
+    object["people"] = [["id":"person:dan", "name":"Dan", "agents":["agent-danik"], "nickname":"@dan_named", "agent_labels":["agent-danik":"zima blue"], "writable_agents":["agent-danik"]]]
+    let people = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)).people
+    try check(people.first?.nickname == "@dan_named" && people.first?.writable_agents == ["agent-danik"], "exact recipient and nickname survive decoding")
     object["privacy"] = "public"
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe projection accepted") }
     catch is CocoaError {} 
@@ -26,5 +29,5 @@ func runAIMCompanionChecks() throws -> Int {
     try check(cursor.observe(["new"]).isEmpty, "queue reappearance does not notify again")
     var restored = AIMCompanionCursor(seen: cursor.seen)
     try check(restored.observe(["old", "new"]).isEmpty, "restart preserves notification dedupe")
-    return 8
+    return 9
 }
