@@ -1,4 +1,4 @@
-# Murmur AIM · N1 · build 1
+# Murmur AIM · N1 · AIM 3
 
 Personal macOS edition of alexfrmn/murmur. Upstream engine 2.12.0; MIT attribution
 and transport remain intact. The fork adds the AIM Native White shell, with MEM
@@ -23,8 +23,8 @@ shortcut is retained and avoids MEM PRISM's Option-Command-M.
 The app has its own bundle/preferences identity, `org.aimindset.murmur`. It does
 not copy keys, create a new identity on launch, register at login, change MCP
 settings or take ownership of VM105 agent-sasha. An existing local profile can be
-chosen through upstream's verified recovery flow. Remote VM105 conversations
-continue through the existing monitor; this app does not provide an SSH backend.
+chosen through upstream's verified recovery flow. The server companion uses the existing SSH alias for owner-only observations and
+explicit user messages. Remote conversations retain their existing server monitor.
 
 ## Build
 
@@ -65,7 +65,7 @@ The default Overview reads an owner-only projection over the existing `ws-povaly
 
 The server retains delivery and native WakeMonitor ownership. A live systemd service is displayed independently from the dated budget receipt. Unknown/stale data remains visibly stale. People show observed message dates, not online presence. Alex decisions and incoming review candidates are separate counts.
 
-Opt-in macOS notifications contain counts only, use a quiet first baseline and persisted SHA-256 event fingerprints. The app keeps people/questions in memory. It opens the private dashboard, topic deep links and the dedicated Vasiliev–JARVIS Codex session; it does not copy session context or choose a responder from the foreground app.
+In AIM 2, opt-in macOS notifications contained counts only; AIM 3 also shows sender names. Notifications use a quiet first baseline and persisted SHA-256 event fingerprints. The app keeps people/questions in memory. It opens the private dashboard, topic deep links and the dedicated Vasiliev–JARVIS Codex session; it does not copy session context or choose a responder from the foreground app.
 
 Prerequisites: existing SSH alias and host trust, Tailscale, server projection. A failed SSH read times out after 20 seconds and cannot start a second overlapping read. UI refresh uses no model calls. Disconnect stops only this app's read loop.
 
