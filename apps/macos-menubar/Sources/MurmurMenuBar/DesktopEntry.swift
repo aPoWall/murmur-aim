@@ -6,48 +6,13 @@ import SwiftUI
 import MurmurTrayCore
 
 @MainActor
-private final class GlobalShortcut {
-    private var hotKey: EventHotKeyRef?
-    private var handler: EventHandlerRef?
-    private let action: () -> Void
-
-    init(action: @escaping () -> Void) { self.action = action }
-
-    func register() -> Bool {
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let result = InstallEventHandler(GetApplicationEventTarget(), { _, event, pointer in
-            guard let pointer, let event else { return OSStatus(eventNotHandledErr) }
-            var key = EventHotKeyID()
-            guard GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
-                                    nil, MemoryLayout<EventHotKeyID>.size, nil, &key) == noErr,
-                  key.signature == 0x4D75726D, key.id == 1 else { return OSStatus(eventNotHandledErr) }
-            MainActor.assumeIsolated {
-                Unmanaged<GlobalShortcut>.fromOpaque(pointer).takeUnretainedValue().action()
-            }
-            return noErr
-        }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
-        guard result == noErr else { return false }
-        let status = RegisterEventHotKey(UInt32(kVK_ANSI_M), UInt32(controlKey | optionKey | cmdKey),
-                                        EventHotKeyID(signature: 0x4D75726D, id: 1),
-                                        GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &hotKey)
-        if status != noErr { unregister() }
-        return status == noErr
-    }
-
-    func unregister() {
-        if let hotKey { UnregisterEventHotKey(hotKey); self.hotKey = nil }
-        if let handler { RemoveEventHandler(handler); self.handler = nil }
-    }
-}
-
-@MainActor
 private final class CommandMenuItem: NSMenuItem {
     private let command: () -> Void
 
-    init(_ title: String, enabled: Bool = true, command: @escaping () -> Void) {
+    init(_ title: String, enabled: Bool = true, tip: String? = nil, command: @escaping () -> Void) {
         self.command = command
         super.init(title: title, action: #selector(invoke), keyEquivalent: "")
-        target = self; isEnabled = enabled
+        target = self; isEnabled = enabled; toolTip = tip
     }
 
     required init(coder: NSCoder) { fatalError("Not used") }
@@ -60,10 +25,13 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
     private var item: NSStatusItem?
     private var window: NSWindow?
     private var observation: AnyCancellable?
-    private var shortcut: GlobalShortcut?
+    /// Rules 49, 50: one family combination, ⌥⌘U by default, recorded in settings.
+    private lazy var shortcut = FamilyHotkeyRegistrar(signature: 0x4D75726D) { [weak self] in self?.toggleWindow(reason: .hotkey) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // The window is the primary entrance; the menu-bar item is a shortcut.
+        // Rule 47: the menu bar item is the entrance, the Dock carries no icon (LSUIElement, accessory policy).
+        // Rule 53: the theme is applied before the first window is built.
+        AIMThemePolicy.apply(AIMWindowState.shared.theme)
         NSApp.applicationIconImage = AIMTheme.appIcon()
         let appMenu = NSMenu()
         appMenu.addItem(CommandMenuItem(L10n.text("Open Murmur")) { [weak self] in self?.showWindow() })
@@ -91,10 +59,12 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
         UNUserNotificationCenter.current().delegate = self
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        AIMMenuPresence.prepare(screenWidth: Double(NSScreen.screens.map { $0.frame.width }.max() ?? 1440))
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         // Preserve the preference written by the previous single MenuBarExtra.
         // This API stores the user's Cmd-drag position; it cannot reveal notch overflow.
-        item.autosaveName = "Item-0"
+        item.autosaveName = AIMMenuPresence.name
+        item.isVisible = true
         self.item = item
         item.button?.target = self
         item.button?.action = #selector(statusButtonClicked)
@@ -102,12 +72,15 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
         observation = model.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshStatusItem() }
         }
-        let shortcut = GlobalShortcut { [weak self] in self?.toggleWindow() }
-        self.shortcut = shortcut
-        model.shortcutAvailable = shortcut.register()
+        AIMWindowState.shared.onHotkeyChange = { [weak self] combo in self?.registerShortcut(combo) }
+        registerShortcut(AIMWindowState.hotkeyStore.current)
         refreshStatusItem()
         // A real window is an independent entrance when macOS hides the status item.
         if !ProcessInfo.processInfo.arguments.contains("--background") { showWindow() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, let item = self.item else { return }
+            AIMMenuPresence.receipt(item, windowVisible: self.window?.isVisible == true)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -118,7 +91,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationWillTerminate(_ notification: Notification) {
-        shortcut?.unregister()
+        shortcut.unregister()
         observation?.cancel()
     }
 
@@ -132,12 +105,13 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
 
     private func refreshStatusItem() {
         item?.button?.image = AIMAppMarkView.image(.family, size: 18, mono: true)
-        // Keep unread/failure/update visible independently of the family mark.
-        item?.button?.title = !model.companion.badge.isEmpty ? model.companion.badge : model.verdict.unread ? " ·" : (model.verdict.indicator == .failed ? " !" : (model.updateAvailable ? " ↑" : ""))
-        let entrance = model.shortcutAvailable ? L10n.text("Open Murmur: Control–Option–Command–M")
+        // Stable mark-only width keeps counters from displacing the menu entrance; details remain in the tooltip/panel.
+        item?.button?.title = ""
+        let combo = AIMWindowState.shared.hotkey
+        let entrance = model.shortcutAvailable && combo != nil ? L10n.text("Open Murmur: %@", combo!.display)
             : L10n.text("Shortcut unavailable. Open Murmur from Finder.")
-        item?.button?.toolTip = model.accessibleStatus + "\n" + entrance
-        item?.button?.setAccessibilityLabel(model.accessibleStatus)
+        item?.button?.toolTip = "Murmur AIM · " + AIMTheme.version + "\n" + model.accessibleStatus + "\n" + model.companion.badge + "\n" + entrance
+        item?.button?.setAccessibilityLabel("Murmur AIM · " + model.accessibleStatus)
     }
 
     @objc private func statusButtonClicked() {
@@ -147,13 +121,20 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
             menu.delegate = self
             item.menu = menu
             button.performClick(nil)
-        } else { toggleWindow() }
+        } else { toggleWindow(reason: .menuBarItem) }
+    }
+
+    private func registerShortcut(_ combo: FamilyHotkey?) {
+        let available = shortcut.register(combo)
+        model.shortcutAvailable = available && combo != nil
+        AIMWindowState.shared.hotkeyAvailable = available
+        refreshStatusItem()
     }
 
     func menuDidClose(_ menu: NSMenu) { item?.menu = nil }
 
-    private func toggleWindow() {
-        if window?.isVisible == true { AIMWindowState.shared.close(.menuBarItem) }
+    private func toggleWindow(reason: AIMSurface.CloseReason) {
+        if window?.isVisible == true { AIMWindowState.shared.close(reason) }
         else { showWindow() }
     }
 
@@ -165,8 +146,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
             window.title = "Murmur AIM"
             window.minSize = NSSize(width: 740, height: 560)
             window.maxSize = NSSize(width: 740, height: 1100)
-            window.appearance = NSAppearance(named: .aqua)
-            window.backgroundColor = .white
+            window.backgroundColor = AIMAppShellStyle.canvas
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: MurmurHomeView(model: model))
             window.center()
@@ -182,15 +162,15 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
     private func quickMenu() -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        func add(_ title: String, enabled: Bool = true, action: @escaping () -> Void) {
-            menu.addItem(CommandMenuItem(title, enabled: enabled, command: action))
+        func add(_ title: String, enabled: Bool = true, tip: String? = nil, action: @escaping () -> Void) {
+            menu.addItem(CommandMenuItem(title, enabled: enabled, tip: tip, command: action))
         }
-        add(L10n.text("Open Murmur")) { [weak self] in self?.showWindow() }
+        add(L10n.text("Open Murmur"), tip: L10n.text("Open the window: overview, people, local and help")) { [weak self] in self?.showWindow() }
         if model.profile != nil || model.isDemo {
             add(model.verdict.reason) { [weak self] in self?.showWindow() }
             menu.addItem(.separator())
         }
-        add(L10n.text("Open an existing connection"), enabled: !model.busy && !model.isDemo && model.runtimeError == nil) { [weak self] in
+        add(L10n.text("Open an existing connection"), enabled: !model.busy && !model.isDemo && model.runtimeError == nil, tip: L10n.text("Pick a connection saved on this Mac")) { [weak self] in
             self?.model.chooseProfile()
         }
         add(L10n.text("I have an invitation…"), enabled: model.canUseInvitation) { [weak self] in
@@ -210,7 +190,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
             menu.addItem(.separator())
         }
         // New users can always reopen the guided window without knowing a profile path.
-        add(L10n.text("Quit")) { NSApp.terminate(nil) }
+        add(L10n.text("Quit"), tip: L10n.text("Quit the app; the background service keeps its own state")) { NSApp.terminate(nil) }
         return menu
     }
 }
@@ -221,7 +201,9 @@ struct MurmurMenuBarApp {
         let app = NSApplication.shared
         AIMTheme.registerFonts()
         if AIMPreview.runIfRequested() { return }
-        app.setActivationPolicy(.regular)
+        // Rule 47 and the LSUIElement key: the family lives in the menu bar; `.regular` overrode the plist and
+        // kept a Dock icon up to AIM 4.
+        app.setActivationPolicy(.accessory)
         let delegate = MurmurAppDelegate()
         app.delegate = delegate
         withExtendedLifetime(delegate) { app.run() }

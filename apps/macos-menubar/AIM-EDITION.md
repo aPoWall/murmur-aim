@@ -109,3 +109,35 @@ they do not grant filesystem rights or silently rewrite manual text. The policy 
 to this explicit companion send path, not existing native responders, raw MCP or the
 Telegram bridge. Automatic context export remains absent. The dashboard editor uses
 the same policy with owner authentication, exact Origin validation and CAS updates.
+
+## AIM 5 · 2026-10-02 · family shell
+
+- Menu bar app: `LSUIElement` true and `setActivationPolicy(.accessory)`; the `.regular` call in `main` overrode the plist and kept a Dock icon up to AIM 4.
+- Global key `⌥⌘U` in the family pattern, stored as `org.aimindset.murmur.hotkey`, recorded by pressing it in Settings (`FamilyHotkey.swift`, shared byte for byte with krest); AIM 4 registered a fixed `⌃⌥⌘M` outside the family table.
+- Pin survives a restart: `org.aimindset.murmur.pinned`, migrated once under `aim.shell.pin-migrated`.
+- Theme `org.aimindset.murmur.theme`, white by default: □ / ■ in the footer, a Settings row; SwiftUI colours read the shell roles, `preferredColorScheme(.light)` and the white literals are gone, a switch applies at once without a restart.
+- Footer `apps ↗` opens the catalog root, the same address as the siblings; tab hints; 91 tooltips (`.help`) with English and Russian strings (109 new catalog keys, 670 per language).
+- Fonts load from the resource bundle packaged in `Contents/Resources`. The generated `Bundle.module` fell back to the build directory under ~/Documents, and a freshly signed build waited on privacy consent there before its first frame.
+- Checks: 503 upstream checks, runtime manifest, native bridge, localization (670 keys), `--aim-check-shell` 9/9, offscreen renders of both themes and a live flip (`--aim-flip`).
+
+## AIM 6 · 2026-10-04 · menu presence
+
+Preserves the preceding AIM 5 shell work (theme, persistent panel pin, family hotkey,
+localizations and packaged fonts). The header uses the current byte-identical family
+voxel model; the menu uses the canonical 18 pt monochrome template mark.
+
+The status item now has fixed square width, is explicitly visible at launch, and
+recovers only its own invalid saved position (negative or beyond connected screen
+width). A valid Cmd-drag position survives restarts. Counters remain in the tooltip
+and panel. Panel pinning controls focus-loss behavior independently of menu placement.
+
+`AIMShellEdition` and `AIMSourceCommit` in the bundle identify the installed build;
+engine version remains 2.12.0. A private `Murmur/aim-menu-receipt.json` in Application
+Support records placement, template image, activation policy and panel state once
+at launch. No identity, grant, login item, worker or scheduler is added. Menu-manager
+hiding and notch occlusion require visual inspection; a frame receipt alone is not
+proof of visible pixels. Login/reboot startup is not newly configured.
+
+Checks: shared component hashes, 14 shell checks (including invalid-position recovery,
+valid-placement persistence and template mark), packaging/runtime checks and scoped
+installed-process acceptance. Release receipt is retained by the owner task.

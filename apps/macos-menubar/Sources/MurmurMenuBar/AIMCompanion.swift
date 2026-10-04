@@ -128,19 +128,19 @@ struct AIMCompanionView: View {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
             Text(L10n.text("People, incoming requests and decisions. Continue the conversation in the owning Codex session.")).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }
-                Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }
-                Button(L10n.text("Connection map")) { AIMCompanionModel.open("?view=mesh&section=map") }
-                Button(L10n.text("Search tools")) { AIMCompanionModel.open("?command=search") }
+                Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }.help(L10n.text("Open the private mesh dashboard in the browser"))
+                Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }.help(L10n.text("Open the message history of the mesh in the dashboard"))
+                Button(L10n.text("Connection map")) { AIMCompanionModel.open("?view=mesh&section=map") }.help(L10n.text("Open the map of who is connected to whom"))
+                Button(L10n.text("Search tools")) { AIMCompanionModel.open("?command=search") }.help(L10n.text("Open the dashboard search across people, topics and tools"))
             }
             if !model.enabled {
                 Text(L10n.text("Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created."))
-                Button(L10n.text("Connect my server overview")) { model.connect() }
+                Button(L10n.text("Connect my server overview")) { model.connect() }.help(L10n.text("Read the VM105 overview over your SSH alias once a minute; no keys are created"))
             } else {
                 HStack {
                     Text("VM105 · agent-sasha").font(AIMTheme.heading)
                     Spacer()
-                    Button(L10n.text("Refresh")) { model.refresh() }.disabled(model.busy)
+                    Button(L10n.text("Refresh")) { model.refresh() }.help(L10n.text("Read the server overview again now")).disabled(model.busy)
                 }
                 if model.busy && model.snapshot == nil { ProgressView(L10n.text("Reading server…")) }
                 if model.failed {
@@ -183,11 +183,11 @@ struct AIMCompanionView: View {
                                 var parts = URLComponents(string: AIMCompanionModel.board)!
                                 parts.queryItems = [URLQueryItem(name: "topic", value: question.id)]
                                 if let url = parts.url { NSWorkspace.shared.open(url) }
-                            }
+                            }.help(L10n.text("Open this topic in the dashboard"))
                         }
                         Divider()
                     }
-                    Button(showAllQuestions ? L10n.text("Show fewer questions") : L10n.text("Show more questions")) { showAllQuestions.toggle() }
+                    Button(showAllQuestions ? L10n.text("Show fewer questions") : L10n.text("Show more questions")) { showAllQuestions.toggle() }.help(L10n.text("Fold or unfold the list of reviewed questions"))
                     Text(L10n.text("Incoming awaiting review") + ": \(data.incoming.reduce(0) { $0 + $1.ids.count })").font(AIMTheme.heading)
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
                         Text("\(row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
@@ -207,8 +207,8 @@ struct AIMCompanionSettings: View {
             Text("VM105 · ws-povalyaev · agent-sasha").font(AIMTheme.meta)
             Text(L10n.text("Reads existing observations once per minute while the app is running. Server monitoring continues when the app closes."))
             HStack {
-                Button(model.enabled ? L10n.text("Disconnect overview") : L10n.text("Connect my server overview")) { model.enabled ? model.disconnect() : model.connect() }
-                Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.disabled(model.requestingNotifications)
+                Button(model.enabled ? L10n.text("Disconnect overview") : L10n.text("Connect my server overview")) { model.enabled ? model.disconnect() : model.connect() }.help(L10n.text("Stop or start the once-a-minute read of the overview; server monitoring keeps running"))
+                Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.help(L10n.text("macOS notifications with sender names and counts, never the message text")).disabled(model.requestingNotifications)
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
             Text(L10n.text("Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question."))

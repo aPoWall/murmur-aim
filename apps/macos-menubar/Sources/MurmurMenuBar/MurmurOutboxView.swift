@@ -25,11 +25,11 @@ struct MurmurOutboxView: View {
                                 if item.dismissed { Text(L10n.text("Warning dismissed; delivery is still unconfirmed")).font(AIMTheme.meta) }
                                 Button(L10n.text(item.dismissed ? "Restore warning" : "Dismiss warning")) {
                                     model.setOutboxDismissed(item, dismissed: !item.dismissed)
-                                }.disabled(!model.canControl || !item.canSelect)
+                                }.help(L10n.text("Hide or bring back this warning; delivery stays unconfirmed")).disabled(!model.canControl || !item.canSelect)
                             }
                         }
                         if (attention.items?.count ?? 0) > visibleCount {
-                            Button(L10n.text("Show more messages")) { visibleCount += 50 }
+                            Button(L10n.text("Show more messages")) { visibleCount += 50 }.help(L10n.text("Show 50 more messages"))
                         }
                     } else {
                         Text(L10n.text("Message details are unavailable. Refresh status; no warning has been dismissed."))
@@ -43,7 +43,7 @@ struct MurmurOutboxView: View {
                         .font(AIMTheme.heading).fixedSize(horizontal: false, vertical: true)
                     Text(L10n.text("Resume saves the setting. If status says a service restart is required, stop and start this profile's service in Settings."))
                         .font(AIMTheme.body).fixedSize(horizontal: false, vertical: true)
-                    Button(L10n.text("Resume agent delivery")) { model.perform(.resume) }.disabled(!model.canControl)
+                    Button(L10n.text("Resume agent delivery")) { model.perform(.resume) }.help(L10n.text("Resume handing queued messages to the agent")).disabled(!model.canControl)
                 }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             }

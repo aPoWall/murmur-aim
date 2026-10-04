@@ -1,4 +1,4 @@
-// AIMAppShell · N1 · v1 · the L2 shell of every native AIM mini app (AIM apps rules 21, 22, 31, 32, 33, 34, 35, 38).
+// AIMAppShell · N1 · v2 · the L2 shell of every native AIM mini app (AIM apps rules 21, 22, 31, 32, 33, 34, 35, 38, 53).
 // Hand-written once, vendored byte for byte. Pairs with AIMMiniAppTokens.swift, AIMAppMarks.swift and
 // AIMAppMarkView.swift. AppKit only.
 //
@@ -8,10 +8,15 @@
 //
 //   AIMAppHeader   mark 40 pt · name · optional status under the name · version · settings · pin · x (rule 32)
 //   AIMPinButton   the one pin control, off by default, identifier `pin-panel` (rule 31)
+//   AIMThemeButton the one theme control, □ / ■ 28 pt, white by default, identifier `theme-toggle`, in the footer (rule 53)
 //   AIMTabStrip    views only, red underline on the active tab, keys 1...N (rules 32, 37)
-//   AIMFooterLine  keys · esc close · version and status, 11 pt muted (rule 22)
+//   AIMFooterLine  keys · esc close · theme · apps · version and status, 11 pt muted (rules 22, 25, 53)
 //   AIMRowCell     mark or letter square 16 pt · title · subtitle · the reason the row is here (rule 35)
 //   AIMSurface     one show by the appear token, one read-only outside-click monitor, one close(reason:) (rules 28, 29, 33)
+//
+// v2 (rule 53): every colour of the shell carries two appearances, the N1 profile for the white theme and the
+// N1 dark profile for the black one. A product switches the theme through `AIMThemePolicy.apply`, which sets the
+// appearance of the process; nothing in the shell repaints by hand.
 //
 // `NSColor(aimHex:)` lives in AIMVoxelView.swift; the files ship together in every product.
 import AppKit
@@ -24,16 +29,36 @@ public enum AIMAppShellStyle {
     private static func semantic(_ key: String, _ fallback: String) -> String { AIMMiniAppTokens.N1.semantic[key] ?? fallback }
     private static func component(_ key: String, _ fallback: String) -> String { AIMMiniAppTokens.N1.component[key] ?? fallback }
 
-    public static let canvas = NSColor(aimHex: semantic("canvas", "#ffffff"))
-    public static let surface = NSColor(aimHex: component("button-background", "#ffffff"))
-    public static let ink = NSColor(aimHex: semantic("text", "#202124"))
-    public static let muted = NSColor(aimHex: semantic("text-secondary", "#6b6e75"))
-    public static let disabled = NSColor(aimHex: semantic("text-disabled", "#c9cbd1"))
-    public static let divider = NSColor(aimHex: semantic("divider", "#e8e9ed"))
-    public static let hover = NSColor(aimHex: semantic("hover", "#f5f6f8"))
-    public static let selected = NSColor(aimHex: semantic("selected", "#f5f6f8"))
-    public static let data = NSColor(aimHex: semantic("data", "#f2f3f5"))
-    public static let signal = NSColor(aimHex: semantic("selection", "#db303d"))
+    /// Rule 53: one role, two appearances. The light value is the N1 profile, the dark value the N1 dark profile
+    /// of the same role, and the appearance the colour is drawn in picks one. Products build their own palette
+    /// from these two calls, so a product colour follows the theme the same way the shell does.
+    public static func role(_ key: String) -> NSColor {
+        themed(key, light: AIMMiniAppTokens.N1.semantic[key], dark: AIMMiniAppTokens.N1Dark.semantic[key])
+    }
+    public static func componentRole(_ key: String) -> NSColor {
+        themed("component." + key, light: AIMMiniAppTokens.N1.component[key], dark: AIMMiniAppTokens.N1Dark.component[key])
+    }
+    private static func themed(_ name: String, light: String?, dark: String?) -> NSColor {
+        let day = NSColor(aimHex: light ?? "#ffffff")
+        let night = NSColor(aimHex: dark ?? light ?? "#202124")
+        return NSColor(name: NSColor.Name("aim." + name)) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? night : day
+        }
+    }
+
+    public static let canvas = role("canvas")
+    public static let surface = componentRole("button-background")
+    public static let ink = role("text")
+    public static let muted = role("text-secondary")
+    public static let disabled = role("text-disabled")
+    public static let divider = role("divider")
+    public static let hover = role("hover")
+    public static let selected = role("selected")
+    public static let data = role("data")
+    public static let signal = role("selection")
+    /// The plate under the header character: the white canvas in both themes, so the drawing of the mark and the
+    /// voxel body read the same on a white and on a black panel (rule 53).
+    public static let plate = NSColor(aimHex: semantic("canvas", "#ffffff"))
 
     public static let controlRadius = CGFloat(AIMMiniAppTokens.number(semantic("radius-control", "8px")) ?? 8)
     /// Content inset and the gap between groups (rule 23).
@@ -237,6 +262,77 @@ public final class AIMPinButton: AIMShellButton {
     }
 }
 
+// MARK: - Theme
+
+/// Rule 53: one theme control with one meaning, the panel in white or in black. White by default; the choice is
+/// stored under `<bundle id>.theme` with the value `light` or `dark`, the form MEM PRISM has kept since 0.4, and
+/// survives a restart. The control sits in the footer line in every product, right before `apps`.
+public enum AIMThemePolicy {
+    public enum Mode: String, CaseIterable { case light, dark }
+    public static let themeDefault: Mode = .light
+    public static let identifier = NSUserInterfaceItemIdentifier("theme-toggle")
+    /// One tooltip, the same wording in every product; the state is announced by the accessibility description.
+    public static let tooltip = "theme: the panel in white or in black, the choice survives a restart"
+    /// One glyph like the pin: the square of the panel, hollow for white and filled for black. The circles stay
+    /// with the pin, so the two controls never read as one.
+    public static func glyph(_ mode: Mode) -> String { mode == .dark ? "\u{25A0}" : "\u{25A1}" }
+    public static func accessibilityDescription(_ mode: Mode) -> String {
+        mode == .dark ? "black theme, switch to white" : "white theme, switch to black"
+    }
+    /// `dev.alex.mem-prism.theme`, `org.aimindset.murmur.theme`: the bundle identifier and one suffix.
+    public static func key(bundle: String? = Bundle.main.bundleIdentifier) -> String { (bundle ?? "aim.app") + ".theme" }
+    /// `stored`: the saved string, nil when never saved; anything but `dark` reads as the default.
+    public static func resolve(_ stored: String?) -> Mode { stored.flatMap(Mode.init(rawValue:)) ?? themeDefault }
+    public static func load(_ defaults: UserDefaults = .standard, key: String = AIMThemePolicy.key()) -> Mode {
+        resolve(defaults.string(forKey: key))
+    }
+    public static func store(_ mode: Mode, _ defaults: UserDefaults = .standard, key: String = AIMThemePolicy.key()) {
+        defaults.set(mode.rawValue, forKey: key)
+    }
+    public static func appearance(_ mode: Mode) -> NSAppearance? { NSAppearance(named: mode == .dark ? .darkAqua : .aqua) }
+    /// Sets the appearance of the whole process: every window, popover and menu of the product follows, and the
+    /// colours of the shell resolve to the matching profile. The system appearance of the Mac is never touched.
+    public static func apply(_ mode: Mode) { NSApplication.shared.appearance = appearance(mode) }
+    /// The header character keeps its drawing in both themes: it is drawn in the light appearance on the white
+    /// plate, which disappears into a white panel and stands as a tile on a black one.
+    public static func plate(_ view: NSView) {
+        view.appearance = NSAppearance(named: .aqua)
+        view.wantsLayer = true
+        view.layer?.backgroundColor = AIMAppShellStyle.plate.cgColor
+        view.layer?.cornerRadius = AIMAppShellStyle.controlRadius
+    }
+}
+
+public final class AIMThemeButton: AIMShellButton {
+    /// Called with the new mode after every press; the host stores it, applies it and rebuilds its body.
+    public var onChange: ((AIMThemePolicy.Mode) -> Void)?
+    public private(set) var mode: AIMThemePolicy.Mode
+
+    public init(mode: AIMThemePolicy.Mode = AIMThemePolicy.themeDefault, onChange: ((AIMThemePolicy.Mode) -> Void)? = nil) {
+        self.mode = mode
+        self.onChange = onChange
+        super.init(AIMThemePolicy.glyph(mode), width: AIMAppShellStyle.controlHeight, height: AIMAppShellStyle.quietHeight, action: nil)
+        identifier = AIMThemePolicy.identifier
+        toolTip = AIMThemePolicy.tooltip
+        target = self
+        action = #selector(toggle)
+        apply()
+    }
+    public required init?(coder: NSCoder) { fatalError("AIMThemeButton is built in code") }
+
+    @objc private func toggle() { setMode(mode == .dark ? .light : .dark); onChange?(mode) }
+
+    /// Host-side change (settings, restore): updates the caption and the description without a callback.
+    public func setMode(_ value: AIMThemePolicy.Mode) {
+        mode = value
+        apply()
+    }
+    private func apply() {
+        setCaption(AIMThemePolicy.glyph(mode))
+        setAccessibilityLabel(AIMThemePolicy.accessibilityDescription(mode))
+    }
+}
+
 // MARK: - Header
 
 /// Rules 21, 32: mark 40 pt · product name · optional status line under the name · then, on the right edge and
@@ -262,6 +358,7 @@ public final class AIMAppHeader: NSView {
                 pin: AIMPinButton? = nil,
                 onClose: (() -> Void)? = nil) {
         markView = AIMAppMarkView(mark: mark, size: AIMAppShellStyle.markSize)
+        AIMThemePolicy.plate(markView)
         nameLabel = AIMAppShellStyle.label(name, size: AIMAppShellStyle.titleSize, weight: .semibold, color: AIMAppShellStyle.ink)
         statusLabel = status.map { AIMAppShellStyle.label($0, size: AIMAppShellStyle.subtitleSize, weight: .medium, color: AIMAppShellStyle.muted) }
         versionLabel = version.map { AIMAppShellStyle.label($0, size: AIMAppShellStyle.footerSize, weight: .medium, color: AIMAppShellStyle.muted) }
@@ -287,7 +384,7 @@ public final class AIMAppHeader: NSView {
             let settings = AIMShellButton("settings", width: 72, action: onSettings)
             settings.identifier = NSUserInterfaceItemIdentifier("settings")
             settings.kind = .framed          // one look for `settings`, `pin` and `x` in the header
-            settings.toolTip = "settings"
+            settings.toolTip = "settings: switches, keys and the menu bar mode of this app"
             settingsButton = settings
             row.append(settings)
         }
@@ -333,7 +430,9 @@ public final class AIMTabStrip: NSView {
     public struct Tab {
         public let id: String
         public let title: String
-        public init(id: String, title: String) { self.id = id; self.title = title }
+        /// What the view shows, for the tooltip: `the events of this week`. The key follows it.
+        public let hint: String?
+        public init(id: String, title: String, hint: String? = nil) { self.id = id; self.title = title; self.hint = hint }
     }
     public private(set) var tabs: [Tab]
     public private(set) var selected: String
@@ -356,7 +455,7 @@ public final class AIMTabStrip: NSView {
             let button = AIMShellButton(tab.title, width: tabWidth, height: 30)
             button.kind = .navigation
             button.identifier = NSUserInterfaceItemIdentifier(tab.id)
-            button.toolTip = "key \(index + 1)"
+            button.toolTip = tab.hint.map { "\($0) \u{00B7} key \(index + 1)" } ?? "\(tab.title) view \u{00B7} key \(index + 1)"
             button.target = self
             button.action = #selector(pick(_:))
             button.isActive = tab.id == self.selected
@@ -419,8 +518,12 @@ public final class AIMFooterLine: NSView {
     /// the action; `apps: nil` is the explicit opt-out, so a family without the entry point is a decision.
     public private(set) var appsButton: AIMShellButton?
     public static let appsTitle = "apps \u{2197}"
+    /// Rule 53: the theme control is a standard slot as well, right before `apps`, the same place in every product.
+    public private(set) var themeButton: AIMThemeButton?
+    public static let appsTooltip = "apps.aimindset.org: the catalog of the AIM apps opens in the browser"
 
-    public init(keys: String, esc: String = "esc close", status: String, width: CGFloat, extras: [NSView] = [], apps: (() -> Void)? = nil) {
+    public init(keys: String, esc: String = "esc close", status: String, width: CGFloat, extras: [NSView] = [],
+                theme: AIMThemeButton? = nil, apps: (() -> Void)? = nil) {
         keysLabel = AIMAppShellStyle.label(keys, size: AIMAppShellStyle.footerSize, weight: .medium, color: AIMAppShellStyle.muted)
         escLabel = AIMAppShellStyle.label(esc, size: AIMAppShellStyle.footerSize, weight: .medium, color: AIMAppShellStyle.muted)
         statusLabel = AIMAppShellStyle.label(status, size: AIMAppShellStyle.footerSize, weight: .medium, color: AIMAppShellStyle.muted)
@@ -440,9 +543,12 @@ public final class AIMFooterLine: NSView {
         if let apps = apps {
             let button = AIMShellButton(AIMFooterLine.appsTitle, width: 68, height: AIMAppShellStyle.quietHeight, action: apps)
             button.identifier = NSUserInterfaceItemIdentifier("apps-open")
+            button.toolTip = AIMFooterLine.appsTooltip
             appsButton = button
         }
-        let stack = NSStackView(views: [keysLabel, escLabel, AIMAppShellStyle.spacer()] + extras + (appsButton.map { [$0] } ?? []) + [statusLabel])
+        themeButton = theme
+        let stack = NSStackView(views: [keysLabel, escLabel, AIMAppShellStyle.spacer()] + extras
+                                + (theme.map { [$0 as NSView] } ?? []) + (appsButton.map { [$0] } ?? []) + [statusLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.distribution = .fill

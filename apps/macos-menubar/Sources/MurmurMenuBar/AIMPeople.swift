@@ -37,13 +37,13 @@ struct AIMPeopleView: View {
                         }
                         Spacer()
                         VStack {
-                            Button(L10n.text("Access & context")) { policyPerson = person }
+                            Button(L10n.text("Access & context")) { policyPerson = person }.help(L10n.text("Edit what this person's agents may receive from this app"))
                             if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
-                                Button("Telegram ↗") { NSWorkspace.shared.open(url) }
+                                Button("Telegram ↗") { NSWorkspace.shared.open(url) }.help(L10n.text("Open a Telegram chat with this person; nothing is sent"))
                             }
-                            Button(L10n.text("History")) { openHistory(person.id) }
+                            Button(L10n.text("History")) { openHistory(person.id) }.help(L10n.text("Open the message history with this person in the dashboard"))
                             if !(person.writable_agents ?? []).isEmpty {
-                                Button(L10n.text("Write message")) { recipient = person }.disabled(!model.current)
+                                Button(L10n.text("Write message")) { recipient = person }.help(L10n.text("Compose a message; it leaves only after you press Send message")).disabled(!model.current)
                             }
                         }
                     }
@@ -89,24 +89,24 @@ struct AIMComposeView: View {
                 ForEach(person.writable_agents ?? [], id: \.self) { agent in
                     Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").tag(agent)
                 }
-            }.disabled(attempted)
+            }.disabled(attempted).help(L10n.text("Which agent of this person receives the message"))
             Text(L10n.text("From Alex · agent-sasha · encrypted Murmur delivery")).font(AIMTheme.meta)
             TextEditor(text: $message).font(AIMTheme.body).frame(height: 180).border(Color.gray.opacity(0.25)).disabled(attempted)
             Text("\(message.count) / 8000").font(AIMTheme.meta)
             if selectedPolicy?.context == "approved_brief" {
-                Toggle(L10n.text("Attach the approved brief"), isOn: $includeContext).disabled(attempted)
+                Toggle(L10n.text("Attach the approved brief"), isOn: $includeContext).help(L10n.text("Send the brief approved in Access & context with this message")).disabled(attempted)
                 if includeContext { Text(selectedPolicy?.brief ?? "").font(AIMTheme.meta).lineLimit(4) }
             }
             if selectedPolicy?.send_allowed == false { Text(L10n.text("Sending is disabled by your contact policy.")).foregroundStyle(AIMTheme.signal) }
             if let receipt { Text(receipt).textSelection(.enabled) }
             if attempted { Text(L10n.text("Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy.")).font(AIMTheme.meta) }
             HStack {
-                Button(L10n.text("Close")) { dismiss() }.disabled(busy)
+                Button(L10n.text("Close")) { dismiss() }.help(L10n.text("Close this sheet; an unsent message is discarded")).disabled(busy)
                 Spacer()
                 if attempted {
-                    Button(L10n.text("Check delivery")) { submit(statusOnly: true) }.disabled(busy)
+                    Button(L10n.text("Check delivery")) { submit(statusOnly: true) }.help(L10n.text("Ask the server what happened to this attempt; nothing is resent")).disabled(busy)
                 } else {
-                    Button(L10n.text("Send message")) { submit(statusOnly: false) }
+                    Button(L10n.text("Send message")) { submit(statusOnly: false) }.help(L10n.text("Send once through the owner-only helper on VM105 with a stable id"))
                         .disabled(busy || selectedPolicy == nil || selectedPolicy?.send_allowed == false || peer.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 8000)
                 }
                 if busy { ProgressView().controlSize(.small) }

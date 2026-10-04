@@ -27,31 +27,31 @@ struct AIMPolicyView: View {
             Text(person.name).font(AIMTheme.heading)
             Picker(L10n.text("Recipient agent"), selection: $peer) {
                 ForEach(person.agents.filter { data?.peers[$0] != nil }, id: \.self) { Text($0).tag($0) }
-            }.disabled(busy)
+            }.disabled(busy).help(L10n.text("Which agent's rules this sheet edits"))
             if let policy = data?.peers[peer] {
                 Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
                 Text(policy.wake_status + " · " + (policy.wake_reason ?? "") + " · " + AIMCompanionModel.stamp(data?.observed_at)).font(AIMTheme.meta)
-                Toggle(L10n.text("Allow sending from this app"), isOn: $sendAllowed)
+                Toggle(L10n.text("Allow sending from this app"), isOn: $sendAllowed).help(L10n.text("Off: Write message refuses to send to this agent"))
                 Picker(L10n.text("Contact trust"), selection: $trust) {
                     Text(L10n.text("Review each request")).tag("review_required")
                     Text(L10n.text("Known contact · no extra permissions")).tag("trusted_contact")
-                }
+                }.help(L10n.text("How requests from this contact are reviewed; it grants no file access"))
                 Picker(L10n.text("Preferred tone"), selection: $tone) {
                     Text(L10n.text("Concise")).tag("concise"); Text(L10n.text("Friendly")).tag("friendly"); Text(L10n.text("Formal")).tag("formal")
-                }
+                }.help(L10n.text("The tone the companion prefers; your own text is never rewritten"))
                 Picker(L10n.text("Shared context"), selection: $context) {
                     Text(L10n.text("Only the written message")).tag("message_only")
                     Text(L10n.text("Allow this approved brief")).tag("approved_brief")
-                }
+                }.help(L10n.text("Message only, or a brief you approve here that a send may attach"))
                 if context == "approved_brief" { TextEditor(text: $brief).frame(height: 110).border(Color.gray.opacity(0.2)); Text("\(brief.count) / 4000").font(AIMTheme.meta) }
             }
             Text(L10n.text("Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             if !status.isEmpty { Text(status) }
             HStack {
-                Button(L10n.text("Close")) { dismiss() }.disabled(busy)
-                Button(L10n.text("Reload")) { load() }.disabled(busy)
+                Button(L10n.text("Close")) { dismiss() }.help(L10n.text("Close without saving the rules")).disabled(busy)
+                Button(L10n.text("Reload")) { load() }.help(L10n.text("Read the rules from the server again; unsaved edits are dropped")).disabled(busy)
                 Spacer()
-                Button(L10n.text("Save rules")) { save() }.disabled(busy || data?.peers[peer] == nil || brief.count > 4000)
+                Button(L10n.text("Save rules")) { save() }.help(L10n.text("Save to the server; a newer revision there refuses the write")).disabled(busy || data?.peers[peer] == nil || brief.count > 4000)
             }
         }.padding(24).frame(width: 650).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
             .task { load() }.onChange(of: peer) { _ in populate() }.interactiveDismissDisabled(busy)

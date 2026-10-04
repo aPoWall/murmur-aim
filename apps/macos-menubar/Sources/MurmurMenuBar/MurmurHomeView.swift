@@ -4,6 +4,7 @@ import MurmurTrayCore
 
 struct MurmurHomeView: View {
     @ObservedObject var model: TrayModel
+    @ObservedObject private var window = AIMWindowState.shared
     @MurmurViewState private var page = "Overview"
     @MurmurViewState private var entry = "welcome"
     @MurmurViewState private var showingNewConnection = false
@@ -41,7 +42,7 @@ struct MurmurHomeView: View {
                     if page != "Help", let error = model.selectionError {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .fixedSize(horizontal: false, vertical: true)
-                        Button(L10n.text("Choose another folder…")) { model.chooseProfile() }.disabled(model.busy)
+                        Button(L10n.text("Choose another folder…")) { model.chooseProfile() }.help(L10n.text("Pick a different saved profile folder")).disabled(model.busy)
                         if let detail = model.selectionErrorDetail {
                             MurmurDisclosure(title: L10n.text("Technical details")) { Text(detail).textSelection(.enabled) }
                         }
@@ -50,10 +51,10 @@ struct MurmurHomeView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             }
             Divider()
-            AIMFooterBridge(status: model.isDemo ? "preview" : (["Overview", "People"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
+            AIMFooterBridge(keys: window.keysLine, status: model.isDemo ? "preview" : (["Overview", "People"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
-        }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(Color.white)
-            .tint(AIMTheme.signal).preferredColorScheme(.light).buttonStyle(AIMQuietButtonStyle())
+        }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
+            .tint(AIMTheme.signal).buttonStyle(AIMQuietButtonStyle())
             .onExitCommand { AIMWindowState.shared.close(.escape) }
             .sheet(isPresented: $model.showCreateProfileSheet, onDismiss: { model.ownProfileSheetDismissed() }) { CreateProfileSheet(model: model) }
             .sheet(isPresented: $model.showPairingSheet, onDismiss: { model.clearPairing() }) { PairingSheet(model: model) }
@@ -71,7 +72,7 @@ struct MurmurHomeView: View {
                 ProgressView(L10n.text("Checking the Murmur engine…"))
             } else if let error = model.runtimeError {
                 Text(error).foregroundStyle(.red).textSelection(.enabled)
-                Button(L10n.text("Try again")) { model.prepareRuntime() }
+                Button(L10n.text("Try again")) { model.prepareRuntime() }.help(L10n.text("Check the Murmur engine again"))
             } else {
                 if model.creatingProfile {
                     ProgressView(L10n.text("Creating your profile…"))
@@ -83,29 +84,29 @@ struct MurmurHomeView: View {
                     ForEach(model.savedProfiles, id: \.dataDirectory) { profile in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(profile.dataDirectory).font(AIMTheme.meta).textSelection(.enabled)
-                            Button(L10n.text("Check and open this connection")) { model.chooseSavedProfile(profile) }.disabled(model.busy)
+                            Button(L10n.text("Check and open this connection")) { model.chooseSavedProfile(profile) }.help(L10n.text("Verify this saved profile, then open it")).disabled(model.busy)
                         }
                     }
                     if model.requiresRecoveryChoice {
-                        Button(L10n.text("Choose profile folder…")) { model.chooseProfile() }.disabled(model.busy)
+                        Button(L10n.text("Choose profile folder…")) { model.chooseProfile() }.help(L10n.text("Pick the folder that holds Murmur's saved settings and keys")).disabled(model.busy)
                         if model.archivedSetupRecord != nil {
-                            Button(L10n.text("Show saved record copy")) { model.showArchivedSetupRecord() }.disabled(model.busy)
+                            Button(L10n.text("Show saved record copy")) { model.showArchivedSetupRecord() }.help(L10n.text("Show the copy of the reset setup record in Finder")).disabled(model.busy)
                         }
                     }
-                    Button(L10n.text("Create a separate profile…")) { model.allowNewSeparateProfile() }.disabled(model.busy)
+                    Button(L10n.text("Create a separate profile…")) { model.allowNewSeparateProfile() }.help(L10n.text("Start a new profile next to the existing ones")).disabled(model.busy)
                 } else {
                     if entry == "restore" {
-                        Button(L10n.text("Back")) { entry = "welcome" }.buttonStyle(.link)
+                        Button(L10n.text("Back")) { entry = "welcome" }.help(L10n.text("Back to the first step")).buttonStyle(.link)
                         Text(L10n.text("Open an existing connection")).font(AIMTheme.heading)
                         profileExplanation
-                        Button(L10n.text("Find saved settings…")) { model.chooseProfile() }
+                        Button(L10n.text("Find saved settings…")) { model.chooseProfile() }.help(L10n.text("Pick the folder of a connection saved earlier"))
                             .buttonStyle(AIMQuietButtonStyle()).disabled(model.busy)
                     } else if entry == "no-invitation" {
-                        Button(L10n.text("Back")) { entry = "welcome" }.buttonStyle(.link)
+                        Button(L10n.text("Back")) { entry = "welcome" }.help(L10n.text("Back to the first step")).buttonStyle(.link)
                         Text(L10n.text("Ask your colleague for an Invitation line. Return your Reply, then check the connection."))
                         Text(L10n.text("Starting the network yourself? You need an existing connection server and its details. This app does not create a server."))
                             .foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
-                        Button(L10n.text("I already have my own server…")) { model.beginOwnProfile() }.disabled(model.busy)
+                        Button(L10n.text("I already have my own server…")) { model.beginOwnProfile() }.help(L10n.text("Create a profile for a server you already run")).disabled(model.busy)
                     } else {
                         Button(L10n.text("I have an invitation…")) { model.useInvitation() }
                             .buttonStyle(AIMQuietButtonStyle()).controlSize(.large)
@@ -145,7 +146,7 @@ struct MurmurHomeView: View {
                 Spacer(minLength: 12)
                 Image(systemName: "chevron.right").accessibilityHidden(true)
             }.padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        }.buttonStyle(.plain).disabled(model.busy)
+        }.buttonStyle(.plain).disabled(model.busy).help(L10n.text(detail))
     }
 
     private var savedSetup: some View {
@@ -157,20 +158,20 @@ struct MurmurHomeView: View {
                 if model.pendingCanRetryCreation {
                     Text(L10n.text("No profile or reply files were found. You can try the setup again."))
                         .foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
-                    Button(L10n.text("Try setup again")) { model.discardEmptySetup() }.disabled(model.busy)
+                    Button(L10n.text("Try setup again")) { model.discardEmptySetup() }.help(L10n.text("Discard the empty attempt and start the setup again")).disabled(model.busy)
                 } else {
                     Text(L10n.text("Your files were kept. Check this same profile to continue; no new identity will be created."))
                         .foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
                     Button(model.creatingProfile ? L10n.text("Checking…") : L10n.text("Check saved profile and continue")) {
                         model.resumeSavedSetup()
-                    }.buttonStyle(AIMQuietButtonStyle()).disabled(model.busy || model.runtimeError != nil)
+                    }.buttonStyle(AIMQuietButtonStyle()).disabled(model.busy || model.runtimeError != nil).help(L10n.text("Continue with the files already saved; no new identity is created"))
                 }
             }
             if let error = model.savedSetupError { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             if let error = model.creationError { Text(error).foregroundStyle(.red).textSelection(.enabled) }
-            Button(L10n.text("Show saved files")) { model.showSavedSetupFiles() }.disabled(model.busy)
+            Button(L10n.text("Show saved files")) { model.showSavedSetupFiles() }.help(L10n.text("Show the setup files in Finder")).disabled(model.busy)
             if model.canResetSavedSetup {
-                Button(L10n.text("Reset saved setup record…")) { model.resetSavedSetupRecord() }.buttonStyle(.link)
+                Button(L10n.text("Reset saved setup record…")) { model.resetSavedSetupRecord() }.help(L10n.text("Reset the record after a confirmation; a copy is kept")).buttonStyle(.link)
             }
         }.padding(.vertical, 24)
     }
@@ -185,9 +186,9 @@ struct MurmurHomeView: View {
                 } else {
                     Text(L10n.text("Murmur could not verify the selected settings. Open a saved connection, or start a new one from an invitation."))
                         .fixedSize(horizontal: false, vertical: true)
-                    Button(L10n.text("Start a new connection")) { showingNewConnection = true; entry = "welcome" }
+                    Button(L10n.text("Start a new connection")) { showingNewConnection = true; entry = "welcome" }.help(L10n.text("Begin a new connection from an invitation"))
                         .buttonStyle(AIMQuietButtonStyle()).disabled(model.busy)
-                    Button(L10n.text("Open an existing connection")) { model.chooseProfile() }.disabled(model.busy)
+                    Button(L10n.text("Open an existing connection")) { model.chooseProfile() }.help(L10n.text("Pick a connection saved on this Mac")).disabled(model.busy)
                 }
             } else {
                 if let service = model.status?.service { ServiceHeading(service: service) }
@@ -197,8 +198,8 @@ struct MurmurHomeView: View {
             }
             if model.status != nil && !model.isDemo {
                 HStack {
-                    Button(L10n.text("Invite a colleague")) { model.beginInviting() }
-                    Button(L10n.text("Paste colleague's Reply")) { model.beginPairing(.reply) }
+                    Button(L10n.text("Invite a colleague")) { model.beginInviting() }.help(L10n.text("Create an Invitation line for a colleague"))
+                    Button(L10n.text("Paste colleague's Reply")) { model.beginPairing(.reply) }.help(L10n.text("Paste the Reply line your colleague returned"))
                 }.disabled(!model.canPair)
             }
             if model.hasSetupSteps { setupSteps }
@@ -223,15 +224,15 @@ struct MurmurHomeView: View {
             if let count = model.status?.wake.delivery.pendingUndelivered {
                 Text(L10n.text("Waiting for agent delivery: %@", String(count)))
             }
-            Button(model.checkingStatus ? L10n.text("Refreshing…") : L10n.text("Refresh status")) { model.refreshStatus() }
+            Button(model.checkingStatus ? L10n.text("Refreshing…") : L10n.text("Refresh status")) { model.refreshStatus() }.help(L10n.text("Ask the local service for its status now"))
                 .disabled(model.busy || model.isDemo)
             if model.isDemo {
                 Picker(L10n.text("Preview states"), selection: $model.demoState) {
                     ForEach(Indicator.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
+                }.help(L10n.text("Preview the states with synthetic data"))
             }
             if model.updateAvailable {
-                Button(L10n.text("Murmur update available")) { model.openUpdateRelease() }.disabled(model.isDemo)
+                Button(L10n.text("Murmur update available")) { model.openUpdateRelease() }.help(L10n.text("Open the upstream release page; this edition is rebuilt by hand")).disabled(model.isDemo)
             }
             MurmurDisclosure(title: L10n.text("Connection check"), explanation: L10n.text("Understand a problem and find the next step")) { diagnostics }
             if model.status != nil {
@@ -244,7 +245,7 @@ struct MurmurHomeView: View {
     private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L10n.text("Settings")).font(AIMTheme.title)
-            Menu(L10n.text("Preferences")) { preferences }
+            Menu(L10n.text("Preferences")) { preferences }.help(L10n.text("Invitation, language, launch at login and update checks"))
             operationFeedback
             MurmurDisclosure(title: L10n.text("Background operation"), explanation: L10n.text("What keeps running when you close the window")) { service }
             Divider()
@@ -258,14 +259,53 @@ struct MurmurHomeView: View {
                     Text(profile.dataDirectory).font(AIMTheme.meta).textSelection(.enabled)
                     if let service = profile.serviceName { Text(L10n.text("Service: %@", service)).font(AIMTheme.meta) }
                 }
-                Button(L10n.text("Open an existing connection")) { model.chooseProfile() }
+                Button(L10n.text("Open an existing connection")) { model.chooseProfile() }.help(L10n.text("Pick a connection saved on this Mac"))
                     .disabled(model.busy || model.isDemo || model.runtimeError != nil || model.hasPendingSetup)
             }
-            Text(model.shortcutAvailable ? L10n.text("Open or hide: ⌃⌥⌘M") : L10n.text("Shortcut unavailable. Open Murmur from Finder."))
-                .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
+            Divider()
+            shellSettings
         }
     }
 
+
+    /// Rules 31, 38, 50, 53: every switch of the shell with its default, the same rows as the siblings.
+    private var shellSettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.text("Window pin")).font(AIMTheme.heading)
+            Text(L10n.text("Pinned: the window stays open on a click elsewhere. Unpinned, the default: a click in another app closes it. The same switch is the circle in the header."))
+                .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+            Button(window.pinned ? L10n.text("Unpin window") : L10n.text("Keep window open")) { window.setPinned(!window.pinned) }
+                .help(L10n.text("Survives a restart; stored as org.aimindset.murmur.pinned"))
+            Divider()
+            Text(L10n.text("Theme")).font(AIMTheme.heading)
+            Text(L10n.text("White by default. Black turns the window and its sheets dark; the menu bar mark follows macOS and the character keeps its white plate. The same switch sits in the footer."))
+                .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+            Button(window.theme == .dark ? L10n.text("White theme") : L10n.text("Black theme")) { window.setTheme(window.theme == .dark ? .light : .dark) }
+                .help(L10n.text("Stored as org.aimindset.murmur.theme and applied at once"))
+            Divider()
+            Text(L10n.text("Global key")).font(AIMTheme.heading)
+            Text(L10n.text("One combination opens and closes this window from any app. Press the field, then the keys: esc keeps the old one, delete clears it. A combination another AIM app or macOS holds is refused by name."))
+                .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                AIMHotkeyBridge().frame(width: 160, height: 28)
+                ForEach([FamilyHotkey(keyCode: 32, modifiers: [.option, .command], character: "u"),
+                         FamilyHotkey(keyCode: 32, modifiers: [.control, .option], character: "u"),
+                         FamilyHotkey(keyCode: 32, modifiers: [.option, .shift], character: "u")], id: \.storage) { pick in
+                    Button(pick.display) {
+                        if let refusal = pick.conflict(against: FamilyHotkeys.holders(excluding: FamilyHotkeys.murmur)) {
+                            window.hotkeyLine = pick.display + " refused: " + refusal
+                        } else {
+                            AIMWindowState.hotkeyStore.store(pick); window.hotkeyLine = "stored " + pick.display; window.hotkeyChanged(pick)
+                        }
+                    }.help(L10n.text("Quick pick: use this combination if nobody holds it"))
+                }
+            }
+            Text(window.hotkeyLine.isEmpty ? (window.hotkeyAvailable ? L10n.text("Default ⌥⌘U, held until AIM 4 as ⌃⌥⌘M") : L10n.text("The combination is held by another app"))
+                 : window.hotkeyLine).font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
+            Text(L10n.text("Family keys") + " · " + FamilyHotkeys.printedRows.joined(separator: " · "))
+                .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+        }
+    }
 
     private var setupSteps: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -273,21 +313,21 @@ struct MurmurHomeView: View {
             if model.setupReplyFile != nil {
                 Text(L10n.text("Send your Reply line to the colleague who invited you."))
                     .fixedSize(horizontal: false, vertical: true)
-                Button(L10n.text("Show and copy Reply")) { model.showSavedReply() }.disabled(model.busy)
+                Button(L10n.text("Show and copy Reply")) { model.showSavedReply() }.help(L10n.text("Show the Reply line and copy it to the clipboard")).disabled(model.busy)
             }
             if model.status?.service.isRunning == true {
                 Text(L10n.text("The Service is running. Check the connection after exchanging the Reply."))
                     .fixedSize(horizontal: false, vertical: true)
-                Button(L10n.text("Check connection")) { model.refreshDoctor(); model.refreshStatus() }
+                Button(L10n.text("Check connection")) { model.refreshDoctor(); model.refreshStatus() }.help(L10n.text("Run the connection check and refresh the status"))
                     .disabled(model.busy || !model.canControl)
             } else {
                 Text(L10n.text("Start Murmur to keep delivery running when this window is closed."))
                     .fixedSize(horizontal: false, vertical: true)
-                Button(model.operating ? L10n.text("Working…") : L10n.text("Start Murmur on this Mac")) { model.startNewProfile() }
+                Button(model.operating ? L10n.text("Working…") : L10n.text("Start Murmur on this Mac")) { model.startNewProfile() }.help(L10n.text("Start the background service so delivery continues with the window closed"))
                     .buttonStyle(AIMQuietButtonStyle()).disabled(!model.canStartNewProfile)
             }
             if model.status?.service.isRunning == true {
-                Button(L10n.text("Hide setup steps")) { model.hideSetupSteps() }
+                Button(L10n.text("Hide setup steps")) { model.hideSetupSteps() }.help(L10n.text("Hide this checklist"))
                     .buttonStyle(.link).font(AIMTheme.meta).disabled(model.busy)
             }
         }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -305,16 +345,16 @@ struct MurmurHomeView: View {
             if model.status?.wake.effective.needsRestart == true { Text(L10n.text("Restart the service to apply this setting")) }
             if let reason = model.controlBlockReason { Text(reason).font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)) }
             if model.status?.wake.config.enabled != nil {
-                Button(model.operating ? L10n.text("Working…") : model.wakeAction.title) { model.perform(model.wakeAction) }
+                Button(model.operating ? L10n.text("Working…") : model.wakeAction.title) { model.perform(model.wakeAction) }.help(L10n.text("Turn automatic agent wake on or off for this profile"))
                     .disabled(!model.canControl)
             }
             HStack {
-                Button(L10n.text("Start")) { model.perform(.start) }
+                Button(L10n.text("Start")) { model.perform(.start) }.help(L10n.text("Start the background service"))
                     .disabled(!model.canControl || model.status?.service.isRunning == true)
-                Button(L10n.text("Stop")) { model.perform(.stop) }
+                Button(L10n.text("Stop")) { model.perform(.stop) }.help(L10n.text("Stop the background service; delivery stops"))
                     .disabled(!model.canControl || model.status?.service.state == .stopped || model.status?.service.state == .runningUnmanaged)
             }
-            Button(L10n.text("Open configured log folder")) { model.openLogs() }.disabled(!model.canControl)
+            Button(L10n.text("Open configured log folder")) { model.openLogs() }.help(L10n.text("Open the service log folder in Finder")).disabled(!model.canControl)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -354,8 +394,8 @@ struct MurmurHomeView: View {
             HStack {
                 Button(model.checkingDoctor ? L10n.text("Checking…") : L10n.text("Check now")) {
                     model.refreshDoctor(); model.refreshStatus()
-                }.disabled(model.busy || model.isDemo || model.profile == nil)
-                Button(L10n.text("Copy diagnostics")) { model.copyDiagnostics() }
+                }.disabled(model.busy || model.isDemo || model.profile == nil).help(L10n.text("Run every connection check again"))
+                Button(L10n.text("Copy diagnostics")) { model.copyDiagnostics() }.help(L10n.text("Copy the connection check results to the clipboard"))
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -381,8 +421,8 @@ struct MurmurHomeView: View {
             } else { Text(L10n.text("Updates: result unknown")) }
             if model.checkingUpdates { Text(L10n.text("Checking for updates…")) }
             if let error = model.updateError { Text(error) }
-            Button(L10n.text("Check updates")) { model.refreshUpdates() }.disabled(!model.canChangeUpdates)
-            if model.updateAvailable { Button(L10n.text("Open release page")) { model.openUpdateRelease() }.disabled(model.isDemo) }
+            Button(L10n.text("Check updates")) { model.refreshUpdates() }.help(L10n.text("Ask GitHub for the latest upstream release")).disabled(!model.canChangeUpdates)
+            if model.updateAvailable { Button(L10n.text("Open release page")) { model.openUpdateRelease() }.disabled(model.isDemo).help(L10n.text("Open the upstream release page in the browser")) }
         }.font(AIMTheme.meta).frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -398,10 +438,10 @@ struct MurmurHomeView: View {
                     else { Text(language.name) }
                 }.disabled(model.busy || model.checkingUpdates)
             }
-        }
+        }.help(L10n.text("Interface language; message text keeps its own language"))
         Toggle(L10n.text("Launch at login"), isOn: Binding(
             get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }
-        )).disabled(model.isDemo)
+        )).disabled(model.isDemo).help(L10n.text("Open Murmur AIM in the menu bar when you log in"))
         Menu(L10n.text("Murmur updates")) {
             Text(L10n.text("Checks every 6 hours; cache shared by this user"))
             Text(L10n.text("GitHub receives your IP address and sees that you use Murmur"))
@@ -410,6 +450,6 @@ struct MurmurHomeView: View {
                 .disabled(!model.canChangeUpdates || model.updatesForcedOff)
             Button(L10n.text("Disable update checks")) { model.refreshUpdates(enabled: false) }
                 .disabled(!model.canChangeUpdates)
-        }
+        }.help(L10n.text("Turn the 6-hour update check on or off"))
     }
 }

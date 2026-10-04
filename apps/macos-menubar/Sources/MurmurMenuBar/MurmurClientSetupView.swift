@@ -16,7 +16,7 @@ struct MurmurClientSetupView: View {
             Text(L10n.text("Choose where you work with your assistant. Murmur will show the change before you confirm it."))
                 .fixedSize(horizontal: false, vertical: true)
             if model.aiClients == nil {
-                Button(L10n.text("Find my AI applications")) { model.detectAIClients() }.disabled(model.busy)
+                Button(L10n.text("Find my AI applications")) { model.detectAIClients() }.help(L10n.text("Look for Claude Code, Codex and other clients on this Mac")).disabled(model.busy)
             } else {
                 if choices.isEmpty {
                     Text(L10n.text("No supported AI application was found. Install Claude Code or Codex, then look again."))
@@ -24,7 +24,7 @@ struct MurmurClientSetupView: View {
                 }
                 ForEach(choices) { choice in
                     VStack(alignment: .leading, spacing: 4) {
-                        Button(L10n.text("Connect %@…", choice.id.title)) { model.connectAIClient(choice.id) }
+                        Button(L10n.text("Connect %@…", choice.id.title)) { model.connectAIClient(choice.id) }.help(L10n.text("Add Murmur to this application's settings after a confirmation; a backup is kept"))
                             .disabled(model.busy || !choice.canConfigure)
                         if !choice.canConfigure {
                             Text(L10n.text("This application uses a custom configuration location that Murmur cannot verify yet."))
@@ -32,7 +32,7 @@ struct MurmurClientSetupView: View {
                         }
                     }
                 }
-                Button(L10n.text("Look again")) { model.detectAIClients() }.buttonStyle(.link).disabled(model.busy)
+                Button(L10n.text("Look again")) { model.detectAIClients() }.help(L10n.text("Search for AI applications again")).buttonStyle(.link).disabled(model.busy)
             }
             if model.configuringAI { ProgressView(L10n.text("Checking the application settings…")) }
             if let error = model.aiSetupError { Text(error).fixedSize(horizontal: false, vertical: true) }
@@ -60,7 +60,7 @@ struct MurmurClientSetupView: View {
                 Text(L10n.text("Test with %@", plan.peerId))
                 Text(L10n.text("Copy this request into your AI conversation and ask your assistant to run it. Murmur will check for that request and its matching reply for up to 15 minutes."))
                     .fixedSize(horizontal: false, vertical: true)
-                Button(L10n.text(model.testPromptCopied ? "Request copied — paste it into your AI conversation" : "Copy test request")) { model.copyReplyTestPrompt() }
+                Button(L10n.text(model.testPromptCopied ? "Request copied — paste it into your AI conversation" : "Copy test request")) { model.copyReplyTestPrompt() }.help(L10n.text("Copy the test request to paste into your AI conversation"))
                 MurmurDisclosure(title: L10n.text("View the test request")) {
                     Text(plan.prompt).font(AIMTheme.meta).textSelection(.enabled)
                 }
@@ -83,18 +83,18 @@ struct MurmurClientSetupView: View {
                 if let error = model.replyError { Text(error).fixedSize(horizontal: false, vertical: true) }
                 if model.watchingReply {
                     ProgressView(L10n.text("Waiting for the test reply…"))
-                    Button(L10n.text("Stop checking")) { model.stopWatchingReply() }
+                    Button(L10n.text("Stop checking")) { model.stopWatchingReply() }.help(L10n.text("Stop waiting for the reply to the test request"))
                 } else if model.replyObservation?.state != .replied && model.replyObservation?.state != .expired {
-                    Button(L10n.text("I sent the request — check for a reply")) { model.watchReplyTest() }
+                    Button(L10n.text("I sent the request — check for a reply")) { model.watchReplyTest() }.help(L10n.text("Watch for the request and its reply for up to 15 minutes"))
                         .disabled(model.busy || model.checkingReply)
                 }
-                Button(L10n.text("Start a new test")) { model.resetReplyTest() }.buttonStyle(.link).disabled(model.busy)
+                Button(L10n.text("Start a new test")) { model.resetReplyTest() }.help(L10n.text("Clear this test and prepare another one")).buttonStyle(.link).disabled(model.busy)
             } else {
                 Picker(L10n.text("Other participant"), selection: $peer) {
                     Text(L10n.text("Choose a participant")).tag("")
                     ForEach(peers, id: \.self) { Text($0).tag($0) }
-                }
-                Button(L10n.text("Prepare test request")) { model.prepareReplyTest(peer: peer) }
+                }.help(L10n.text("The participant the test request goes to"))
+                Button(L10n.text("Prepare test request")) { model.prepareReplyTest(peer: peer) }.help(L10n.text("Build a request your assistant can send to the chosen participant"))
                     .disabled(model.busy || !peers.contains(peer))
                 if let error = model.replyError { Text(error).fixedSize(horizontal: false, vertical: true) }
             }

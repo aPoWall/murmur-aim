@@ -5,7 +5,7 @@
   "files": [
     {
       "path": "AIMMiniAppTokens.swift",
-      "sha256": "c1a82af7aaf3b396d3e96b3624ff410df7a904c29e9260d4a82c94dfe76ad95c"
+      "sha256": "c1ba9ba72b0ff48fd2da8a3b304e64260e636740323d4d27aea975ff68310805"
     },
     {
       "path": "AIMAppMarks.swift",
@@ -17,7 +17,7 @@
     },
     {
       "path": "AIMAppShell.swift",
-      "sha256": "acce57ba0f511de635dbcd77b9d2cebbb1bd1f0a3747923fffa9cbbd1435c139"
+      "sha256": "2022bf707851bfadbb5e37713d6a3c9e4b9074d4609a7dd1603ab99f04b80a39"
     },
     {
       "path": "AIMVoxelModels.swift",

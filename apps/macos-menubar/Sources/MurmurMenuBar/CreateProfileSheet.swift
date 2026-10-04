@@ -18,10 +18,10 @@ struct CreateProfileSheet: View {
                     .accessibilityLabel(L10n.text("Server address"))
             }.disabled(model.creatingProfile)
             HStack {
-                Button(L10n.text("Choose access file…")) { chooseAccessFile() }.disabled(model.creatingProfile)
+                Button(L10n.text("Choose access file…")) { chooseAccessFile() }.help(L10n.text("Pick the server access file you were given")).disabled(model.creatingProfile)
                 if let accessFile = model.creationAccessFile {
                     Text(accessFile.lastPathComponent).lineLimit(1).truncationMode(.middle)
-                    Button(L10n.text("Remove")) { model.creationAccessFile = nil }.disabled(model.creatingProfile)
+                    Button(L10n.text("Remove")) { model.creationAccessFile = nil }.help(L10n.text("Forget the chosen access file")).disabled(model.creatingProfile)
                 }
             }
             Text(L10n.text("An access file is only needed if your server requires one."))
@@ -30,9 +30,9 @@ struct CreateProfileSheet: View {
             if model.creatingProfile { ProgressView(L10n.text("Creating your profile…")) }
             HStack {
                 Spacer()
-                Button(L10n.text("Cancel")) { model.showCreateProfileSheet = false }
+                Button(L10n.text("Cancel")) { model.showCreateProfileSheet = false }.help(L10n.text("Close without creating a profile"))
                     .keyboardShortcut(.cancelAction).disabled(model.creatingProfile)
-                Button(L10n.text("Create profile")) { model.createOwnProfile(agentID: model.creationAgentID, server: model.creationServer, accessFile: model.creationAccessFile) }
+                Button(L10n.text("Create profile")) { model.createOwnProfile(agentID: model.creationAgentID, server: model.creationServer, accessFile: model.creationAccessFile) }.help(L10n.text("Create the profile for this server and agent name"))
                     .keyboardShortcut(.defaultAction).buttonStyle(AIMQuietButtonStyle())
                     .disabled(model.busy || model.creationServer.isEmpty || model.creationAgentID.isEmpty)
             }
