@@ -141,3 +141,23 @@ proof of visible pixels. Login/reboot startup is not newly configured.
 Checks: shared component hashes, 14 shell checks (including invalid-position recovery,
 valid-placement persistence and template mark), packaging/runtime checks and scoped
 installed-process acceptance. Release receipt is retained by the owner task.
+
+
+## AIM 7 · local test · 2026-10-05
+
+The owner companion now searches ordinary server message text explicitly and reads
+a selected result on demand. The bundled `mesh-comms-query.py` reader executes
+in memory through the existing owner SSH alias; it installs no server files,
+marks no inbox items read, starts no model and excludes private message bodies.
+Search result labels resolve the human and agent from the observed roster.
+
+Open questions are grouped into Alex's decisions, agent work, the other side and
+items needing verification. Private connections have a separate status-only
+section. Only an exact verified peer-to-owner mapping opens a Codex chat; there
+is no generic JARVIS fallback for other people. Existing explicit composer and
+per-peer sharing policies remain separate from responder/file permissions.
+
+This edition is a local test. No remote release, dashboard deployment, policy
+change or recipient message is part of its preparation. Existing menu placement
+recovery, persistent panel pin, N1 shell and English/Russian choice are retained.
+Canonical query helper: team-ai-infrastructure/worldstream/scripts/mesh-comms-query.py.

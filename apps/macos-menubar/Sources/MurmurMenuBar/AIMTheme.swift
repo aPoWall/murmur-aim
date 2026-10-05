@@ -14,7 +14,7 @@ import MurmurTrayCore
     static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
-        let edition = Bundle.main.object(forInfoDictionaryKey: "AIMShellEdition") as? Int ?? 6
+        let edition = Bundle.main.object(forInfoDictionaryKey: "AIMShellEdition") as? Int ?? 7
         return "\(v) · aim \(edition)"
     }
     /// The fonts come from the resource bundle packaged in Contents/Resources. The generated `Bundle.module`
@@ -183,6 +183,7 @@ struct AIMHotkeyBridge: NSViewRepresentable {
         if let fixture = args.firstIndex(of: "--aim-fixture"), args.indices.contains(fixture + 1),
            let data = try? Data(contentsOf: URL(fileURLWithPath: args[fixture + 1])) {
             model.companion.snapshot = try? AIMCompanionSnapshot.decode(data)
+            model.companion.previewConnected = model.companion.snapshot != nil
         }
         let page = args.firstIndex(of: "--aim-page").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil } ?? "Home"
         // `--aim-theme dark|light` renders one theme without storing it; the default reads the saved choice.

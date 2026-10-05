@@ -11,10 +11,11 @@ import MurmurTrayCore
     @Published var notifications = UserDefaults.standard.bool(forKey: "aimCompanionNotifications")
     @Published var notificationDenied = false
     @Published var requestingNotifications = false
+    @Published var previewConnected = false
     private var timer: Timer?
     private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
     static let board = "https://content.aimindset.org/murmur/"
-    var enabled: Bool { UserDefaults.standard.bool(forKey: "aimServerEnabled") }
+    var enabled: Bool { previewConnected || UserDefaults.standard.bool(forKey: "aimServerEnabled") }
     var current: Bool { !failed && snapshot?.isCurrent() == true }
     var badge: String {
         guard enabled else { return "" }
@@ -63,26 +64,7 @@ import MurmurTrayCore
         }
     }
     nonisolated private static func readServer() throws -> AIMCompanionSnapshot {
-        let process = Process(), output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1", "ws-povalyaev", "python3 /home/povalyaev/mesh-comms/companion.py"]
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 20, execute: deadline)
-        defer { deadline.cancel() }
-        var data = Data()
-        while true {
-            let part = output.fileHandleForReading.availableData
-            if part.isEmpty { break }
-            data.append(part)
-            if data.count > 524_288 { process.terminate(); throw CocoaError(.fileReadTooLarge) }
-        }
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw CocoaError(.fileReadUnknown) }
-        return try AIMCompanionSnapshot.decode(data)
+        return try AIMCompanionSnapshot.decode(AIMOwnerRead.exchange(["action": "snapshot"]))
     }
     func toggleNotifications() {
         if notifications {
@@ -109,7 +91,6 @@ import MurmurTrayCore
         guard let url = URL(string: board + path) else { return }
         NSWorkspace.shared.open(url)
     }
-    static func owner() { NSWorkspace.shared.open(URL(string: "codex://threads/01a0ed94-6541-7423-a18f-42545746f731")!) }
     static func stamp(_ raw: String?) -> String {
         guard let date = AIMCompanionSnapshot.date(raw) else { return L10n.text("Not observed") }
         let formatter = DateFormatter()
@@ -117,21 +98,33 @@ import MurmurTrayCore
         formatter.dateStyle = .medium; formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+    static func privateStatus(_ contour: AIMCompanionSnapshot.PrivateContour) -> String {
+        let state: String
+        switch contour.service_active {
+        case true: state = L10n.text("Active at last check")
+        case false: state = L10n.text("Inactive at last check")
+        case nil: state = L10n.text("Service unobserved")
+        }
+        return state + " · " + L10n.text("Status checked") + ": " + stamp(contour.updated_at)
+            + " · " + L10n.text("Last message") + ": " + stamp(contour.last_at)
+    }
 }
 
 struct AIMCompanionView: View {
     @ObservedObject var model: AIMCompanionModel
     @State private var query = ""
     @State private var showAllQuestions = false
+    @State private var showSearch = false
+    @State private var queue = "alex"
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
-            Text(L10n.text("People, incoming requests and decisions. Continue the conversation in the owning Codex session.")).fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("People, incoming requests and decisions. Open a linked owner chat when one is verified.")).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }.help(L10n.text("Open the private mesh dashboard in the browser"))
                 Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }.help(L10n.text("Open the message history of the mesh in the dashboard"))
                 Button(L10n.text("Connection map")) { AIMCompanionModel.open("?view=mesh&section=map") }.help(L10n.text("Open the map of who is connected to whom"))
-                Button(L10n.text("Search tools")) { AIMCompanionModel.open("?command=search") }.help(L10n.text("Open the dashboard search across people, topics and tools"))
+                Button(L10n.text("Search messages")) { showSearch = true }.help(L10n.text("Search accessible Murmur messages on your server"))
             }
             if !model.enabled {
                 Text(L10n.text("Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created."))
@@ -149,7 +142,8 @@ struct AIMCompanionView: View {
                 if let data = model.snapshot {
                     Text("Murmur \(data.server_version) · " + L10n.text("Transport") + ": \(data.transport) · " + L10n.text("Codex service") + ": \(data.responder)").font(AIMTheme.meta)
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
-                    Text(L10n.text("Alex's decisions") + ": \(data.decision_count) · " + L10n.text("Open topics") + ": \(data.pending_count)").font(AIMTheme.heading)
+                    Text(L10n.text("Your action") + ": \(data.ownerQuestions.count) · " + L10n.text("Waiting for agents") + ": \(data.agentQuestions.count) · " + L10n.text("Waiting for people") + ": \(data.peerQuestions.count)").font(AIMTheme.heading)
+                    Text(L10n.text("Open topics") + ": \(data.pending_count) · " + L10n.text("Needs verification") + ": \(data.verificationQuestions.count)").font(AIMTheme.meta)
                     if data.budget.allowed != true || data.budget.fresh != true {
                         Text(L10n.text("Budget observation is separate from each contact’s responder. Check People for missing responders.")).foregroundStyle(AIMTheme.signal)
                         Text((data.budget.reason ?? "unknown") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)).font(AIMTheme.meta)
@@ -163,39 +157,64 @@ struct AIMCompanionView: View {
                     }
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
-                    Text(L10n.text("People · last observed message")).font(AIMTheme.heading)
-                    ForEach(Array(data.people.filter { query.isEmpty || ($0.name + " " + $0.agents.joined(separator: " ")).localizedCaseInsensitiveContains(query) }.prefix(3))) { person in
-                        HStack { Text(person.name); Spacer(); Text(AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta) }
+                    Picker(L10n.text("Answer queue"), selection: $queue) {
+                        Text(L10n.text("Mine") + " · \(data.ownerQuestions.count)").tag("alex")
+                        Text(L10n.text("Agents") + " · \(data.agentQuestions.count)").tag("agent")
+                        Text(L10n.text("People") + " · \(data.peerQuestions.count)").tag("peer")
+                        Text(L10n.text("Review") + " · \(data.verificationQuestions.count)").tag("verify")
+                    }.pickerStyle(.segmented)
+                    let questions = data.questions.filter { $0.responsibility == queue }
+                    questionSection(L10n.text("Answer queue"), questions: questions, data: data)
+                    if questions.isEmpty { Text(L10n.text("No questions in this queue.")).font(AIMTheme.meta) }
+                    if questions.count > 3 {
+                        Button(showAllQuestions ? L10n.text("Show fewer questions") : L10n.text("Show more questions")) { showAllQuestions.toggle() }
                     }
-                    Divider()
-                    Text(L10n.text("Questions to review")).font(AIMTheme.heading)
-                    ForEach(Array(data.questions.filter { query.isEmpty || [$0.title, $0.peer, $0.next_action].compactMap { $0 }.joined(separator: " ").localizedCaseInsensitiveContains(query) }.prefix(showAllQuestions || !query.isEmpty ? 12 : 4))) { question in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .top) {
-                                Text(question.title ?? question.id).font(AIMTheme.heading)
-                                Spacer()
-                                if question.needsOwner { Text(L10n.text("Your decision")).foregroundStyle(AIMTheme.signal) }
-                            }
-                            Text((question.peer ?? "") + " · " + AIMCompanionModel.stamp(question.source_date)).font(AIMTheme.meta)
-                            Text(L10n.text("Reviewed") + " · " + AIMCompanionModel.stamp(question.reviewed_at)).font(AIMTheme.meta)
-                            if let action = question.next_action { Text(action).lineLimit(2) }
-                            Button(L10n.text("Read conversation")) {
-                                var parts = URLComponents(string: AIMCompanionModel.board)!
-                                parts.queryItems = [URLQueryItem(name: "topic", value: question.id)]
-                                if let url = parts.url { NSWorkspace.shared.open(url) }
-                            }.help(L10n.text("Open this topic in the dashboard"))
-                        }
-                        Divider()
-                    }
-                    Button(showAllQuestions ? L10n.text("Show fewer questions") : L10n.text("Show more questions")) { showAllQuestions.toggle() }.help(L10n.text("Fold or unfold the list of reviewed questions"))
                     Text(L10n.text("Incoming awaiting review") + ": \(data.incoming.reduce(0) { $0 + $1.ids.count })").font(AIMTheme.heading)
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
-                        Text("\(row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
+                        let person = data.people.first { $0.agents.contains(row.peer) }
+                        Text("\(person?.name ?? row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
+                    }
+                    if let contours = data.private_contours, !contours.isEmpty {
+                        Divider()
+                        Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)
+                        ForEach(contours) { contour in
+                            Text(contour.name + " · " + AIMCompanionModel.privateStatus(contour)).font(AIMTheme.meta)
+                        }
+                        Text(L10n.text("Private conversations stay outside this search and message list.")).font(AIMTheme.meta)
                     }
                     Text(L10n.text("Message dates show observed activity, not online presence. Topic decisions are reviewed separately.")).font(AIMTheme.meta)
                 }
             }
         }.fixedSize(horizontal: false, vertical: true)
+            .sheet(isPresented: $showSearch) { AIMMessageSearchView(enabled: model.enabled, people: model.snapshot?.people ?? []) }
+    }
+
+    @ViewBuilder private func questionSection(_ title: String, questions: [AIMCompanionSnapshot.Question], data: AIMCompanionSnapshot) -> some View {
+        let filtered = questions.filter { question in
+            let person = data.people.first { $0.agents.contains(question.peer ?? "") }
+            return query.isEmpty || [question.title, question.peer, question.next_action, person?.name, person?.nickname].compactMap { $0 }.joined(separator: " ").localizedCaseInsensitiveContains(query)
+        }
+        if !filtered.isEmpty {
+            Text(title + " · \(filtered.count)").font(AIMTheme.heading)
+            ForEach(Array(filtered.prefix(showAllQuestions || !query.isEmpty ? 100 : 3))) { question in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(question.title ?? question.id).font(AIMTheme.heading)
+                    Text((question.peer.flatMap { peer in data.people.first { $0.agents.contains(peer) }?.name } ?? question.peer ?? "") + " · " + AIMCompanionModel.stamp(question.source_date)).font(AIMTheme.meta)
+                    if let action = question.next_action { Text(action).lineLimit(2) }
+                    HStack {
+                        Button(L10n.text("Read conversation")) {
+                            var parts = URLComponents(string: AIMCompanionModel.board)!
+                            parts.queryItems = [URLQueryItem(name: "topic", value: question.id)]
+                            if let url = parts.url { NSWorkspace.shared.open(url) }
+                        }
+                        if let owner = data.ownerThread(for: question.peer), let url = owner.verifiedURL {
+                            Button(L10n.text("Open owner chat")) { NSWorkspace.shared.open(url) }.help(owner.title)
+                        }
+                    }
+                }
+                Divider()
+            }
+        }
     }
 }
 
@@ -221,10 +240,10 @@ struct AIMCompanionHelp: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("How these tools work together")).font(AIMTheme.title)
-            Text(L10n.text("Mac app: a quiet overview, notifications and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: messages, people, decisions and sources. Codex: the dedicated JARVIS session owns follow-up and decisions."))
+            Text(L10n.text("Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up."))
             Text(L10n.text("Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder."))
             Text(L10n.text("Task archive (formerly Recovery) is a dated dispatcher snapshot. It does not restart tasks or confirm their current status."))
-            Text(L10n.text("Dashboard search covers accessible Murmur messages, people, topics, saved tasks and tool names. Other tools' private content is not indexed."))
+            Text(L10n.text("Message search reads accessible Murmur history from your server. Private contours show status only."))
             Divider()
         }.fixedSize(horizontal: false, vertical: true)
     }

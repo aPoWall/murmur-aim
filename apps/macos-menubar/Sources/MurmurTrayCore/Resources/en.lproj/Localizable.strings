@@ -553,6 +553,43 @@
 "Send not confirmed. Check delivery before retrying." = "Send not confirmed. Check delivery before retrying.";
 "Refresh" = "Refresh";
 "Connection map" = "Connection map";
+"People, incoming requests and decisions. Open a linked owner chat when one is verified." = "People, incoming requests and decisions. Open a linked owner chat when one is verified.";
+"Your action" = "Your action";
+"Waiting for agents" = "Waiting for agents";
+"Waiting for people" = "Waiting for people";
+"Needs verification" = "Needs verification";
+"Open owner chat" = "Open owner chat";
+"Private contours · status only" = "Private contours · status only";
+"Service active" = "Service active";
+"Service unobserved" = "Service unobserved";
+"Last observed" = "Last observed";
+"Private conversations stay outside this search and message list." = "Private conversations stay outside this search and message list.";
+"Search messages" = "Search messages";
+"Search accessible Murmur messages on your server" = "Search accessible Murmur messages on your server";
+"Searches accessible server messages. Private conversations are excluded." = "Searches accessible server messages. Private conversations are excluded.";
+"Words in a message" = "Words in a message";
+"Search" = "Search";
+"Searching server…" = "Searching server…";
+"Message search unavailable. No results were confirmed." = "Message search unavailable. No results were confirmed.";
+"matches" = "matches";
+"messages checked" = "messages checked";
+"Partial search · some history was unavailable or the result limit was reached." = "Partial search · some history was unavailable or the result limit was reached.";
+"Read the selected message" = "Read the selected message";
+"No accessible messages matched." = "No accessible messages matched.";
+"Message" = "Message";
+"Message unavailable. The search excerpt is the only confirmed text." = "Message unavailable. The search excerpt is the only confirmed text.";
+"Message shortened by the server." = "Message shortened by the server.";
+"Reading message…" = "Reading message…";
+"Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up." = "Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up.";
+"Message search reads accessible Murmur history from your server. Private contours show status only." = "Message search reads accessible Murmur history from your server. Private contours show status only.";
+"Open this agent's verified owner chat" = "Open this agent's verified owner chat";
+"Status only · messages and identity are outside this view." = "Status only · messages and identity are outside this view.";
+"No private status in this snapshot." = "No private status in this snapshot.";
+"Active at last check" = "Process running at last check";
+"Inactive at last check" = "Process stopped at last check";
+"Status checked" = "Status checked";
+"Last message" = "Last message";
+"Private message bodies and connection details stay outside this view." = "Private message bodies and connection details stay outside this view.";
 
 "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question.";
 
@@ -692,3 +729,17 @@
 "White theme" = "White theme";
 "Window pin" = "Window pin";
 "macOS notifications with sender names and counts, never the message text" = "macOS notifications with sender names and counts, never the message text";
+
+"inbound" = "Incoming";
+
+"outbound" = "Outgoing";
+
+"Answer queue" = "Answer queue";
+
+"Mine" = "Mine";
+
+"Agents" = "Agents";
+
+"Review" = "Review";
+
+"No questions in this queue." = "No questions in this queue.";

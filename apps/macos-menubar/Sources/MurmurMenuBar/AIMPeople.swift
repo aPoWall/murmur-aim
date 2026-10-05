@@ -29,6 +29,10 @@ struct AIMPeopleView: View {
                                     Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
                                     if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + reason).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal) }
                                 }
+                                if let owner = data.ownerThread(for: agent), let url = owner.verifiedURL {
+                                    Button(L10n.text("Open owner chat") + " · " + owner.title) { NSWorkspace.shared.open(url) }
+                                        .help(L10n.text("Open this agent's verified owner chat"))
+                                }
                             }
                             Text(person.agents.isEmpty ? L10n.text("No linked agent") : (L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at))).font(AIMTheme.meta)
                             if person.last_at == nil && !(person.writable_agents ?? []).isEmpty {
@@ -48,6 +52,19 @@ struct AIMPeopleView: View {
                         }
                     }
                     Divider()
+                }
+                Divider()
+                Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)
+                if let contours = data.private_contours, !contours.isEmpty {
+                    ForEach(contours) { contour in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(contour.name).font(AIMTheme.heading)
+                            Text(AIMCompanionModel.privateStatus(contour)).font(AIMTheme.meta)
+                            Text(L10n.text("Private message bodies and connection details stay outside this view.")).font(AIMTheme.meta)
+                        }
+                    }
+                } else {
+                    Text(L10n.text("No private status in this snapshot.")).font(AIMTheme.meta)
                 }
                 if !model.current { Text(L10n.text("Refresh the server overview before sending.")).foregroundStyle(AIMTheme.signal) }
             } else {

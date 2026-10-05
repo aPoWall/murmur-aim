@@ -22,6 +22,32 @@ func runAIMCompanionChecks() throws -> Int {
     object["privacy"] = "public"
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe projection accepted") }
     catch is CocoaError {} 
+    object["privacy"] = "owner-metadata"
+    object["questions"] = [
+        ["id":"q-alex", "peer":"agent-jarvis", "responsibility":"alex", "status":"awaiting_user"],
+        ["id":"q-agent", "peer":"agent-danik", "responsibility":"agent", "status":"awaiting_agent"],
+        ["id":"q-peer", "responsibility":"peer", "status":"awaiting_peer"],
+        ["id":"q-check", "responsibility":"verify", "status":"unclassified"]]
+    object["private_contours"] = [["id":"private-1", "name":"Private line", "privacy":"status-only", "service_active":true]]
+    object["owner_threads"] = ["agent-jarvis": ["title":"Owner", "url":"codex://threads/01a0ed94-6541-7423-a18f-42545746f731"]]
+    let classified = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object))
+    try check(classified.ownerQuestions.map(\.id) == ["q-alex"] && classified.agentQuestions.map(\.id) == ["q-agent"]
+              && classified.peerQuestions.map(\.id) == ["q-peer"] && classified.verificationQuestions.map(\.id) == ["q-check"],
+              "responsibility is displayed as separate work queues")
+    try check(classified.ownerThread(for: "agent-jarvis")?.verifiedURL != nil && classified.ownerThread(for: "agent-danik") == nil,
+              "only the exact linked agent receives an owner chat")
+    try check(classified.private_contours?.first?.privacy == "status-only", "private contour contains status only")
+    object["owner_threads"] = ["agent-jarvis": ["title":"Wrong", "url":"https://example.com"]]
+    do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe owner URL accepted") }
+    catch is CocoaError {}
+    let match: [String: Any] = ["privacy":"owner-only-search", "matches":[["id":"m-1", "store":"ordinary", "excerpt":"synthetic phrase"]],
+                                "total":1, "truncated":false, "searched":20, "unavailable":[], "scope":"ordinary messages", "source_at":"2026-10-05T10:00:00Z"]
+    let search = try AIMMessageSearchResult.decode(JSONSerialization.data(withJSONObject: match))
+    try check(search.matches.first?.stableID == "ordinary:m-1", "search keeps a stable exact message reference")
+    let read = try AIMMessageReadResult.decode(JSONSerialization.data(withJSONObject: ["privacy":"owner-only-on-demand", "id":"m-1", "text":"synthetic text", "truncated":false]), expectedID: "m-1")
+    try check(read.text == "synthetic text", "explicit read returns selected message")
+    do { _ = try AIMMessageReadResult.decode(JSONSerialization.data(withJSONObject: ["privacy":"owner-only-on-demand", "id":"m-2", "text":"wrong", "truncated":false]), expectedID: "m-1"); throw CheckFailure(message: "mismatched message accepted") }
+    catch is CocoaError {}
     var cursor = AIMCompanionCursor()
     try check(cursor.observe(["old"]).isEmpty, "first observation is quiet")
     try check(cursor.observe(["old", "new"]) == ["new"], "only unseen items notify")
@@ -29,5 +55,5 @@ func runAIMCompanionChecks() throws -> Int {
     try check(cursor.observe(["new"]).isEmpty, "queue reappearance does not notify again")
     var restored = AIMCompanionCursor(seen: cursor.seen)
     try check(restored.observe(["old", "new"]).isEmpty, "restart preserves notification dedupe")
-    return 9
+    return 16
 }

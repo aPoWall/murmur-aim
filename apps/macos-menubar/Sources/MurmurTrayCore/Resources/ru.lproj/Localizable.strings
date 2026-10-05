@@ -553,6 +553,43 @@
 "Send not confirmed. Check delivery before retrying." = "Отправка не подтверждена. Проверьте доставку перед повтором.";
 "Refresh" = "Обновить";
 "Connection map" = "Карта связей";
+"People, incoming requests and decisions. Open a linked owner chat when one is verified." = "Люди, входящие запросы и решения. Чат владельца открывается при подтверждённой привязке.";
+"Your action" = "Требует вашего действия";
+"Waiting for agents" = "Ждём агентов";
+"Waiting for people" = "Ждём людей";
+"Needs verification" = "Нужна проверка";
+"Open owner chat" = "Открыть чат владельца";
+"Private contours · status only" = "Приватные контуры · только статус";
+"Service active" = "Сервис активен";
+"Service unobserved" = "Сервис не наблюдается";
+"Last observed" = "Последнее наблюдение";
+"Private conversations stay outside this search and message list." = "Приватная переписка не появляется в поиске и списке сообщений.";
+"Search messages" = "Поиск сообщений";
+"Search accessible Murmur messages on your server" = "Искать доступные сообщения Murmur на сервере";
+"Searches accessible server messages. Private conversations are excluded." = "Поиск по доступным сообщениям сервера. Приватная переписка исключена.";
+"Words in a message" = "Слова в сообщении";
+"Search" = "Искать";
+"Searching server…" = "Ищем на сервере…";
+"Message search unavailable. No results were confirmed." = "Поиск сообщений недоступен. Результаты не подтверждены.";
+"matches" = "совпадений";
+"messages checked" = "сообщений проверено";
+"Partial search · some history was unavailable or the result limit was reached." = "Неполный поиск · часть истории недоступна или достигнут лимит результатов.";
+"Read the selected message" = "Прочитать выбранное сообщение";
+"No accessible messages matched." = "В доступных сообщениях совпадений нет.";
+"Message" = "Сообщение";
+"Message unavailable. The search excerpt is the only confirmed text." = "Сообщение недоступно. Подтверждён только фрагмент из поиска.";
+"Message shortened by the server." = "Сервер сократил сообщение.";
+"Reading message…" = "Читаем сообщение…";
+"Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up." = "Mac-приложение: обзор, сообщения и переходы. Сервер: зашифрованная доставка и WakeMonitor. Дашборд: история и источники. Каждый привязанный чат владельца ведёт свои вопросы.";
+"Message search reads accessible Murmur history from your server. Private contours show status only." = "Поиск читает доступную историю Murmur с сервера. Приватные контуры показывают только статус.";
+"Open this agent's verified owner chat" = "Открыть подтверждённый чат владельца этого агента";
+"Status only · messages and identity are outside this view." = "Только статус · сообщения и идентичность вне этого экрана.";
+"No private status in this snapshot." = "В этом снимке нет статуса приватного контура.";
+"Active at last check" = "Процесс запущен при последней проверке";
+"Inactive at last check" = "Процесс остановлен при последней проверке";
+"Status checked" = "Статус проверен";
+"Last message" = "Последнее сообщение";
+"Private message bodies and connection details stay outside this view." = "Тексты приватных сообщений и детали подключения не показываются.";
 
 "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "В уведомлении – имена отправителей и количество, без текста сообщений. Первый снимок тихий. Доставка не закрывает вопрос.";
 
@@ -692,3 +729,17 @@
 "White theme" = "Белая тема";
 "Window pin" = "Закрепление окна";
 "macOS notifications with sender names and counts, never the message text" = "Уведомления macOS с именами отправителей и счётчиками, без текста сообщений";
+
+"inbound" = "Входящее";
+
+"outbound" = "Исходящее";
+
+"Answer queue" = "Очередь ответов";
+
+"Mine" = "Мне";
+
+"Agents" = "Агентам";
+
+"Review" = "Проверить";
+
+"No questions in this queue." = "В этой очереди нет вопросов.";
