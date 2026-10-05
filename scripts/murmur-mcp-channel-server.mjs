@@ -3,7 +3,6 @@ import { appendFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import { NatsBroker } from "../packages/broker-nats/dist/src/index.js";
 import { SQLiteDedupeOutboxStore, ChannelRosterStore, channelSubjectRoutes, stableEnvelopePayload } from "../packages/core/dist/src/index.js";
 import {
@@ -14,8 +13,6 @@ import { readPrivateJson, setPrivateUmask } from "./secure-state.mjs";
 
 setPrivateUmask();
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, "..");
 const defaultCodexHome = process.env.CODEX_HOME || path.join(homedir(), ".codex");
 const logPath =
   process.env.MURMUR_MCP_LOG_PATH || path.join(defaultCodexHome, "mcp-channel-server", "channel.log");
@@ -50,72 +47,23 @@ const envFlag = (name, defaultValue) => {
   return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
 };
 
-const envNum = (name, defaultValue) => {
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) && value > 0 ? value : defaultValue;
-};
-
 const dataDir = process.env.DATA_DIR || ".data";
 const configPath = path.join(dataDir, "agent-config.json");
 const config = await readPrivateJson(configPath);
 const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
-const murmurRoot = process.env.MURMUR_ROOT || repoRoot;
-const leaseDbPath = process.env.MURMUR_LEASE_DB || path.join(dataDir, "lease.db");
-const leaseModuleUrl =
-  process.env.MURMUR_LEASE_MODULE_URL || pathToFileURL(path.join(murmurRoot, "scripts", "lease.mjs")).href;
-const leaseTtlMs = envNum("MURMUR_LEASE_TTL_MS", 20000);
-const leaseHeartbeatMs = envNum("MURMUR_LEASE_HEARTBEAT_MS", 5000);
-const memberSlot = process.env.MURMUR_MEMBER_SLOT || config.agentId;
 const consumerId = process.env.MURMUR_MCP_CONSUMER_ID || `${config.agentId}-mcp-channel-${process.pid}`;
-const sessionId =
-  (process.env.CODEX_SESSION_ID || process.env.CODEX_THREAD_ID || process.env.MURMUR_MCP_SESSION_ID || consumerId).trim();
-const threadId = (process.env.CODEX_THREAD_ID || sessionId).trim();
 const emitToSession = envFlag("MURMUR_MCP_TO_SESSION", true);
 const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
-const { SessionLeaseStore } = await import(leaseModuleUrl);
 
 const broker = new NatsBroker({ url: config.natsUrl, token: config.natsToken });
 const dedupe = new SQLiteDedupeOutboxStore(dbPath);
-const lease = new SessionLeaseStore(leaseDbPath);
 const roster = config.channelRoster?.enabled
   ? new ChannelRosterStore(config.channelRoster.path || process.env.MURMUR_CHANNEL_ROSTER_PATH || path.join(dataDir, "channel-roster.db")) : null;
 const subjectRoutes = channelSubjectRoutes(config.subject, consumerId, config.subjectScoping);
 if (subjectRoutes.length > 1 && !roster) throw new Error("subject-scoping-requires-roster");
 
-const registerThisSession = () => {
-  lease.registerSession({
-    sessionId,
-    agentId: config.agentId,
-    threadId,
-    pid: process.pid,
-    mode: "mcp-channel",
-  });
-};
-
-const heartbeatThisSession = () => {
-  if (lease.sessionHeartbeat(sessionId) === 0) {
-    registerThisSession();
-  }
-};
-
-const claimDelivery = (envelope) => {
-  registerThisSession();
-  const claim = lease.claimOrSkip(envelope.conversationId, memberSlot, sessionId, leaseTtlMs, Date.now(), "native:");
-  if (!claim.won) {
-    log("info", "MCP channel notification suppressed by lease owner", {
-      msgId: envelope.msgId,
-      conversationId: envelope.conversationId,
-      memberSlot,
-      ownerSessionId: claim.ownerSessionId,
-      ownerToken: claim.token,
-      sessionId,
-      claimResult: "skip",
-    });
-    return null;
-  }
-  return claim;
-};
-
+// MCP logging notifications do not acknowledge acceptance by an agent turn.
+// This observer must not advertise interactive presence or own wake delivery.
 const emitChannelNotification = ({ from, text, msgId, conversationId, createdAt }) => {
   const data = {
     text: `${textPrefix}${text}`,
@@ -178,22 +126,6 @@ const onMessage = async (envelope) => {
     log("info", "MCP channel notification suppressed by addressing", { msgId: envelope.msgId, reason: addressing.reason });
     return;
   }
-  // Authenticate and authorize first; an invalid frame cannot seize session ownership.
-  const claim = claimDelivery(envelope);
-  if (!claim) return;
-
-  if (!lease.isCurrentToken(envelope.conversationId, memberSlot, claim.token)) {
-    log("info", "MCP channel notification suppressed by stale token", {
-      msgId: envelope.msgId,
-      conversationId: envelope.conversationId,
-      memberSlot,
-      ownerSessionId: sessionId,
-      ownerToken: claim.token,
-      claimResult: "stale-token",
-    });
-    return;
-  }
-
   emitChannelNotification({
     from: envelope.senderAgentId,
     text: plaintext,
@@ -208,17 +140,12 @@ const onMessage = async (envelope) => {
     conversationId: envelope.conversationId,
     toSession: emitToSession,
     textLen: plaintext.length,
-    memberSlot,
-    ownerSessionId: sessionId,
-    ownerToken: claim.token,
-    claimResult: "won",
+    deliveryReceipt: false,
+    ownership: "advisory-only",
   });
 };
 
 let running = true;
-registerThisSession();
-const heartbeatTimer = setInterval(heartbeatThisSession, leaseHeartbeatMs);
-heartbeatTimer.unref?.();
 
 const startSubscriber = async () => {
   await broker.connect();
@@ -231,11 +158,8 @@ const startSubscriber = async () => {
     subjects: subjectRoutes.map((route) => route.subject),
     consumerId,
     dbPath,
-    leaseDbPath,
-    memberSlot,
-    sessionId,
-    threadId,
-    leaseHeartbeatMs,
+    deliveryReceipt: false,
+    ownership: "advisory-only",
     toSession: emitToSession,
   });
 };
@@ -244,7 +168,6 @@ const shutdown = async (signal) => {
   if (!running) return;
   running = false;
   log("info", "Shutdown signal received", { signal });
-  clearInterval(heartbeatTimer);
   const forceExit = setTimeout(() => {
     log("warn", "Forced shutdown after broker close timeout", { signal });
     process.exit(0);
@@ -252,7 +175,6 @@ const shutdown = async (signal) => {
   forceExit.unref?.();
   try {
     await broker.close();
-    lease.close();
     roster?.close();
   } catch (err) {
     log("error", "Broker close error", { error: err instanceof Error ? err.message : String(err) });

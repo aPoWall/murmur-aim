@@ -631,8 +631,8 @@ of which session "owns" the conversation.
 
 Scoped Channels closes that gap with a DB-backed **session-ownership lease**. For
 an addressed conversation, exactly one session of the addressed agent holds the
-lease; only that session emits, and every other session — and the native daemon
-wake — stays silent.
+lease for actual wake delivery. Advisory logging notifications are outside that
+ownership contract, as described below.
 
 **Lease store.** `SessionLeaseStore` lives in its own SQLite file with a separate
 WAL from `local_messages` (tables `channel_owner` + `session_presence`):
@@ -659,12 +659,33 @@ session presence:
 - **no** live session → the daemon claims the lease and performs the **cold-wake**
   fallback, exactly as native wake does today.
 
-**One claim across every delivery path.** Foreground-push, cold-start, and
-in-session MCP-channel delivery all follow the same rule: claim before any
-side-effect, fence the outbound by the lease token, suppress non-owners. The
-result is live-verified — N delivery sessions for one message resolve to
-**exactly one emit**, and the native daemon wake defers to the attended session
-instead of spawning a new thread.
+**Ownership belongs to wake delivery.** Foreground-push and cold-start delivery
+claim and fence their actual session delivery. A lease claim coordinates
+ownership; it does not by itself prove that an agent accepted an instruction.
+
+**The MCP logging channel is advisory.**
+`scripts/murmur-mcp-channel-server.mjs` sends MCP `notifications/message`
+after recipient, signature, decryption and roster-addressing checks. It does not
+register interactive session presence, heartbeat a session, claim a conversation
+or preempt a native wake owner. Its logs explicitly record
+`deliveryReceipt: false` and `ownership: "advisory-only"`. The optional
+`data.toSession` field is a client hint, not a turn-acceptance receipt.
+Multiple observers may log the same message; these notifications are outside the
+single-owner wake guarantee. Broker subscription deduplication and disabled
+delivery ACK emission are unchanged.
+
+This prevents a logging-only MCP process from silencing native wake or cold-start
+through a false live-session claim. It does not create a control socket, bind an
+unreachable interactive session, retry historical muted messages, or prove that
+the intended session was woken. Verify the configured delivery path and a matching
+accepted turn separately.
+
+**Upgrading an existing channel process.** Replace only the owned MCP channel
+process after reviewing the change. Old presence and ownership records are not
+deleted by this fix: let their configured consumer TTLs expire, and check each
+consumer's effective TTL rather than assuming they are identical. Do not clear
+the shared lease database or restart the shared broker. Keep historical messages
+in the inbox unless an explicit, deduplicated replay has been planned.
 
 **Compatibility.** The whole feature sits behind `MURMUR_SCOPED_CHANNELS`
 (default **OFF**). With no lease gate set, `WakeMonitor` behaves exactly as
