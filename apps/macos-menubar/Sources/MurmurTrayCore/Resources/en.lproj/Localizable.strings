@@ -743,3 +743,7 @@
 "Review" = "Review";
 
 "No questions in this queue." = "No questions in this queue.";
+
+"empty_final_reply" = "Agent run returned no final reply";
+
+"owner_approval_required" = "Paused for owner approval";

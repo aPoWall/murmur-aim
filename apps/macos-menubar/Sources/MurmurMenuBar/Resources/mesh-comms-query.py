@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import sys
+import sqlite3
 from pathlib import Path
 
 ROOT = Path.home() / 'mesh-comms'
@@ -61,6 +62,11 @@ def augment(data, monitor, share):
         row['responsibility'] = responsibility(t.get('status'))
         questions.append(row)
     questions.sort(key=lambda q: q.get('source_date') or '', reverse=True)
+    for person in data.get('people', []):
+        labels = person.setdefault('agent_labels', {})
+        for peer in person.get('agents', []):
+            if not isinstance(labels.get(peer), str) or labels[peer].strip() in {'', '-', '—', '–'}:
+                labels[peer] = {'agent-kirill':'Кирилл','agent-danik':'zima blue','agent-jarvis':'JARVIS'}.get(peer, peer)
     data.update(private_contours=contours, owner_threads=OWNER_THREADS,
                 questions=questions[:100], pending_count=len(questions),
                 decision_count=sum(q['responsibility'] == 'alex' for q in questions),
@@ -77,7 +83,22 @@ def dispatch(request, root=ROOT):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             companion.main()
-        return augment(json.loads(output.getvalue()), json.loads((root/'monitor.json').read_text()), json.loads((root/'share-data.json').read_text()))
+        data = augment(json.loads(output.getvalue()), json.loads((root/'monitor.json').read_text()), json.loads((root/'share-data.json').read_text()))
+        # Expose fixed diagnostic codes only. Raw runner errors and session paths
+        # stay on the server. A failed wake is separate from transport delivery.
+        db_path = Path.home()/'.local/var/murmur-sasha/murmur.db'
+        try:
+            with sqlite3.connect('file:'+str(db_path)+'?mode=ro',uri=True) as db:
+                for peer, item in data.get('peer_policy', {}).get('peers', {}).items():
+                    row = db.execute("select wake_error from local_messages where direction='inbound' and sender=? order by created_at desc limit 1",(peer,)).fetchone()
+                    error = str(row[0]) if row else ''
+                    if error.startswith('codex-app-server-final-empty:'):
+                        item['wake_reason'] = 'empty_final_reply'
+                    elif error == 'audit-require-approval':
+                        item['wake_reason'] = 'owner_approval_required'
+        except sqlite3.Error:
+            pass  # Preserve the existing source's unknown/recorded_error state.
+        return data
     if action not in {'search', 'read'}:
         raise ValueError('unsupported_action')
     reader = load('murmur_message_reader', 'serve.py', root)

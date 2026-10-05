@@ -743,3 +743,7 @@
 "Review" = "Проверить";
 
 "No questions in this queue." = "В этой очереди нет вопросов.";
+
+"empty_final_reply" = "Запуск агента не вернул итоговый ответ";
+
+"owner_approval_required" = "Остановлено до решения владельца";
