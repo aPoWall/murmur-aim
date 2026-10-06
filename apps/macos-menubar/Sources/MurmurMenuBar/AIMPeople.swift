@@ -126,7 +126,7 @@ struct AIMComposeView: View {
             if let receipt { Text(receipt).textSelection(.enabled) }
             if attempted { Text(L10n.text("Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy.")).font(AIMTheme.meta) }
             HStack {
-                Button(L10n.text("Close")) { dismiss() }.help(L10n.text("Close this sheet; an unsent message is discarded")).disabled(busy)
+                Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction).help(L10n.text("Close this sheet; an unsent message is discarded")).disabled(busy)
                 Spacer()
                 if attempted {
                     Button(L10n.text("Check delivery")) { submit(statusOnly: true) }.help(L10n.text("Ask the server what happened to this attempt; nothing is resent")).disabled(busy)

@@ -48,7 +48,7 @@ struct AIMPolicyView: View {
             Text(L10n.text("Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             if !status.isEmpty { Text(status) }
             HStack {
-                Button(L10n.text("Close")) { dismiss() }.help(L10n.text("Close without saving the rules")).disabled(busy)
+                Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction).help(L10n.text("Close without saving the rules")).disabled(busy)
                 Button(L10n.text("Reload")) { load() }.help(L10n.text("Read the rules from the server again; unsaved edits are dropped")).disabled(busy)
                 Spacer()
                 Button(L10n.text("Save rules")) { save() }.help(L10n.text("Save to the server; a newer revision there refuses the write")).disabled(busy || data?.peers[peer] == nil || brief.count > 4000)

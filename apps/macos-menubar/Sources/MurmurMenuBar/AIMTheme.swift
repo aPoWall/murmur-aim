@@ -279,10 +279,12 @@ struct AIMHotkeyBridge: NSViewRepresentable {
 
 /// Local panel shortcuts leave editors, attached dialogs and the hotkey recorder in control.
 struct AIMKeyboardBridge: NSViewRepresentable {
+    let onEscape: () -> Void
     let onSettings: () -> Void
     let onTab: (String) -> Void
     final class Coordinator {
         weak var view: NSView?
+        var onEscape: (() -> Void)?
         var onSettings: (() -> Void)?
         var onTab: ((String) -> Void)?
         var monitor: Any?
@@ -296,6 +298,7 @@ struct AIMKeyboardBridge: NSViewRepresentable {
         c.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak c] event in
             guard let c, let window = c.view?.window, event.window === window,
                   window.attachedSheet == nil, !AIMWindowState.shared.hotkeyRecording else { return event }
+            if event.keyCode == 53 { c.onEscape?(); return nil }
             let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if flags == .command, event.charactersIgnoringModifiers == "," {
                 c.onSettings?(); return nil
@@ -308,6 +311,7 @@ struct AIMKeyboardBridge: NSViewRepresentable {
         return view
     }
     func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.onEscape = onEscape
         context.coordinator.onSettings = onSettings
         context.coordinator.onTab = onTab
     }

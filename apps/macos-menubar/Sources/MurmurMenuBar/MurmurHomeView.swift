@@ -57,16 +57,18 @@ struct MurmurHomeView: View {
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
             .tint(AIMTheme.signal).buttonStyle(AIMQuietButtonStyle())
-            .background(AIMKeyboardBridge(onSettings: { navigation.openSettings() }, onTab: { navigation.select($0) })
+            .background(AIMKeyboardBridge(onEscape: handleEscape, onSettings: { navigation.openSettings() }, onTab: { navigation.select($0) })
                 .frame(width: 0, height: 0).accessibilityHidden(true))
-            .onExitCommand {
-                if model.showCreateProfileSheet { if !model.creatingProfile { model.showCreateProfileSheet = false } }
-                else if model.showPairingSheet { if !model.busy { model.showPairingSheet = false } }
-                else if navigation.escape() { AIMWindowState.shared.close(.escape) }
-            }
+            .onExitCommand(perform: handleEscape)
             .sheet(isPresented: $model.showCreateProfileSheet, onDismiss: { model.ownProfileSheetDismissed() }) { CreateProfileSheet(model: model) }
             .sheet(isPresented: $model.showPairingSheet, onDismiss: { model.clearPairing() }) { PairingSheet(model: model) }
             .onChange(of: model.profile) { _ in showingNewConnection = false; entry = "welcome" }
+    }
+
+    private func handleEscape() {
+        if model.showCreateProfileSheet { if !model.creatingProfile { model.showCreateProfileSheet = false } }
+        else if model.showPairingSheet { if !model.busy { model.showPairingSheet = false } }
+        else if navigation.escape() { AIMWindowState.shared.close(.escape) }
     }
 
     private var firstRun: some View {

@@ -60,7 +60,7 @@ struct AIMMessageSearchView: View {
             HStack {
                 Text(L10n.text("Search messages")).font(AIMTheme.title)
                 Spacer()
-                Button(L10n.text("Close")) { dismiss() }
+                Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             Text(L10n.text("Searches accessible server messages. Private conversations are excluded.")).font(AIMTheme.meta)
             HStack {
@@ -129,7 +129,7 @@ struct AIMMessageDetailView: View {
             HStack {
                 Text(L10n.text("Message")).font(AIMTheme.title)
                 Spacer()
-                Button(L10n.text("Close")) { dismiss() }
+                Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             Text([participant, match.direction.map { L10n.text($0) }, AIMCompanionModel.stamp(match.date)].compactMap { $0 }.joined(separator: " · ")).font(AIMTheme.meta)
             if failed { Text(L10n.text("Message unavailable. The search excerpt is the only confirmed text.")).foregroundStyle(AIMTheme.signal) }
