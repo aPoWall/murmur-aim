@@ -17,7 +17,7 @@ struct AIMPeopleView: View {
                     query.isEmpty || ([person.name, person.nickname ?? ""] + person.agents + Array((person.agent_labels ?? [:]).values)).joined(separator: " ").localizedCaseInsensitiveContains(query)
                 }) { person in
                     HStack(alignment: .top, spacing: 12) {
-                        AIMPersonAvatar(person: person)
+                        AIMPersonAvatar(person: person, imageReadEnabled: !model.previewConnected)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(person.name).font(AIMTheme.heading)
                             if person.approvedPhoto != nil, let note = person.photo_note, !note.isEmpty {

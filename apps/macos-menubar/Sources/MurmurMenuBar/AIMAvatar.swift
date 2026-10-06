@@ -44,8 +44,10 @@ struct AIMPersonAvatar: View {
     let person: AIMCompanionSnapshot.Person
     @State private var image: NSImage?
     private let fixtureImage: Bool
-    init(person: AIMCompanionSnapshot.Person, initialImage: NSImage? = nil) {
+    private let imageReadEnabled: Bool
+    init(person: AIMCompanionSnapshot.Person, initialImage: NSImage? = nil, imageReadEnabled: Bool = true) {
         self.person = person
+        self.imageReadEnabled = imageReadEnabled
         self.fixtureImage = initialImage != nil
         _image = State(initialValue: initialImage)
     }
@@ -64,6 +66,7 @@ struct AIMPersonAvatar: View {
         .task(id: person.approvedPhoto) {
             guard let key = person.approvedPhoto else { image = nil; return }
             if fixtureImage { return }
+            guard imageReadEnabled else { image = nil; return }
             image = nil
             if let cached = AIMAvatarCache.images[key] { image = cached; return }
             // Only once per mounted view; no photo polling. Successful bytes stay in memory.
