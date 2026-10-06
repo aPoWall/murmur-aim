@@ -77,7 +77,8 @@ func runAIMCompanionChecks() throws -> Int {
     try check(edition.canReachServer && edition.helperEnvironment == ["MURMUR_COMPANION_ROOT=companion", "MURMUR_COMPANION_OWNER=lead",
               "MURMUR_COMPANION_DB=.local/var/murmur/murmur.db", "MURMUR_COMPANION_AVATARS=demo", "MURMUR_COMPANION_PRIVATE=agent-private"],
               "the helper environment carries only validated edition values")
-    let portrait = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object.merging(["people": [
+    // The previous case left an unsafe owner thread in `object`; the portrait fixture starts without threads.
+    let portrait = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object.merging(["owner_threads": [String: Any](), "people": [
         ["id":"person:demo", "name":"Demo", "agents":["agent-demo"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"],
         ["id":"person:demo", "name":"Private", "agents":["agent-private"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"]]]) { _, new in new })).people
     try check(portrait[0].approvedPhoto(in: edition) != nil && portrait[0].approvedPhoto(in: stock) == nil
