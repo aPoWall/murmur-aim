@@ -207,7 +207,7 @@ public class AIMShellButton: NSButton {
 // MARK: - Pin
 
 /// Rule 31: one pin control with one meaning, the surface survives an outside click.
-/// Off by default; a stored `true` from an older build is migrated once under `migrationKey`.
+/// Off when unset; migration preserves an explicit saved choice, including true.
 public enum AIMPinPolicy {
     public static let pinDefault = false
     public static let migrationKey = "aim.shell.pin-migrated"
@@ -224,8 +224,9 @@ public enum AIMPinPolicy {
     }
     /// `stored`: the saved value (nil when never saved); `migrated`: the migration flag.
     public static func resolve(stored: Bool?, migrated: Bool) -> PinResolution {
-        migrated ? PinResolution(pinned: stored ?? pinDefault, writePinned: false, markMigrated: false)
-                 : PinResolution(pinned: pinDefault, writePinned: true, markMigrated: true)
+        PinResolution(pinned: stored ?? pinDefault,
+                      writePinned: !migrated && stored == nil,
+                      markMigrated: !migrated)
     }
 }
 

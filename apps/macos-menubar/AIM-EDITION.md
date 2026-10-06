@@ -161,3 +161,25 @@ This edition is a local test. No remote release, dashboard deployment, policy
 change or recipient message is part of its preparation. Existing menu placement
 recovery, persistent panel pin, N1 shell and English/Russian choice are retained.
 Canonical query helper: team-ai-infrastructure/worldstream/scripts/mesh-comms-query.py.
+
+
+## AIM 8 · shared shell local test · 2026-10-06
+
+Receipt-verified shared exports supply Murmur's distinct peer-channel mark and
+voxel, plus pin migration that preserves explicit stored choices. The app header,
+menu template and app icon adopt the Murmur identity; Apps keeps the family catalog.
+Settings stays in the same panel. Local Command-comma opens it, Escape returns to
+the previous view, then hides the main panel without changing pin/theme. Dialogs
+close first, and hotkey-recording Escape keeps the previous combination. Unmodified
+1–4 navigate only outside text editors, attached sheets and recording.
+
+A read-only local dashboard preview can be selected explicitly in Settings; its
+URL is localhost:8768 and the canonical private board remains the other choice.
+People link to their observed graph and show per-agent companion policy with its
+observation date. Questions display review date and exact source message ID.
+Dates use the Mac timezone. Existing authorized avatars use initials as fallback;
+this pass adds no photo fetch, upload, access grant, message or responder.
+
+Sync only adopted shared assets with packaging/sync-aim-shared.py SOURCE_ASSETS;
+all files are checked against the export receipt before any write. Offscreen and
+runtime acceptance are recorded separately in the product chat's local receipt.

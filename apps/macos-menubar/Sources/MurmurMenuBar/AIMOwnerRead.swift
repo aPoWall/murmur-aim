@@ -93,6 +93,7 @@ struct AIMMessageSearchView: View {
                 if result.matches.isEmpty { Text(L10n.text("No accessible messages matched.")) }
             }
         }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
+            .onExitCommand { if selected != nil { selected = nil } else { dismiss() } }
             .sheet(item: $selected) { match in AIMMessageDetailView(match: match, participant: participant(match.peer_identity)) }
     }
 
@@ -137,6 +138,7 @@ struct AIMMessageDetailView: View {
                 if message.truncated { Text(L10n.text("Message shortened by the server.")).font(AIMTheme.meta) }
             } else if !failed { ProgressView(L10n.text("Reading message…")) }
         }.padding(24).frame(width: 620, height: 460).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
+            .onExitCommand { dismiss() }
             .task {
                 let response = await Task.detached {
                     Result { try AIMMessageReadResult.decode(AIMOwnerRead.exchange(["action": "read", "store": match.store, "id": match.id]), expectedID: match.id) }

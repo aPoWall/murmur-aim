@@ -747,3 +747,19 @@
 "empty_final_reply" = "Agent run returned no final reply";
 
 "owner_approval_required" = "Paused for owner approval";
+
+"Local dashboard preview on this Mac" = "Local dashboard preview on this Mac";
+
+"Dates use this Mac's timezone" = "Dates use this Mac's timezone";
+
+"Source message" = "Source message";
+
+"Companion sending" = "Companion sending";
+
+"Allowed" = "Allowed";
+
+"Disabled" = "Disabled";
+
+"Policy checked" = "Policy checked";
+
+"Open this person's observed message flows" = "Open this person's observed message flows";

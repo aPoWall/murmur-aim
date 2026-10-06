@@ -14,7 +14,13 @@ import MurmurTrayCore
     @Published var previewConnected = false
     private var timer: Timer?
     private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
-    static let board = "https://content.aimindset.org/murmur/"
+    @Published var localDashboard = UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
+    static var board: String { UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
+        ? "http://127.0.0.1:8768/" : "https://content.aimindset.org/murmur/" }
+    func setLocalDashboard(_ value: Bool) {
+        localDashboard = value
+        UserDefaults.standard.set(value, forKey: "aimLocalDashboardPreview")
+    }
     var enabled: Bool { previewConnected || UserDefaults.standard.bool(forKey: "aimServerEnabled") }
     var current: Bool { !failed && snapshot?.isCurrent() == true }
     var badge: String {
@@ -95,6 +101,7 @@ import MurmurTrayCore
         guard let date = AIMCompanionSnapshot.date(raw) else { return L10n.text("Not observed") }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: L10n.language().rawValue)
+        formatter.timeZone = .current
         formatter.dateStyle = .medium; formatter.timeStyle = .short
         return formatter.string(from: date)
     }
@@ -200,11 +207,15 @@ struct AIMCompanionView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(question.title ?? question.id).font(AIMTheme.heading)
                     Text((question.peer.flatMap { peer in data.people.first { $0.agents.contains(peer) }?.name } ?? question.peer ?? "") + " · " + AIMCompanionModel.stamp(question.source_date)).font(AIMTheme.meta)
-                    if let action = question.next_action { Text(action).lineLimit(2) }
+                    Text("\(question.status ?? "unknown") · \(L10n.text("Reviewed")): \(AIMCompanionModel.stamp(question.reviewed_at))").font(AIMTheme.meta)
+                    if let action = question.next_action { Text(action).fixedSize(horizontal: false, vertical: true) }
+                    if let source = question.source_id {
+                        Text(L10n.text("Source message") + " · " + source).font(AIMTheme.meta).textSelection(.enabled)
+                    }
                     HStack {
                         Button(L10n.text("Read conversation")) {
                             var parts = URLComponents(string: AIMCompanionModel.board)!
-                            parts.queryItems = [URLQueryItem(name: "topic", value: question.id)]
+                            parts.queryItems = [URLQueryItem(name: "view", value: "mesh"), URLQueryItem(name: "section", value: "history"), URLQueryItem(name: "topic", value: question.id)]
                             if let url = parts.url { NSWorkspace.shared.open(url) }
                         }
                         if let owner = data.ownerThread(for: question.peer), let url = owner.verifiedURL {
@@ -230,6 +241,9 @@ struct AIMCompanionSettings: View {
                 Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.help(L10n.text("macOS notifications with sender names and counts, never the message text")).disabled(model.requestingNotifications)
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
+            Toggle(L10n.text("Local dashboard preview on this Mac"), isOn: Binding(get: { model.localDashboard }, set: { model.setLocalDashboard($0) }))
+            Text(model.localDashboard ? "http://127.0.0.1:8768/" : "https://content.aimindset.org/murmur/").font(AIMTheme.meta).textSelection(.enabled)
+            Text(L10n.text("Dates use this Mac's timezone") + " · " + TimeZone.current.identifier).font(AIMTheme.meta)
             Text(L10n.text("Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question."))
             Divider()
         }.fixedSize(horizontal: false, vertical: true)

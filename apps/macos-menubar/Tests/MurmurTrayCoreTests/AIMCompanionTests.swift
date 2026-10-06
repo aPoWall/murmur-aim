@@ -55,5 +55,11 @@ func runAIMCompanionChecks() throws -> Int {
     try check(cursor.observe(["new"]).isEmpty, "queue reappearance does not notify again")
     var restored = AIMCompanionCursor(seen: cursor.seen)
     try check(restored.observe(["old", "new"]).isEmpty, "restart preserves notification dedupe")
-    return 16
+    var navigation = AIMPanelNavigation(page: "People")
+    navigation.openSettings(); navigation.openSettings()
+    try check(navigation.page == "Settings" && !navigation.escape() && navigation.page == "People", "Settings Escape preserves the prior view even after repeated open")
+    try check(navigation.escape(), "main Escape requests hiding without mutating navigation")
+    navigation.select("Help"); navigation.openSettings(); _ = navigation.escape()
+    try check(navigation.page == "Help", "each Settings visit returns to the latest selected view")
+    return 19
 }

@@ -747,3 +747,19 @@
 "empty_final_reply" = "Запуск агента не вернул итоговый ответ";
 
 "owner_approval_required" = "Остановлено до решения владельца";
+
+"Local dashboard preview on this Mac" = "Локальный тестовый дашборд на этом Mac";
+
+"Dates use this Mac's timezone" = "Даты в часовом поясе этого Mac";
+
+"Source message" = "Исходное сообщение";
+
+"Companion sending" = "Отправка из приложения";
+
+"Allowed" = "Разрешена";
+
+"Disabled" = "Выключена";
+
+"Policy checked" = "Политика проверена";
+
+"Open this person's observed message flows" = "Открыть наблюдаемые потоки сообщений этого человека";

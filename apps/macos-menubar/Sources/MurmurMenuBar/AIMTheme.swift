@@ -14,7 +14,7 @@ import MurmurTrayCore
     static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
-        let edition = Bundle.main.object(forInfoDictionaryKey: "AIMShellEdition") as? Int ?? 7
+        let edition = Bundle.main.object(forInfoDictionaryKey: "AIMShellEdition") as? Int ?? 8
         return "\(v) · aim \(edition)"
     }
     /// The fonts come from the resource bundle packaged in Contents/Resources. The generated `Bundle.module`
@@ -36,7 +36,7 @@ import MurmurTrayCore
         image.lockFocus()
         NSColor.white.setFill()
         NSBezierPath(roundedRect: NSRect(x: 48, y: 48, width: 928, height: 928), xRadius: 196, yRadius: 196).fill()
-        AIMAppMarkView.draw(.family, in: NSRect(x: 200, y: 200, width: 624, height: 624), mono: false)
+        AIMAppMarkView.draw(.murmur, in: NSRect(x: 200, y: 200, width: 624, height: 624), mono: false)
         image.unlockFocus()
         return image
     }
@@ -56,7 +56,7 @@ struct AIMQuietButtonStyle: ButtonStyle {
 
 @MainActor final class AIMWindowState: NSObject, NSWindowDelegate, ObservableObject {
     static let shared = AIMWindowState()
-    /// Rule 31: the pin survives a restart; a value stored before the shared contract migrates to off once.
+    /// A saved pin survives migration, Escape and relaunch.
     static let pinKey = "org.aimindset.murmur.pinned"
     /// Rule 49: ⌥⌘U in the family pattern, recorded in settings (rule 50). Until AIM 5 the app held ⌃⌥⌘M.
     static let hotkeyStore = FamilyHotkeyStore(owner: FamilyHotkeys.murmur,
@@ -68,6 +68,7 @@ struct AIMQuietButtonStyle: ButtonStyle {
     @Published var hotkey: FamilyHotkey? = AIMWindowState.hotkeyStore.current
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
+    @Published var hotkeyRecording = false
     /// The delegate re-registers the Carbon key when the field stores a new combination.
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
 
@@ -104,18 +105,18 @@ struct AIMQuietButtonStyle: ButtonStyle {
 }
 
 struct AIMHeaderBridge: NSViewRepresentable {
-    @Binding var page: String
+    let onSettings: () -> Void
     let status: String
     func makeNSView(context: Context) -> AIMAppHeader {
         let pin = AIMPinButton(pinned: AIMWindowState.shared.pinned) { value in AIMWindowState.shared.setPinned(value) }
-        let header = AIMAppHeader(mark: .family, name: "MURMUR AIM", status: status,
+        let header = AIMAppHeader(mark: .murmur, name: "MURMUR AIM", status: status,
                                  version: AIMTheme.version, width: 708,
-                                 onSettings: { page = "Settings" }, pin: pin,
+                                 onSettings: onSettings, pin: pin,
                                  onClose: { AIMWindowState.shared.close(.closeButton) })
         header.closeButton?.toolTip = "close the window \u{00B7} esc or \u{2318}W"
         header.settingsButton?.toolTip = "settings: theme, the global key, the server companion and the local service"
         // N1 family character in the header; flat family mark remains in the menu bar.
-        let voxel = AIMVoxelView(model: AIMVoxelModels.family)
+        let voxel = AIMVoxelView(model: AIMVoxelModels.murmur)
         voxel.wantsLayer = true
         voxel.layer?.backgroundColor = AIMAppShellStyle.plate.cgColor
         voxel.toolTip = "murmur aim \u{00B7} live character \u{00B7} click: scatter and assemble"
@@ -163,7 +164,10 @@ struct AIMFooterBridge: NSViewRepresentable {
 struct AIMHotkeyBridge: NSViewRepresentable {
     func makeNSView(context: Context) -> FamilyHotkeyField {
         let field = FamilyHotkeyField(store: AIMWindowState.hotkeyStore, width: 160)
-        field.onLine = { line in AIMWindowState.shared.hotkeyLine = line }
+        field.onLine = { line in
+            AIMWindowState.shared.hotkeyLine = line
+            AIMWindowState.shared.hotkeyRecording = line.hasPrefix("recording:")
+        }
         field.onChange = { combo in AIMWindowState.shared.hotkeyChanged(combo) }
         return field
     }
@@ -233,11 +237,17 @@ struct AIMHotkeyBridge: NSViewRepresentable {
         scratch.set(240, forKey: AIMMenuPresence.positionKey)
         AIMMenuPresence.prepare(defaults: scratch, screenWidth: 1728)
         need(scratch.integer(forKey: AIMMenuPresence.positionKey) == 240, "menu: relaunch retains valid placement")
-        need(AIMAppMarkView.image(.family, size: 18, mono: true).isTemplate, "menu: canonical 18 pt template mark")
-        need(AIMPinPolicy.resolve(stored: true, migrated: false).pinned == false && AIMPinPolicy.resolve(stored: true, migrated: true).pinned,
-             "pin: a value from before the contract migrates to off once, a later choice survives")
+        need(AIMAppMarkView.image(.murmur, size: 18, mono: true).isTemplate, "menu: canonical 18 pt template mark")
+        need(AIMPinPolicy.resolve(stored: true, migrated: false).pinned == true && AIMPinPolicy.resolve(stored: true, migrated: true).pinned,
+             "pin: explicit saved choice survives first migration and later launches")
         need(AIMThemePolicy.key(bundle: "org.aimindset.murmur") == "org.aimindset.murmur.theme", "theme: one key form, <bundle id>.theme")
         need(AIMThemePolicy.resolve(nil) == .light && AIMThemePolicy.resolve("dark") == .dark, "theme: white by default")
+        AIMThemePolicy.store(.dark, scratch, key: suite + ".theme")
+        need(AIMThemePolicy.load(scratch, key: suite + ".theme") == .dark, "theme: saved dark choice reloads from product defaults")
+        AIMThemePolicy.store(.light, scratch, key: suite + ".theme")
+        need(AIMThemePolicy.load(scratch, key: suite + ".theme") == .light, "theme: saved light choice reloads from product defaults")
+        need(AIMAppMarkView.image(.murmur, size: 18, mono: true).tiffRepresentation != AIMAppMarkView.image(.family, size: 18, mono: true).tiffRepresentation,
+             "identity: Murmur menu geometry differs from the family catalog")
         need(FamilyHotkeys.signature == FamilyHotkeys.sharedSignature, "keys: the family table matches the shared signature")
         need(FamilyHotkeys.familyDefaults.count == 6, "keys: six products in the family table")
         let store = FamilyHotkeyStore(owner: FamilyHotkeys.murmur, fallback: AIMWindowState.hotkeyStore.fallback, bundle: suite, defaults: scratch)
@@ -261,5 +271,44 @@ struct AIMHotkeyBridge: NSViewRepresentable {
         guard let data = image.tiffRepresentation, let rep = NSBitmapImageRep(data: data),
               let png = rep.representation(using: .png, properties: [:]) else { fatalError("Icon render failed") }
         do { try png.write(to: URL(fileURLWithPath: path)) } catch { fatalError("Cannot save icon: \(error)") }
+    }
+}
+
+/// Local panel shortcuts leave editors, attached dialogs and the hotkey recorder in control.
+struct AIMKeyboardBridge: NSViewRepresentable {
+    let onSettings: () -> Void
+    let onTab: (String) -> Void
+    final class Coordinator {
+        weak var view: NSView?
+        var onSettings: (() -> Void)?
+        var onTab: ((String) -> Void)?
+        var monitor: Any?
+        deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let c = context.coordinator
+        c.view = view
+        c.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak c] event in
+            guard let c, let window = c.view?.window, event.window === window,
+                  window.attachedSheet == nil, !AIMWindowState.shared.hotkeyRecording else { return event }
+            let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if flags == .command, event.charactersIgnoringModifiers == "," {
+                c.onSettings?(); return nil
+            }
+            guard flags.isEmpty, !(window.firstResponder is NSTextView), !(window.firstResponder is NSTextField),
+                  let digit = Int(event.charactersIgnoringModifiers ?? ""), (1...4).contains(digit) else { return event }
+            c.onTab?(["Overview", "People", "Home", "Help"][digit - 1])
+            return nil
+        }
+        return view
+    }
+    func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.onSettings = onSettings
+        context.coordinator.onTab = onTab
+    }
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        if let monitor = coordinator.monitor { NSEvent.removeMonitor(monitor); coordinator.monitor = nil }
     }
 }

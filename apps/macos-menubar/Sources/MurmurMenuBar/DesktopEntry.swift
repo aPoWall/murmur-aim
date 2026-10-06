@@ -104,7 +104,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
     }
 
     private func refreshStatusItem() {
-        item?.button?.image = AIMAppMarkView.image(.family, size: 18, mono: true)
+        item?.button?.image = AIMAppMarkView.image(.murmur, size: 18, mono: true)
         // Stable mark-only width keeps counters from displacing the menu entrance; details remain in the tooltip/panel.
         item?.button?.title = ""
         let combo = AIMWindowState.shared.hotkey

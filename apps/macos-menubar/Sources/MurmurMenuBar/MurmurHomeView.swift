@@ -5,20 +5,22 @@ import MurmurTrayCore
 struct MurmurHomeView: View {
     @ObservedObject var model: TrayModel
     @ObservedObject private var window = AIMWindowState.shared
-    @MurmurViewState private var page = "Overview"
+    @State private var navigation = AIMPanelNavigation()
+    private var page: String { navigation.page }
+    private var pageBinding: Binding<String> { Binding(get: { navigation.page }, set: { navigation.select($0) }) }
     @MurmurViewState private var entry = "welcome"
     @MurmurViewState private var showingNewConnection = false
 
     init(model: TrayModel, initialPage: String = "Overview") {
         self.model = model
-        _page = State(initialValue: initialPage)
+        _navigation = State(initialValue: AIMPanelNavigation(page: initialPage))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            AIMHeaderBridge(page: $page, status: model.isDemo ? "preview · synthetic data" : (["Overview", "People"].contains(page) ? "VM105 · agent-sasha" : (model.agentID ?? "encrypted agent connections")))
+            AIMHeaderBridge(onSettings: { navigation.openSettings() }, status: model.isDemo ? "preview · synthetic data" : (["Overview", "People"].contains(page) ? "VM105 · agent-sasha" : (model.agentID ?? "encrypted agent connections")))
                 .frame(width: 708, height: 40).padding(16)
-            AIMTabsBridge(page: $page).frame(width: 708, height: 40).padding(.horizontal, 16)
+            AIMTabsBridge(page: pageBinding).frame(width: 708, height: 40).padding(.horizontal, 16)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -55,7 +57,13 @@ struct MurmurHomeView: View {
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
             .tint(AIMTheme.signal).buttonStyle(AIMQuietButtonStyle())
-            .onExitCommand { AIMWindowState.shared.close(.escape) }
+            .background(AIMKeyboardBridge(onSettings: { navigation.openSettings() }, onTab: { navigation.select($0) })
+                .frame(width: 0, height: 0).accessibilityHidden(true))
+            .onExitCommand {
+                if model.showCreateProfileSheet { if !model.creatingProfile { model.showCreateProfileSheet = false } }
+                else if model.showPairingSheet { if !model.busy { model.showPairingSheet = false } }
+                else if navigation.escape() { AIMWindowState.shared.close(.escape) }
+            }
             .sheet(isPresented: $model.showCreateProfileSheet, onDismiss: { model.ownProfileSheetDismissed() }) { CreateProfileSheet(model: model) }
             .sheet(isPresented: $model.showPairingSheet, onDismiss: { model.clearPairing() }) { PairingSheet(model: model) }
             .onChange(of: model.profile) { _ in showingNewConnection = false; entry = "welcome" }

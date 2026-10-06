@@ -27,6 +27,8 @@ struct AIMPeopleView: View {
                                 Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").font(AIMTheme.meta)
                                 if let policy = model.snapshot?.peer_policy?.peers[agent] {
                                     Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
+                                    Text(L10n.text("Companion sending") + ": " + (policy.send_allowed ? L10n.text("Allowed") : L10n.text("Disabled")) + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
+                                    Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
                                     if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal) }
                                 }
                                 if let owner = data.ownerThread(for: agent), let url = owner.verifiedURL {
@@ -45,6 +47,7 @@ struct AIMPeopleView: View {
                             if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
                                 Button("Telegram ↗") { NSWorkspace.shared.open(url) }.help(L10n.text("Open a Telegram chat with this person; nothing is sent"))
                             }
+                            Button(L10n.text("Connection map")) { openMap(person.id) }.help(L10n.text("Open this person's observed message flows"))
                             Button(L10n.text("History")) { openHistory(person.id) }.help(L10n.text("Open the message history with this person in the dashboard"))
                             if !(person.writable_agents ?? []).isEmpty {
                                 Button(L10n.text("Write message")) { recipient = person }.help(L10n.text("Compose a message; it leaves only after you press Send message")).disabled(!model.current)
@@ -74,6 +77,11 @@ struct AIMPeopleView: View {
         }
         .sheet(item: $recipient) { person in AIMComposeView(person: person) }
         .sheet(item: $policyPerson) { person in AIMPolicyView(person: person) }
+    }
+    private func openMap(_ actor: String) {
+        var parts = URLComponents(string: AIMCompanionModel.board)!
+        parts.queryItems = [URLQueryItem(name: "view", value: "mesh"), URLQueryItem(name: "section", value: "map"), URLQueryItem(name: "actor", value: actor)]
+        if let url = parts.url { NSWorkspace.shared.open(url) }
     }
     private func openHistory(_ actor: String) {
         var url = URLComponents(string: AIMCompanionModel.board)!
@@ -129,6 +137,7 @@ struct AIMComposeView: View {
                 if busy { ProgressView().controlSize(.small) }
             }
         }.padding(24).frame(width: 620).font(AIMTheme.body)
+            .onExitCommand { if !busy { dismiss() } }
             .interactiveDismissDisabled(busy).buttonStyle(AIMQuietButtonStyle())
             .task(id: peer) { includeContext = false; selectedPolicy = nil; if let result = try? await Task.detached(operation: { try AIMPolicyTransport.load() }).value { selectedPolicy = result.peers[peer] } }
     }
