@@ -15,10 +15,12 @@ import AppKit
         }
         defaults.set(true, forKey: "NSStatusItem Visible " + name)
     }
-    static func receipt(_ item: NSStatusItem, windowVisible: Bool) {
+    static func receipt(_ item: NSStatusItem, windowVisible: Bool, lastEvent: String = "launch", panelFrame: NSRect? = nil) {
         let rect = item.button?.window?.frame ?? .zero
         let onScreen = NSScreen.screens.contains { $0.frame.intersects(rect) }
         let data: [String: Any] = [
+            "lastEvent": lastEvent, "theme": AIMWindowState.shared.theme.rawValue,
+            "panelFrame": panelFrame.map(NSStringFromRect) ?? "unobserved",
             "version": AIMTheme.version, "pid": ProcessInfo.processInfo.processIdentifier,
             "bundle": Bundle.main.bundleURL.path, "visible": item.isVisible,
             "frameOnScreen": onScreen, "frame": NSStringFromRect(rect),

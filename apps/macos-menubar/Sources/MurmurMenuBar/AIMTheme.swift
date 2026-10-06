@@ -71,6 +71,7 @@ struct AIMQuietButtonStyle: ButtonStyle {
     @Published var hotkeyRecording = false
     /// The delegate re-registers the Carbon key when the field stores a new combination.
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
+    var onStateChange: (() -> Void)?
 
     override init() {
         let d = UserDefaults.standard
@@ -85,11 +86,13 @@ struct AIMQuietButtonStyle: ButtonStyle {
         pinned = value
         UserDefaults.standard.set(value, forKey: Self.pinKey)
         surface?.pinned = value
+        onStateChange?()
     }
     func setTheme(_ mode: AIMThemePolicy.Mode) {
         theme = mode
         AIMThemePolicy.store(mode)
         AIMThemePolicy.apply(mode)
+        onStateChange?()
     }
     func hotkeyChanged(_ combo: FamilyHotkey?) {
         hotkey = combo

@@ -72,6 +72,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
         observation = model.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshStatusItem() }
         }
+        AIMWindowState.shared.onStateChange = { [weak self] in self?.recordPanel("preference") }
         AIMWindowState.shared.onHotkeyChange = { [weak self] combo in self?.registerShortcut(combo) }
         registerShortcut(AIMWindowState.hotkeyStore.current)
         refreshStatusItem()
@@ -153,10 +154,17 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, UNUserNo
             window.setFrameAutosaveName("MurmurMainWindow")
             self.window = window
             AIMWindowState.shared.attach(window)
+            AIMWindowState.shared.surface?.onShow = { [weak self] in self?.recordPanel("show") }
+            AIMWindowState.shared.surface?.onClose = { [weak self] reason in self?.recordPanel(reason.rawValue) }
         }
         NSApp.activate(ignoringOtherApps: true)
         AIMWindowState.shared.surface?.show()
         window?.makeKey()
+    }
+
+    private func recordPanel(_ event: String) {
+        guard let item else { return }
+        AIMMenuPresence.receipt(item, windowVisible: window?.isVisible == true, lastEvent: event, panelFrame: window?.frame)
     }
 
     private func quickMenu() -> NSMenu {
