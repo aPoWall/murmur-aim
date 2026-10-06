@@ -108,6 +108,11 @@ func expectGateFailure(_ name: String, _ body: () throws -> Void) throws {
 @main
 struct ProbeChecks {
     static func main() throws {
+        if CommandLine.arguments.contains("--control-only") {
+            let directory = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "../../contracts/setup/v1/fixtures")
+            print("Scoped profile controls: \(try runControlChecks(fixtures: directory)) checks passed")
+            return
+        }
         try withCLI("[ \"$#\" = 2 ] && [ \"$1\" = status ] && [ \"$2\" = --json ] || exit 71\nprintf '{\"unexpected\":true}'") { url in
             let result = try CLIProbe(executable: url).run("status")
             try check(result.command == "status" && result.exitCode == 0 && result.byteCount > 0,

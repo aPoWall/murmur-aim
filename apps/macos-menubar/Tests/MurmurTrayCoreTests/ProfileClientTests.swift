@@ -43,11 +43,13 @@ private struct ProfileFixture {
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
     }
 
-    func client(statusTimeout: TimeInterval = 1, actionTimeout: TimeInterval = 1) -> ProfileClient {
+    // Positive fixture commands need room for macOS process launch under desktop load.
+    // Dedicated timeout scenarios below retain their explicit sub-second deadlines.
+    func client(statusTimeout: TimeInterval = 3, actionTimeout: TimeInterval = 3) -> ProfileClient {
         ProfileClient(executable: executable, profile: binding,
                       environment: ["HOME": directory.path, "DATA_DIR": "/wrong", "MURMUR_DATA_DIR": "/wrong",
                                     "MURMUR_STORE_PATH": "/wrong/db", "NODE_OPTIONS": "--bad-option"],
-                      statusTimeout: statusTimeout, actionTimeout: actionTimeout, doctorTimeout: 1)
+                      statusTimeout: statusTimeout, actionTimeout: actionTimeout, doctorTimeout: 3)
     }
     func key(_ action: ControlAction) -> String {
         (action == .pause || action == .resume ? "wake-" : "service-") + action.rawValue
@@ -98,6 +100,7 @@ func runControlChecks(fixtures: URL) throws -> Int {
         defer { try? FileManager.default.removeItem(at: directory) }
         guard let resolved = realpath(directory.path, nil) else { throw CheckFailure(message: "Test directory realpath unavailable") }
         defer { free(resolved) }
+        print("CONTROL SCENARIO: \(name)"); fflush(stdout)
         try test(ProfileFixture(directory: URL(fileURLWithPath: String(cString: resolved)), fixtures: fixtures))
         count += 1; print("PASS profile control: \(name)")
     }
@@ -167,8 +170,13 @@ func runControlChecks(fixtures: URL) throws -> Int {
     ] {
         try scenario("\(name) blocks mutation") { f in
             try f.write("status", object: changing(f.status, path, value))
-            try rejects(name) { _ = try f.client().perform(.pause, expectedAgent: f.agent) }
-            try check(try f.calls() == ["status"], "No action after failed preflight")
+            do {
+                _ = try f.client().perform(.pause, expectedAgent: f.agent)
+                throw CheckFailure(message: "Expected preflight refusal: \(name)")
+            } catch is CheckFailure { throw CheckFailure(message: "Preflight unexpectedly passed: \(name)") }
+            catch { print("CONTROL REFUSAL: \(name): \(error)"); fflush(stdout) }
+            let calls = try f.calls()
+            try check(calls == ["status"], "No action after failed preflight [\(name)]: fixture calls \(calls)")
         }
     }
     for (name, body, timeout) in [
@@ -194,7 +202,11 @@ func runControlChecks(fixtures: URL) throws -> Int {
         try scenario("\(name) is not success") { f in
             var response = f.receipt(.pause); response[field] = value
             try f.write("wake-pause", object: response)
-            try rejects(name) { _ = try f.client().perform(.pause, expectedAgent: f.agent) }
+            do {
+                _ = try f.client().perform(.pause, expectedAgent: f.agent)
+                throw CheckFailure(message: "Expected preflight refusal: \(name)")
+            } catch is CheckFailure { throw CheckFailure(message: "Preflight unexpectedly passed: \(name)") }
+            catch { print("CONTROL REFUSAL: \(name): \(error)"); fflush(stdout) }
         }
     }
     try scenario("wrong service action is not success") { f in
