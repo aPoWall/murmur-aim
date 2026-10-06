@@ -1,4 +1,9 @@
-# Murmur AIM · N1 · AIM 3
+# Murmur AIM · N1 · AIM 9
+
+Current local edition: AIM 9, engine 2.12.0, 6 October 2026. Architecture, roster
+differences, permission boundaries and proposed team access are documented in
+[AIM-ARCHITECTURE.md](AIM-ARCHITECTURE.md). Earlier sections below retain their
+edition-specific behavior; AIM 5 supersedes the original global shortcut.
 
 Personal macOS edition of alexfrmn/murmur. Upstream engine 2.12.0; MIT attribution
 and transport remain intact. The fork adds the AIM Native White shell, with MEM
