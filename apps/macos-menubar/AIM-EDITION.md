@@ -177,9 +177,24 @@ A read-only local dashboard preview can be selected explicitly in Settings; its
 URL is localhost:8768 and the canonical private board remains the other choice.
 People link to their observed graph and show per-agent companion policy with its
 observation date. Questions display review date and exact source message ID.
-Dates use the Mac timezone. Existing authorized avatars use initials as fallback;
-this pass adds no photo fetch, upload, access grant, message or responder.
+Dates use the Mac timezone. AIM 8 uses initials only; AIM 9 below completes the existing approved photo path.
+This shell pass adds no photo upload, access grant, message or responder.
 
 Sync only adopted shared assets with packaging/sync-aim-shared.py SOURCE_ASSETS;
 all files are checked against the export receipt before any write. Offscreen and
 runtime acceptance are recorded separately in the product chat's local receipt.
+
+
+## AIM 9 · existing approved people avatars · 2026-10-06
+
+People now display existing operator-approved roster photos. The bundled owner
+reader carries exact photo/photo_note references even with an older server
+companion. An on-demand owner SSH read accepts an exact current person ID, verifies
+the fixed person-to-photo mapping, current privacy and pairing, the existing server
+HTTP allowlist, a regular non-symlink file and a 256 KiB limit. No arbitrary URL or
+request path is accepted. Native image decoding is bounded to 4096 pixels per side.
+Images stay in process memory; no new photo sync, contact lookup, disk cache or
+upload. Missing, disallowed and private/status-only references skip image reads;
+unavailable or invalid files use initials. Existing photo_note is visible beside the name, including
+the unconfirmed bank portrait warning. Private contours remain status-only.
+Pin, theme, language, server selection and global key are preserved on local install.

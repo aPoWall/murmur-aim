@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>AIMShellEdition</key>
-	<integer>8</integer>
+	<integer>9</integer>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>

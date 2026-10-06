@@ -10,6 +10,19 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let nickname: String?
         public let agent_labels: [String: String]?
         public let writable_agents: [String]?
+        public let photo: String?
+        public let photo_note: String?
+        public let photo_privacy: String?
+        public var approvedPhoto: String? {
+            let allowed = Set(["alex", "ira", "dan", "vlada", "katya", "anca", "mykhailo", "olya", "vasiliev", "sergey", "khabarov", "kirill_oleinichenko"])
+            let privatePeers = Set(["shaper-viola", "agent-viola-alex", "alex-viola"])
+            guard id.hasPrefix("person:"), allowed.contains(String(id.dropFirst(7))),
+                  photo_privacy == "owner-approved-avatar", !agents.isEmpty,
+                  agents.allSatisfy({ !privatePeers.contains($0) }),
+                  let photo, photo == "/mesh-comms-avatar-" + id.dropFirst(7) + ".jpg"
+            else { return nil }
+            return photo
+        }
     }
     public struct Question: Decodable, Identifiable, Sendable {
         public let id: String

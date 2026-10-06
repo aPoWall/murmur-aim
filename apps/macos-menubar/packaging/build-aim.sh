@@ -5,9 +5,11 @@ RUNTIME="${1:?Usage: build-aim.sh VERIFIED_RUNTIME_DIRECTORY}"
 APP="$SOURCE/dist/Murmur AIM.app"
 python3 "$SOURCE/packaging/verify-runtime.py" "$RUNTIME"
 python3 "$SOURCE/packaging/verify-aim.py"
+python3 "$SOURCE/packaging/avatar-query-checks.py"
 swift build --package-path "$SOURCE" -c release
 BIN="$(swift build --package-path "$SOURCE" -c release --show-bin-path)"
 "$BIN/MurmurProbeChecks" "$SOURCE/../../contracts/setup/v1/fixtures"
+"$BIN/MurmurMenuBar" --aim-check-avatars
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 for name in MurmurTrayCore MurmurMenuBar; do
   /usr/bin/ditto "$BIN/MurmurMenuBarSpike_$name.bundle" "$APP/Contents/Resources/MurmurMenuBarSpike_$name.bundle"

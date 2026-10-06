@@ -17,11 +17,12 @@ struct AIMPeopleView: View {
                     query.isEmpty || ([person.name, person.nickname ?? ""] + person.agents + Array((person.agent_labels ?? [:]).values)).joined(separator: " ").localizedCaseInsensitiveContains(query)
                 }) { person in
                     HStack(alignment: .top, spacing: 12) {
-                        Text(person.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased())
-                            .font(AIMTheme.heading).frame(width: 40, height: 40).background(Color.gray.opacity(0.08)).clipShape(Circle())
-                            .accessibilityHidden(true)
+                        AIMPersonAvatar(person: person)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(person.name).font(AIMTheme.heading)
+                            if person.approvedPhoto != nil, let note = person.photo_note, !note.isEmpty {
+                                Text(L10n.text(note)).font(AIMTheme.meta).foregroundStyle(.secondary)
+                            }
                             if let nickname = person.nickname { Text(nickname).foregroundStyle(.secondary).textSelection(.enabled) }
                             ForEach(person.agents, id: \.self) { agent in
                                 Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").font(AIMTheme.meta)

@@ -4,6 +4,9 @@
 Only imports the existing operator dashboard readers. No inbox read marks, wakes,
 sends, private message bodies or credentials. JSON request travels on stdin.
 """
+import base64
+import os
+import stat
 import contextlib
 import importlib.util
 import io
@@ -17,6 +20,9 @@ OWNER_THREADS = {'agent-jarvis': {
     'title': 'OPS · Murmur · Васильев–JARVIS',
     'url': 'codex://threads/01a0ed94-6541-7423-a18f-42545746f731',
 }}
+AVATAR_IDS = {'alex', 'ira', 'dan', 'vlada', 'katya', 'anca', 'mykhailo', 'olya', 'vasiliev', 'sergey', 'khabarov', 'kirill_oleinichenko'}
+AVATARS = {'person:' + pid: '/mesh-comms-avatar-' + pid + '.jpg' for pid in AVATAR_IDS}
+MAX_AVATAR_BYTES = 262144
 CLOSED = {'answered', 'no_reply_needed', 'reported_complete', 'cancelled'}
 
 
@@ -74,6 +80,57 @@ def augment(data, monitor, share):
     return data
 
 
+
+def add_avatars(data, people, share):
+    """Only current ordinary people with existing operator-approved exact assets."""
+    private = {'shaper-viola', 'agent-viola-alex', 'alex-viola'}
+    for contour in share.get('private_contours', []):
+        private.update((contour.get('local_identity'), contour.get('peer_identity')))
+    private_people = {b.get('person') for b in people.get('bindings', []) if b.get('agent') in private}
+    source = {p.get('id'): p for p in people.get('people', [])}
+    for person in data.get('people', []):
+        for key in ('photo', 'photo_note', 'photo_privacy'):
+            person.pop(key, None)
+        p = source.get(person.get('id'), {})
+        photo = AVATARS.get(person.get('id'))
+        if (people.get('privacy') != 'operator_metadata_only_tailnet' or
+            share.get('privacy') != 'metadata-only' or data.get('privacy') != 'owner-metadata' or
+            not photo or p.get('photo') != photo or p.get('history') or
+            p.get('privacy') in {'private', 'status-only'} or person.get('id') in private_people or
+            not person.get('agents') or any(peer in private for peer in person['agents'])):
+            continue
+        person.update(photo=photo, photo_privacy='owner-approved-avatar',
+                      photo_note=p.get('photo_note') if isinstance(p.get('photo_note'), str) else None)
+    return data
+
+
+def read_avatar(person, root=ROOT):
+    # The request supplies an exact roster identity, never a URL or a file path.
+    if person not in AVATARS:
+        raise ValueError('avatar_unavailable')
+    data = dispatch({'action': 'snapshot'}, root)
+    row = next((p for p in data.get('people', []) if p.get('id') == person and
+                p.get('photo_privacy') == 'owner-approved-avatar'), {})
+    photo = row.get('photo')
+    if photo != AVATARS[person]:
+        raise ValueError('avatar_unavailable')
+    reader = load('murmur_avatar_allowlist', 'serve.py', root)
+    allowed = reader.ALLOWED.get(photo)
+    if allowed != (photo[1:], 'image/jpeg'):
+        raise ValueError('avatar_unavailable')
+    # Exact allowlisted basename; no symlinks, directories or oversized reads.
+    fd = os.open(root / allowed[0], os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= MAX_AVATAR_BYTES:
+            raise ValueError('avatar_unavailable')
+        image = stream.read(MAX_AVATAR_BYTES + 1)
+    if len(image) > MAX_AVATAR_BYTES or not image.startswith(b'\xff\xd8\xff'):
+        raise ValueError('avatar_unavailable')
+    return {'privacy': 'owner-approved-avatar', 'person': person, 'photo': photo,
+            'mime': allowed[1], 'data': base64.b64encode(image).decode('ascii')}
+
+
 def dispatch(request, root=ROOT):
     if not isinstance(request, dict):
         raise ValueError('invalid_request')
@@ -83,7 +140,9 @@ def dispatch(request, root=ROOT):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             companion.main()
-        data = augment(json.loads(output.getvalue()), json.loads((root/'monitor.json').read_text()), json.loads((root/'share-data.json').read_text()))
+        share = json.loads((root/'share-data.json').read_text())
+        data = augment(json.loads(output.getvalue()), json.loads((root/'monitor.json').read_text()), share)
+        data = add_avatars(data, json.loads((root/'people-data.json').read_text()), share)
         # Expose fixed diagnostic codes only. Raw runner errors and session paths
         # stay on the server. A failed wake is separate from transport delivery.
         db_path = Path.home()/'.local/var/murmur-sasha/murmur.db'
@@ -99,6 +158,10 @@ def dispatch(request, root=ROOT):
         except sqlite3.Error:
             pass  # Preserve the existing source's unknown/recorded_error state.
         return data
+    if action == 'avatar':
+        if set(request) != {'action', 'person'} or not isinstance(request.get('person'), str):
+            raise ValueError('invalid_avatar_request')
+        return read_avatar(request['person'], root)
     if action not in {'search', 'read'}:
         raise ValueError('unsupported_action')
     reader = load('murmur_message_reader', 'serve.py', root)

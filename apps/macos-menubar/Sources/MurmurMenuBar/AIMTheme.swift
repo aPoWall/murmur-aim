@@ -184,6 +184,7 @@ struct AIMHotkeyBridge: NSViewRepresentable {
         if let index = args.firstIndex(of: "--aim-icon"), args.indices.contains(index + 1) {
             save(AIMTheme.appIcon(), to: args[index + 1]); return true
         }
+        if args.contains("--aim-check-avatars") { AIMAvatarChecks.run(); return true }
         if args.contains("--aim-check-shell") { checkShell(); return true }
         guard let index = args.firstIndex(of: "--aim-render"), args.indices.contains(index + 1) else { return false }
         let model = TrayModel(startRuntime: false)
