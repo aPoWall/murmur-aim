@@ -4,6 +4,13 @@ Review phase: 6 October 2026. Engine 2.12.0; local edition AIM 9.
 This is an operator-specific macOS prototype proposed for upstream review. A PR
 does not publish an app, deploy the dashboard or authorize employee access.
 
+**Upstream adoption blocker:** this branch currently replaces the stock home with
+the AIM shell. `build-aim.sh` stamps a distinct edition/bundle, but there is no
+runtime or target gate keeping the stock build unchanged. Split the neutral
+contracts/extension point from AIM assets, fixed owner bindings and private roster
+assumptions before upstream merge. The complete edition remains on the AIM fork;
+this draft is the concrete review package for that separation.
+
 ## What the person can do
 
 The menu app shows configured people and agents, incoming requests and decisions,
@@ -104,7 +111,7 @@ third evidence type. None proves current availability or authorization to act.
 | Explicit companion send | Server `companion-policy.json`, revision check and audit | Can disable this send path |
 | Attached context | `message_only` or owner-authored `approved_brief` | Brief attachment is an explicit send-time choice with matching revision |
 | Contact preferences | `review_required` / `trusted_contact`; concise/friendly/formal | Describes preference; does not grant autonomous execution or rewrite manual text |
-| Responder | Existing wake configuration and independently observed wake status | Shows assigned handler; does not create, resume or authorize one |
+| Responder | This owner's wake configuration and independently observed wake status | Reports registrations on this server; a remote/external handler requires separate evidence |
 | Files/resources | Actual OS, broker/profile/lease and source ACLs | Reports that filesystem access is not managed here |
 | Private contour | Separate binding and privacy rules | Status only; no ordinary compose/body-search path |
 
@@ -115,6 +122,11 @@ and enforcement. A successful policy update cannot grant access through those
 paths. Governance and runbooks belong in the vault; credentials and live enforced
 grants belong with the runtime authority. The app currently has no team-wide RBAC
 editor and no verified common grant store across those authorities.
+
+An absent `wake.peers` registration means “not registered here”; it does not prove
+that the peer has no responder on another host. Conversation-turn leases in the
+Murmur core do not grant resource access. Actual resource grants need their own
+broker/OS/source enforcement receipts and verified revocation.
 
 ## Message and question lifecycle
 

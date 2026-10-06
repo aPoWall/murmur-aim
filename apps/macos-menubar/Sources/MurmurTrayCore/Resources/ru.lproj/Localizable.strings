@@ -517,7 +517,7 @@
 "Notifications contain counts only. The first snapshot is silent; new requests appear after it. Delivery does not close a question." = "В уведомлениях только счётчики. Первый снимок принимается молча; уведомления появятся о новых запросах. Доставка не закрывает вопрос.";
 "How these tools work together" = "Как связаны инструменты";
 "Mac app: a quiet overview, notifications and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: messages, people, decisions and sources. Codex: the dedicated JARVIS session owns follow-up and decisions." = "Mac-приложение: обзор, уведомления и переходы. Сервер: зашифрованная доставка и WakeMonitor. Дашборд: сообщения, люди, решения и источники. Codex: отдельная сессия JARVIS ведёт обсуждение и решения.";
-"Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder." = "Профили Claude и локального Codex остаются отдельными подключениями. Открытие окна не переносит контекст и не меняет серверного исполнителя.";
+"Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder." = "Личности Claude и локального Codex подключены отдельно. Открытие окна не переносит контекст разговора и не меняет серверный обработчик.";
 "Task archive (formerly Recovery) is a dated dispatcher snapshot. It does not restart tasks or confirm their current status." = "Архив задач (бывший Recovery) – датированный снимок диспетчера. Он не запускает задачи и не подтверждает их текущий статус.";
 "Dashboard search covers accessible Murmur messages, people, topics, saved tasks and tool names. Other tools' private content is not indexed." = "Поиск в дашборде охватывает доступные сообщения Murmur, людей, темы, сохранённые задачи и названия тулов. Приватное содержимое других инструментов не индексируется.";
 "New messages or decisions to review" = "Новые сообщения или решения для разбора";
@@ -534,18 +534,18 @@
 "Waiting for macOS permission…" = "Ждём разрешения macOS…";
 
 "People" = "Люди";
-"People & agents" = "Люди и агенты";
-"Choose a person, then their agent. Messages leave through your server as Alex." = "Выберите человека и его агента. Сообщение уйдёт через ваш сервер от имени Алекса.";
-"Name, nickname or agent" = "Имя, ник или агент";
-"No linked agent" = "Агент не привязан";
+"People & agents" = "Люди и личности";
+"Choose a person, then their agent. Messages leave through your server as Alex." = "Выберите человека и его контакт. Сообщение уйдёт через ваш сервер от имени Алекса.";
+"Name, nickname or agent" = "Имя, ник или личность";
+"No linked agent" = "Личность не привязана";
 "Last incoming" = "Последнее входящее";
 "Configured locally · two-way delivery not yet observed" = "Настроено с нашей стороны · двусторонняя доставка ещё не подтверждена";
 "Write message" = "Написать сообщение";
 "Refresh the server overview before sending." = "Обновите данные сервера перед отправкой.";
 "Connect your server in Settings to load people." = "Подключите сервер в настройках, чтобы загрузить людей.";
 "An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply." = "Входящее сообщение подтверждает активность. Настройка с нашей стороны ещё не означает, что собеседник импортировал ответную строку.";
-"Recipient agent" = "Агент-получатель";
-"From Alex · agent-sasha · encrypted Murmur delivery" = "От Алекса · agent-sasha · зашифрованная доставка Murmur";
+"Recipient agent" = "Личность-получатель";
+"From Alex · agent-sasha · encrypted Murmur delivery" = "От Алекса · зашифрованная доставка Murmur";
 "Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy." = "Очередь или подтверждение доставки не означают, что человек прочитал или ответил. Проверьте статус перед повторной отправкой.";
 "Check delivery" = "Проверить доставку";
 "Send message" = "Отправить сообщение";
@@ -555,7 +555,7 @@
 "Connection map" = "Карта связей";
 "People, incoming requests and decisions. Open a linked owner chat when one is verified." = "Люди, входящие запросы и решения. Чат владельца открывается при подтверждённой привязке.";
 "Your action" = "Требует вашего действия";
-"Waiting for agents" = "Ждём агентов";
+"Waiting for agents" = "Ждём помощников";
 "Waiting for people" = "Ждём людей";
 "Needs verification" = "Нужна проверка";
 "Open owner chat" = "Открыть чат владельца";
@@ -582,7 +582,7 @@
 "Reading message…" = "Читаем сообщение…";
 "Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up." = "Mac-приложение: обзор, сообщения и переходы. Сервер: зашифрованная доставка и WakeMonitor. Дашборд: история и источники. Каждый привязанный чат владельца ведёт свои вопросы.";
 "Message search reads accessible Murmur history from your server. Private contours show status only." = "Поиск читает доступную историю Murmur с сервера. Приватные контуры показывают только статус.";
-"Open this agent's verified owner chat" = "Открыть подтверждённый чат владельца этого агента";
+"Open this agent's verified owner chat" = "Открыть подтверждённый чат владельца этой личности";
 "Status only · messages and identity are outside this view." = "Только статус · сообщения и идентичность вне этого экрана.";
 "No private status in this snapshot." = "В этом снимке нет статуса приватного контура.";
 "Active at last check" = "Процесс запущен при последней проверке";
@@ -594,8 +594,8 @@
 "Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question." = "В уведомлении – имена отправителей и количество, без текста сообщений. Первый снимок тихий. Доставка не закрывает вопрос.";
 
 "Access & context" = "Доступ и контекст";
-"Responder" = "Обработчик ответов";
-"Not assigned · manual reply needed" = "Не назначен · нужен ручной ответ";
+"Responder" = "Обработчик на этом сервере";
+"Not assigned · manual reply needed" = "Здесь не зарегистрирован · проверьте маршрут ответа";
 "Attach the approved brief" = "Приложить разрешённый бриф";
 "Sending is disabled by your contact policy." = "Отправка выключена в правилах контакта.";
 "Budget observation is separate from each contact’s responder. Check People for missing responders." = "Проверка бюджета отделена от обработчиков контактов. Отсутствующие обработчики показаны в People.";
@@ -632,7 +632,7 @@
 "Clear this test and prepare another one" = "Сбросить этот тест и подготовить новый";
 "Close the pairing sheet" = "Закрыть окно связывания";
 "Close this sheet; an unsent message is discarded" = "Закрыть окно; неотправленное сообщение пропадёт";
-"Close without creating a profile" = "Закрыть, не создавая профиль";
+"Close without creating a profile" = "Закрыть без создания личности";
 "Close without saving the rules" = "Закрыть, не сохраняя правила";
 "Compose a message; it leaves only after you press Send message" = "Написать сообщение; оно уходит только после нажатия кнопки отправки";
 "Continue with the files already saved; no new identity is created" = "Продолжить с уже сохранёнными файлами; новая личность не создаётся";
@@ -640,13 +640,13 @@
 "Copy the connection check results to the clipboard" = "Скопировать результаты проверки в буфер обмена";
 "Copy the test request to paste into your AI conversation" = "Скопировать тестовый запрос, чтобы вставить его в разговор с ассистентом";
 "Copy your Reply line to return to the colleague" = "Скопировать строку ответа, чтобы вернуть коллеге";
-"Create a profile for a server you already run" = "Создать профиль для своего сервера";
+"Create a profile for a server you already run" = "Создать личность для своего сервера";
 "Create an Invitation line for a colleague" = "Создать строку приглашения для коллеги";
 "Create an Invitation line for one colleague" = "Создать строку приглашения для одного коллеги";
-"Create the profile for this server and agent name" = "Создать профиль для этого сервера и имени агента";
+"Create the profile for this server and agent name" = "Создать личность с этим именем для этого сервера";
 "Default ⌥⌘U, held until AIM 4 as ⌃⌥⌘M" = "По умолчанию ⌥⌘U, до AIM 4 была ⌃⌥⌘M";
 "Discard the empty attempt and start the setup again" = "Отбросить пустую попытку и начать настройку заново";
-"Edit what this person's agents may receive from this app" = "Настроить, что агенты этого человека могут получать из приложения";
+"Edit what this person's agents may receive from this app" = "Настроить, что контакты этого человека могут получать из приложения";
 "Family keys" = "Клавиши семьи";
 "Fold or unfold the list of reviewed questions" = "Свернуть или развернуть список разобранных вопросов";
 "Forget the chosen access file" = "Убрать выбранный файл доступа";
@@ -658,9 +658,9 @@
 "Interface language; message text keeps its own language" = "Язык интерфейса; текст сообщений остаётся на своём языке";
 "Invitation, language, launch at login and update checks" = "Приглашение, язык, запуск при входе и проверка обновлений";
 "Keep window open" = "Держать окно открытым";
-"Look for Claude Code, Codex and other clients on this Mac" = "Найти на этом Mac Claude Code, Codex и другие клиенты";
+"Look for Claude Code, Codex and other clients on this Mac" = "Найти на этом Mac Claude Code, Codex и другие помощники";
 "Message only, or a brief you approve here that a send may attach" = "Только сообщение или одобренный здесь бриф, который можно приложить";
-"Off: Write message refuses to send to this agent" = "Выключено: окно сообщения не отправит этому агенту";
+"Off: Write message refuses to send to this agent" = "Выключено: окно сообщения не отправит этому контакту";
 "One combination opens and closes this window from any app. Press the field, then the keys: esc keeps the old one, delete clears it. A combination another AIM app or macOS holds is refused by name." = "Одна комбинация открывает и закрывает окно из любого приложения. Нажмите поле, затем клавиши: esc оставляет прежнюю, delete очищает. Комбинация, которую держит другое приложение AIM или macOS, отклоняется с названием владельца.";
 "Open Murmur AIM in the menu bar when you log in" = "Открывать Murmur AIM в строке меню при входе";
 "Open Murmur: %@" = "Открыть Murmur: %@";
@@ -677,7 +677,7 @@
 "Open this topic in the dashboard" = "Открыть эту тему в дашборде";
 "Paste the Reply line your colleague returned" = "Вставить строку ответа, которую вернул коллега";
 "Pick a connection saved on this Mac" = "Выбрать соединение, сохранённое на этом Mac";
-"Pick a different saved profile folder" = "Выбрать другую папку с профилем";
+"Pick a different saved profile folder" = "Выбрать другую папку с личностью";
 "Pick the folder of a connection saved earlier" = "Выбрать папку ранее сохранённого соединения";
 "Pick the folder that holds Murmur's saved settings and keys" = "Выбрать папку с сохранёнными настройками и ключами Murmur";
 "Pick the server access file you were given" = "Выбрать выданный файл доступа к серверу";
@@ -690,18 +690,18 @@
 "Read the rules from the server again; unsaved edits are dropped" = "Перечитать правила с сервера; несохранённые правки пропадут";
 "Read the server overview again now" = "Прочитать обзор сервера заново сейчас";
 "Reset the record after a confirmation; a copy is kept" = "Сбросить запись после подтверждения; копия сохраняется";
-"Resume handing queued messages to the agent" = "Возобновить передачу накопленных сообщений агенту";
+"Resume handing queued messages to the agent" = "Возобновить передачу накопленных сообщений помощнику";
 "Run every connection check again" = "Заново пройти все проверки соединения";
 "Run the connection check and refresh the status" = "Проверить соединение и обновить статус";
 "Save to the server; a newer revision there refuses the write" = "Сохранить на сервере; если там уже новая ревизия, запись откажется";
-"Search for AI applications again" = "Поискать AI-приложения ещё раз";
+"Search for AI applications again" = "Поискать помощников ещё раз";
 "Send once through the owner-only helper on VM105 with a stable id" = "Отправить один раз через личный помощник на VM105 с постоянным идентификатором";
 "Send the brief approved in Access & context with this message" = "Приложить к сообщению бриф, одобренный в настройках доступа";
 "Show 50 more messages" = "Показать ещё 50 сообщений";
 "Show the Reply line and copy it to the clipboard" = "Показать строку ответа и скопировать её";
 "Show the copy of the reset setup record in Finder" = "Показать в Finder копию сброшенной записи";
 "Show the setup files in Finder" = "Показать файлы настройки в Finder";
-"Start a new profile next to the existing ones" = "Создать новый профиль рядом с существующими";
+"Start a new profile next to the existing ones" = "Создать новую личность рядом с существующими";
 "Start the background service" = "Запустить фоновую службу";
 "Start the background service so delivery continues with the window closed" = "Запустить фоновую службу, чтобы доставка шла при закрытом окне";
 "Stop or start the once-a-minute read of the overview; server monitoring keeps running" = "Остановить или запустить ежеминутное чтение обзора; мониторинг на сервере продолжается";
@@ -712,19 +712,19 @@
 "The Invitation carries a server key; confirm before it can be copied" = "В приглашении есть ключ сервера; подтвердите, прежде чем копировать";
 "The combination is held by another app" = "Комбинацию держит другое приложение";
 "The participant the test request goes to" = "Участник, которому уйдёт тестовый запрос";
-"The roster: people, their agents and the last wake outcome" = "Состав: люди, их агенты и итог последнего пробуждения";
+"The roster: people, their agents and the last wake outcome" = "Состав: люди, их личности и итог последнего пробуждения";
 "The server desk: incoming requests, decisions and questions" = "Стол на сервере: входящие запросы, решения и вопросы";
 "The tone the companion prefers; your own text is never rewritten" = "Желаемый тон; ваш текст не переписывается";
 "Theme" = "Тема";
-"This Mac: the local profile, invitations and the service" = "Этот Mac: локальный профиль, приглашения и служба";
-"Turn automatic agent wake on or off for this profile" = "Включить или выключить автоматическое пробуждение агента";
+"This Mac: the local profile, invitations and the service" = "Этот Mac: локальная личность, приглашения и служба";
+"Turn automatic agent wake on or off for this profile" = "Включить или выключить автоматическое пробуждение помощника для этой личности";
 "Turn the 6-hour update check on or off" = "Включить или выключить проверку обновлений раз в 6 часов";
 "Unpin window" = "Открепить окно";
 "Use the pasted line: join with an Invitation or add a Contact from a Reply" = "Применить вставленную строку: войти по приглашению или добавить контакт из ответа";
-"Verify this saved profile, then open it" = "Проверить этот профиль и открыть его";
+"Verify this saved profile, then open it" = "Проверить эту личность и открыть её";
 "Watch for the request and its reply for up to 15 minutes" = "Следить за запросом и ответом до 15 минут";
-"Which agent of this person receives the message" = "Какой агент этого человека получит сообщение";
-"Which agent's rules this sheet edits" = "Правила какого агента редактируются";
+"Which agent of this person receives the message" = "Какой контакт этого человека получит сообщение";
+"Which agent's rules this sheet edits" = "Правила какой личности редактируются";
 "White by default. Black turns the window and its sheets dark; the menu bar mark follows macOS and the character keeps its white plate. The same switch sits in the footer." = "По умолчанию белая. Чёрная затемняет окно и его листы; знак в строке меню следует macOS, персонаж остаётся на белой плашке. Тот же переключатель стоит в подвале.";
 "White theme" = "Белая тема";
 "Window pin" = "Закрепление окна";
@@ -738,13 +738,13 @@
 
 "Mine" = "Мне";
 
-"Agents" = "Агентам";
+"Agents" = "Помощникам";
 
 "Review" = "Проверить";
 
 "No questions in this queue." = "В этой очереди нет вопросов.";
 
-"empty_final_reply" = "Запуск агента не вернул итоговый ответ";
+"empty_final_reply" = "Запуск помощника не вернул итоговый ответ";
 
 "owner_approval_required" = "Остановлено до решения владельца";
 

@@ -38,6 +38,13 @@ avatar commands above after that build. A proposed workflow step was removed fro
 this PR because the contributor's GitHub OAuth credential lacks `workflow` scope;
 no executed CI coverage for those additional commands is claimed.
 
+Upstream CI review found 59 vocabulary violations across 28 English/Russian
+presentation entries. The follow-up changes values to Identity, Contact,
+Assistant and Wake-up according to `contracts/vocabulary.md`; technical IDs,
+localization keys, routing and permission behavior remain unchanged. The four
+vocabulary tests pass locally. This follow-up is separate from the installed AIM 9
+artifact above; an app replacement or release is not implied.
+
 ## Initial acceptance
 
 - Current design N1, arm64, upstream app source from main after v2.12.0.
