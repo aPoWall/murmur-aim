@@ -8,7 +8,7 @@ let package = Package(
     products: [.executable(name: "MurmurMenuBar", targets: ["MurmurMenuBar"])],
     targets: [
         .target(name: "MurmurTrayCore", resources: [.process("Resources")]),
-        .executableTarget(name: "MurmurMenuBar", dependencies: ["MurmurTrayCore"]),
+        .executableTarget(name: "MurmurMenuBar", dependencies: ["MurmurTrayCore"], resources: [.process("Resources")], swiftSettings: [.swiftLanguageMode(.v5)]),
         .executableTarget(name: "MurmurRuntimeLauncher", dependencies: ["MurmurTrayCore"]),
         // CommandLineTools builds the app but does not ship XCTest.
         .executableTarget(name: "MurmurProbeChecks", dependencies: ["MurmurTrayCore"],
