@@ -1,0 +1,10 @@
+{
+  "AIMOwnerSSHHost": "owner-ssh-alias",
+  "AIMServerRoot": "murmur-companion",
+  "AIMServerDatabase": ".local/var/murmur/murmur.db",
+  "AIMServerLabel": "owner server",
+  "AIMBoardURL": "https://board.example.org/murmur/",
+  "AIMOwnerResponsibility": "owner",
+  "AIMAvatarPeople": ["demo"],
+  "AIMPrivatePeers": []
+}

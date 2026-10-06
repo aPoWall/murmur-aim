@@ -14,7 +14,7 @@ struct PairingSheet: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(title).font(.title2.weight(.semibold))
+            Text(title).font(AIMTheme.title)
             if model.pairingMode == .invite {
                 Text(L10n.text("Send an Invitation to your colleague. When they send their Reply, close this window and choose “Paste colleague's Reply”."))
                     .fixedSize(horizontal: false, vertical: true)
@@ -22,27 +22,27 @@ struct PairingSheet: View {
                     if invitation.containsBrokerCredential {
                         Label(L10n.text("Contains a Server access key. Send personally."), systemImage: "key.fill")
                             .fixedSize(horizontal: false, vertical: true)
-                        Toggle(L10n.text("I will send this Invitation personally to my colleague."), isOn: $model.pairingConfirmed)
+                        Toggle(L10n.text("I will send this Invitation personally to my colleague."), isOn: $model.pairingConfirmed).help(L10n.text("The Invitation carries a server key; confirm before it can be copied"))
                     }
-                    Button(L10n.text("Copy Invitation")) { model.copyPairingLine() }
-                        .buttonStyle(.borderedProminent)
+                    Button(L10n.text("Copy Invitation")) { model.copyPairingLine() }.help(L10n.text("Copy the Invitation line to send to your colleague"))
+                        .aimQuietButtonStyle()
                         .disabled(model.busy || (invitation.containsBrokerCredential && !model.pairingConfirmed))
                 } else {
                     if model.pairingNeedsPublicServer {
-                        Text(L10n.text("Public Server address")).font(.headline)
+                        Text(L10n.text("Public Server address")).font(AIMTheme.heading)
                         TextField("server.example.org:4222", text: $model.pairingServer)
                             .textFieldStyle(.roundedBorder).accessibilityLabel(L10n.text("Public Server address"))
                         Text(L10n.text("This address is used only in the Invitation. Your Service settings stay the same."))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
                     }
-                    Button(L10n.text("Create Invitation")) { model.makeInvitation() }
-                        .buttonStyle(.borderedProminent)
+                    Button(L10n.text("Create Invitation")) { model.makeInvitation() }.help(L10n.text("Create an Invitation line for one colleague"))
+                        .aimQuietButtonStyle()
                         .disabled(model.busy || (model.pairingNeedsPublicServer && model.pairingServer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                 }
             } else if model.pairingOutput == nil && model.pairingMessage == nil {
                 if model.pairingMode == .join {
                     if let identity = model.pairingIdentity {
-                        Text(L10n.text("Identity: %@", identity)).font(.headline)
+                        Text(L10n.text("Identity: %@", identity)).font(AIMTheme.heading)
                         Text(L10n.text("The Contact will be added to this Identity."))
                     } else {
                         Text(L10n.text("Identity name"))
@@ -58,21 +58,21 @@ struct PairingSheet: View {
                 Button(model.pairingMode == .join ? L10n.text("Use invitation") : L10n.text("Add Contact")) {
                     if model.pairingMode == .join { model.joinInvitationLine() }
                     else { model.addReplyLine() }
-                }.buttonStyle(.borderedProminent)
+                }.help(L10n.text("Use the pasted line: join with an Invitation or add a Contact from a Reply")).aimQuietButtonStyle()
                     .disabled(model.busy || model.pairingInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (model.pairingMode == .join && model.pairingIdentity == nil && model.creationAgentID.isEmpty))
             }
             if model.pairingMode != .invite, let output = model.pairingOutput {
-                Text(L10n.text("Reply")).font(.headline)
+                Text(L10n.text("Reply")).font(AIMTheme.heading)
                 ScrollView { Text(output).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 100)
-                Button(L10n.text("Copy Reply")) { model.copyPairingLine() }.disabled(model.busy)
+                Button(L10n.text("Copy Reply")) { model.copyPairingLine() }.help(L10n.text("Copy your Reply line to return to the colleague")).disabled(model.busy)
             }
             if model.operating || model.creatingProfile { ProgressView(L10n.text("Working…")) }
             if let error = model.pairingError { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
             if let message = model.pairingMessage { Text(message).fixedSize(horizontal: false, vertical: true) }
             HStack {
                 Spacer()
-                Button(L10n.text("Close")) { model.showPairingSheet = false }
+                Button(L10n.text("Close")) { model.showPairingSheet = false }.help(L10n.text("Close the pairing sheet"))
                     .keyboardShortcut(.cancelAction).disabled(model.operating || model.creatingProfile)
             }
         }.padding(24).frame(width: 500)
