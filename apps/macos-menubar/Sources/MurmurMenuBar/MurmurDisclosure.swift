@@ -19,7 +19,7 @@ struct MurmurDisclosure<Content: View>: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title).font(AIMTheme.heading)
                         if let explanation {
-                            Text(explanation).font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
+                            Text(explanation).font(AIMTheme.body).foregroundStyle(AIMTheme.muted)
                         }
                     }.fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)

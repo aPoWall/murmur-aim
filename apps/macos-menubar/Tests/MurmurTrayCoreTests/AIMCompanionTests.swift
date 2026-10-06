@@ -16,28 +16,28 @@ func runAIMCompanionChecks() throws -> Int {
     try check(value.isCurrent(now: now), "recent source remains current")
     try check(!value.isCurrent(now: now.addingTimeInterval(300)), "retained snapshots expire without refresh")
     try check(!value.isCurrent(now: now.addingTimeInterval(-120)), "future timestamps fail closed")
-    object["people"] = [["id":"person:dan", "name":"Dan", "agents":["agent-danik"], "nickname":"@dan_named", "agent_labels":["agent-danik":"zima blue"], "writable_agents":["agent-danik"]]]
+    object["people"] = [["id":"person:sample", "name":"Sample", "agents":["agent-sample"], "nickname":"@sample_handle", "agent_labels":["agent-sample":"sample label"], "writable_agents":["agent-sample"]]]
     let people = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)).people
-    try check(people.first?.nickname == "@dan_named" && people.first?.writable_agents == ["agent-danik"], "exact recipient and nickname survive decoding")
+    try check(people.first?.nickname == "@sample_handle" && people.first?.writable_agents == ["agent-sample"], "exact recipient and nickname survive decoding")
     object["privacy"] = "public"
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe projection accepted") }
     catch is CocoaError {} 
     object["privacy"] = "owner-metadata"
     object["questions"] = [
-        ["id":"q-alex", "peer":"agent-jarvis", "responsibility":"alex", "status":"awaiting_user"],
-        ["id":"q-agent", "peer":"agent-danik", "responsibility":"agent", "status":"awaiting_agent"],
+        ["id":"q-owner", "peer":"agent-demo", "responsibility":"owner", "status":"awaiting_user"],
+        ["id":"q-agent", "peer":"agent-sample", "responsibility":"agent", "status":"awaiting_agent"],
         ["id":"q-peer", "responsibility":"peer", "status":"awaiting_peer"],
         ["id":"q-check", "responsibility":"verify", "status":"unclassified"]]
     object["private_contours"] = [["id":"private-1", "name":"Private line", "privacy":"status-only", "service_active":true]]
-    object["owner_threads"] = ["agent-jarvis": ["title":"Owner", "url":"codex://threads/01a0ed94-6541-7423-a18f-42545746f731"]]
+    object["owner_threads"] = ["agent-demo": ["title":"Owner", "url":"codex://threads/00000000-0000-4000-8000-000000000001"]]
     let classified = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object))
-    try check(classified.ownerQuestions.map(\.id) == ["q-alex"] && classified.agentQuestions.map(\.id) == ["q-agent"]
+    try check(classified.ownerQuestions.map(\.id) == ["q-owner"] && classified.agentQuestions.map(\.id) == ["q-agent"]
               && classified.peerQuestions.map(\.id) == ["q-peer"] && classified.verificationQuestions.map(\.id) == ["q-check"],
               "responsibility is displayed as separate work queues")
-    try check(classified.ownerThread(for: "agent-jarvis")?.verifiedURL != nil && classified.ownerThread(for: "agent-danik") == nil,
+    try check(classified.ownerThread(for: "agent-demo")?.verifiedURL != nil && classified.ownerThread(for: "agent-sample") == nil,
               "only the exact linked agent receives an owner chat")
     try check(classified.private_contours?.first?.privacy == "status-only", "private contour contains status only")
-    object["owner_threads"] = ["agent-jarvis": ["title":"Wrong", "url":"https://example.com"]]
+    object["owner_threads"] = ["agent-demo": ["title":"Wrong", "url":"https://example.com"]]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe owner URL accepted") }
     catch is CocoaError {}
     let match: [String: Any] = ["privacy":"owner-only-search", "matches":[["id":"m-1", "store":"ordinary", "excerpt":"synthetic phrase"]],
@@ -61,5 +61,27 @@ func runAIMCompanionChecks() throws -> Int {
     try check(navigation.escape(), "main Escape requests hiding without mutating navigation")
     navigation.select("Help"); navigation.openSettings(); _ = navigation.escape()
     try check(navigation.page == "Help", "each Settings visit returns to the latest selected view")
-    return 19
+    // Edition configuration: a stock build has none, and nothing unsafe survives validation.
+    let stock = AIMEditionConfig()
+    try check(!stock.isEnabled && !stock.canReachServer && stock.boardURL == nil && stock.avatarPeople.isEmpty,
+              "a stock build carries no edition, host, board or roster")
+    let hostile = AIMEditionConfig(info: ["AIMShellEdition": 1, "AIMOwnerSSHHost": "host; rm -rf /",
+                                          "AIMServerRoot": "../etc", "AIMServerDatabase": "/etc/passwd",
+                                          "AIMBoardURL": "http://board.example.org/", "AIMAvatarPeople": ["demo", "../x", "Name"]])
+    try check(hostile.isEnabled && !hostile.canReachServer && hostile.serverRoot == AIMEditionConfig.defaultServerRoot
+              && hostile.serverDatabase == nil && hostile.boardURL == nil && hostile.avatarPeople == ["demo"],
+              "invalid host, paths, plain-HTTP board and roster entries are dropped")
+    let edition = AIMEditionConfig(info: ["AIMShellEdition": 9, "AIMOwnerSSHHost": "owner-alias", "AIMServerRoot": "companion",
+                                          "AIMServerDatabase": ".local/var/murmur/murmur.db", "AIMOwnerResponsibility": "lead",
+                                          "AIMAvatarPeople": ["demo"], "AIMPrivatePeers": ["agent-private"]])
+    try check(edition.canReachServer && edition.helperEnvironment == ["MURMUR_COMPANION_ROOT=companion", "MURMUR_COMPANION_OWNER=lead",
+              "MURMUR_COMPANION_DB=.local/var/murmur/murmur.db", "MURMUR_COMPANION_AVATARS=demo", "MURMUR_COMPANION_PRIVATE=agent-private"],
+              "the helper environment carries only validated edition values")
+    let portrait = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object.merging(["people": [
+        ["id":"person:demo", "name":"Demo", "agents":["agent-demo"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"],
+        ["id":"person:demo", "name":"Private", "agents":["agent-private"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"]]]) { _, new in new })).people
+    try check(portrait[0].approvedPhoto(in: edition) != nil && portrait[0].approvedPhoto(in: stock) == nil
+              && portrait[1].approvedPhoto(in: edition) == nil,
+              "portraits follow the edition roster and never show for a private identity")
+    return 23
 }

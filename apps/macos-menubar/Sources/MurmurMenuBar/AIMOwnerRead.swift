@@ -10,11 +10,15 @@ enum AIMOwnerRead {
         guard let payload = try? JSONSerialization.data(withJSONObject: request), payload.count <= 8192,
               let source = readerURL().flatMap({ try? Data(contentsOf: $0) }), source.count <= 32_768
         else { throw CocoaError(.fileReadUnknown) }
+        let config = AIMEditionConfig.current
+        guard config.canReachServer, let host = config.ownerHost else { throw CocoaError(.fileReadNoPermission) }
         let encoded = source.base64EncodedString()
-        let remote = "python3 -B -c 'import base64;exec(compile(base64.b64decode(\"\(encoded)\"),\"<murmur-owner-reader>\",\"exec\"))'"
+        // The edition's validated settings travel as environment; the JSON request never carries a path.
+        let remote = (["env"] + config.helperEnvironment).joined(separator: " ")
+            + " python3 -B -c 'import base64;exec(compile(base64.b64decode(\"\(encoded)\"),\"<murmur-owner-reader>\",\"exec\"))'"
         let process = Process(), output = Pipe(), input = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1", "ws-povalyaev", remote]
+        process.arguments = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1", host, remote]
         process.standardInput = input
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
@@ -92,7 +96,7 @@ struct AIMMessageSearchView: View {
                 }
                 if result.matches.isEmpty { Text(L10n.text("No accessible messages matched.")) }
             }
-        }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
+        }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).aimQuietButtonStyle()
             .onExitCommand { if selected != nil { selected = nil } else { dismiss() } }
             .sheet(item: $selected) { match in AIMMessageDetailView(match: match, participant: participant(match.peer_identity)) }
     }
@@ -137,7 +141,7 @@ struct AIMMessageDetailView: View {
                 ScrollView { Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                 if message.truncated { Text(L10n.text("Message shortened by the server.")).font(AIMTheme.meta) }
             } else if !failed { ProgressView(L10n.text("Reading message…")) }
-        }.padding(24).frame(width: 620, height: 460).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
+        }.padding(24).frame(width: 620, height: 460).font(AIMTheme.body).aimQuietButtonStyle()
             .onExitCommand { dismiss() }
             .task {
                 let response = await Task.detached {

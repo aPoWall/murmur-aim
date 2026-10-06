@@ -5,13 +5,17 @@ import MurmurTrayCore
 
 /// N1 product assembly. Shared files are vendored byte-for-byte; transport stays upstream.
 @MainActor enum AIMTheme {
-    static let ink = Color(nsColor: AIMAppShellStyle.ink)
-    static let canvas = Color(nsColor: AIMAppShellStyle.canvas)
-    static let signal = Color(nsColor: AIMAppShellStyle.signal)
-    static let body = Font.custom("IBMPlexMono", size: 12)
-    static let heading = Font.custom("IBMPlexMono-SmBld", size: 13)
-    static let title = Font.custom("IBMPlexMono-SmBld", size: 18)
-    static let meta = Font.custom("IBMPlexMono-Medm", size: 11)
+    /// The edition look applies only to a stamped edition build or an explicit `--aim-*` developer command.
+    /// Shared stock views (profile, pairing, client setup, outbox) use system fonts and colors otherwise.
+    static var active: Bool { AIMEditionConfig.current.isEnabled || AIMPreview.isRequested }
+    static var ink: Color { active ? Color(nsColor: AIMAppShellStyle.ink) : .primary }
+    static var canvas: Color { active ? Color(nsColor: AIMAppShellStyle.canvas) : Color(nsColor: .windowBackgroundColor) }
+    static var signal: Color { active ? Color(nsColor: AIMAppShellStyle.signal) : .accentColor }
+    static var muted: Color { active ? Color(nsColor: AIMAppShellStyle.muted) : .secondary }
+    static var body: Font { active ? Font.custom("IBMPlexMono", size: 12) : .body }
+    static var heading: Font { active ? Font.custom("IBMPlexMono-SmBld", size: 13) : .headline }
+    static var title: Font { active ? Font.custom("IBMPlexMono-SmBld", size: 18) : .title2.weight(.semibold) }
+    static var meta: Font { active ? Font.custom("IBMPlexMono-Medm", size: 11) : .caption }
     static var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.12.0"
         let edition = Bundle.main.object(forInfoDictionaryKey: "AIMShellEdition") as? Int ?? 8
@@ -39,6 +43,13 @@ import MurmurTrayCore
         AIMAppMarkView.draw(.murmur, in: NSRect(x: 200, y: 200, width: 624, height: 624), mono: false)
         image.unlockFocus()
         return image
+    }
+}
+
+extension View {
+    /// The quiet edition button, or the system bordered button in a stock build.
+    @MainActor @ViewBuilder func aimQuietButtonStyle() -> some View {
+        if AIMTheme.active { buttonStyle(AIMQuietButtonStyle()) } else { buttonStyle(.bordered) }
     }
 }
 
@@ -179,6 +190,8 @@ struct AIMHotkeyBridge: NSViewRepresentable {
 
 /// Fixture-only offscreen capture; no window, profile, daemon or AI-client changes.
 @MainActor enum AIMPreview {
+    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-render"]
+    static var isRequested: Bool { ProcessInfo.processInfo.arguments.contains(where: commands.contains) }
     static func runIfRequested() -> Bool {
         let args = ProcessInfo.processInfo.arguments
         if let index = args.firstIndex(of: "--aim-icon"), args.indices.contains(index + 1) {
@@ -199,7 +212,7 @@ struct AIMHotkeyBridge: NSViewRepresentable {
             ?? AIMThemePolicy.load()
         AIMThemePolicy.apply(theme)
         AIMWindowState.shared.theme = theme
-        let view = NSHostingView(rootView: MurmurHomeView(model: model, initialPage: page))
+        let view = NSHostingView(rootView: AIMHomeView(model: model, initialPage: page))
         view.frame = NSRect(x: 0, y: 0, width: 740, height: 700)
         view.appearance = AIMThemePolicy.appearance(theme)
         view.layoutSubtreeIfNeeded()

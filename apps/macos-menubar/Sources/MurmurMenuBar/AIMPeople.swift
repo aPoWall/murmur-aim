@@ -10,7 +10,7 @@ struct AIMPeopleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("People & agents")).font(AIMTheme.title)
-            Text(L10n.text("Choose a person, then their agent. Messages leave through your server as Alex."))
+            Text(L10n.text("Choose a person, then their contact. Messages leave through your server under your identity."))
             TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
             if let data = model.snapshot {
                 ForEach(data.people.filter { person in
@@ -116,7 +116,7 @@ struct AIMComposeView: View {
                     Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").tag(agent)
                 }
             }.disabled(attempted).help(L10n.text("Which agent of this person receives the message"))
-            Text(L10n.text("From Alex · agent-sasha · encrypted Murmur delivery")).font(AIMTheme.meta)
+            Text(L10n.text("From your identity · encrypted Murmur delivery")).font(AIMTheme.meta)
             TextEditor(text: $message).font(AIMTheme.body).frame(height: 180).border(Color.gray.opacity(0.25)).disabled(attempted)
             Text("\(message.count) / 8000").font(AIMTheme.meta)
             if selectedPolicy?.context == "approved_brief" {
@@ -132,14 +132,14 @@ struct AIMComposeView: View {
                 if attempted {
                     Button(L10n.text("Check delivery")) { submit(statusOnly: true) }.help(L10n.text("Ask the server what happened to this attempt; nothing is resent")).disabled(busy)
                 } else {
-                    Button(L10n.text("Send message")) { submit(statusOnly: false) }.help(L10n.text("Send once through the owner-only helper on VM105 with a stable id"))
+                    Button(L10n.text("Send message")) { submit(statusOnly: false) }.help(L10n.text("Send once through the owner-only helper on your server with a stable id"))
                         .disabled(busy || selectedPolicy == nil || selectedPolicy?.send_allowed == false || peer.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || message.count > 8000)
                 }
                 if busy { ProgressView().controlSize(.small) }
             }
         }.padding(24).frame(width: 620).font(AIMTheme.body)
             .onExitCommand { if !busy { dismiss() } }
-            .interactiveDismissDisabled(busy).buttonStyle(AIMQuietButtonStyle())
+            .interactiveDismissDisabled(busy).aimQuietButtonStyle()
             .task(id: peer) { includeContext = false; selectedPolicy = nil; if let result = try? await Task.detached(operation: { try AIMPolicyTransport.load() }).value { selectedPolicy = result.peers[peer] } }
     }
     private func submit(statusOnly: Bool) {
@@ -166,9 +166,13 @@ enum AIMMessageTransport {
         return status
     }
     nonisolated static func exchange(_ payload: Data, policy: Bool) throws -> Data {
+        let config = AIMEditionConfig.current
+        guard config.canReachServer, let host = config.ownerHost else { throw CocoaError(.fileReadNoPermission) }
+        // Relative to the owner's home on that host; `serverRoot` passed validation.
+        let helper = config.serverRoot + (policy ? "/mesh_comms_policy.py" : "/send.py")
         let process = Process(), output = Pipe(), input = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1", "ws-povalyaev", policy ? "python3 /home/povalyaev/mesh-comms/mesh_comms_policy.py" : "python3 /home/povalyaev/mesh-comms/send.py"]
+        process.arguments = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1", host, "python3 " + helper]
         process.standardInput = input; process.standardOutput = output; process.standardError = FileHandle.nullDevice
         try process.run()
         let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }

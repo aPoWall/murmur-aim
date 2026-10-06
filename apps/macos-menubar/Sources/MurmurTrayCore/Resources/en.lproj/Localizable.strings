@@ -489,18 +489,17 @@
 "Dashboard" = "Dashboard";
 "History" = "History";
 "Search tools" = "Search tools";
-"Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created." = "Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created.";
+"Read the existing owner server through your Mac's SSH connection. No new identity or private keys are created." = "Read the existing owner server through your Mac's SSH connection. No new identity or private keys are created.";
 "Connect my server overview" = "Connect my server overview";
 "Reading server…" = "Reading server…";
-"Server overview unavailable. Check Tailscale and SSH ws-povalyaev. Retained observations are stale." = "Server overview unavailable. Check Tailscale and SSH ws-povalyaev. Retained observations are stale.";
+"Server overview unavailable. Check the network and the SSH alias. Retained observations are stale." = "Server overview unavailable. Check the network and the SSH alias. Retained observations are stale.";
 "Transport" = "Transport";
 "Codex service" = "Codex service";
 "Snapshot" = "Snapshot";
 "Stale snapshot" = "Stale snapshot";
-"Alex's decisions" = "Alex's decisions";
+"Owner decisions" = "Owner decisions";
 "Open topics" = "Open topics";
 "Automatic replies need a fresh budget check. Receiving messages continues." = "Automatic replies need a fresh budget check. Receiving messages continues.";
-"Continue with Vasiliev / JARVIS in Codex" = "Continue with Vasiliev / JARVIS in Codex";
 "Filter people and questions" = "Filter people and questions";
 "Questions to review" = "Questions to review";
 "Your decision" = "Your decision";
@@ -535,7 +534,7 @@
 
 "People" = "People";
 "People & agents" = "People & contacts";
-"Choose a person, then their agent. Messages leave through your server as Alex." = "Choose a person, then their contact. Messages leave through your server as Alex.";
+"Choose a person, then their contact. Messages leave through your server under your identity." = "Choose a person, then their contact. Messages leave through your server under your identity.";
 "Name, nickname or agent" = "Name, nickname or contact";
 "No linked agent" = "No linked contact";
 "Last incoming" = "Last incoming";
@@ -545,7 +544,7 @@
 "Connect your server in Settings to load people." = "Connect your server in Settings to load people.";
 "An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply." = "An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply.";
 "Recipient agent" = "Recipient contact";
-"From Alex · agent-sasha · encrypted Murmur delivery" = "From Alex · encrypted Murmur delivery";
+"From your identity · encrypted Murmur delivery" = "From your identity · encrypted Murmur delivery";
 "Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy." = "Queued or acknowledged delivery does not mean the person has read or answered. Check status before sending another copy.";
 "Check delivery" = "Check delivery";
 "Send message" = "Send message";
@@ -686,7 +685,7 @@
 "Preview the states with synthetic data" = "Preview the states with synthetic data";
 "Quick pick: use this combination if nobody holds it" = "Quick pick: use this combination if nobody holds it";
 "Quit the app; the background service keeps its own state" = "Quit the app; the background service keeps its own state";
-"Read the VM105 overview over your SSH alias once a minute; no keys are created" = "Read the VM105 overview over your SSH alias once a minute; no keys are created";
+"Read the server overview over your SSH alias once a minute; no keys are created" = "Read the server overview over your SSH alias once a minute; no keys are created";
 "Read the rules from the server again; unsaved edits are dropped" = "Read the rules from the server again; unsaved edits are dropped";
 "Read the server overview again now" = "Read the server overview again now";
 "Reset the record after a confirmation; a copy is kept" = "Reset the record after a confirmation; a copy is kept";
@@ -695,7 +694,7 @@
 "Run the connection check and refresh the status" = "Run the connection check and refresh the status";
 "Save to the server; a newer revision there refuses the write" = "Save to the server; a newer revision there refuses the write";
 "Search for AI applications again" = "Search for assistants again";
-"Send once through the owner-only helper on VM105 with a stable id" = "Send once through the owner-only helper on VM105 with a stable id";
+"Send once through the owner-only helper on your server with a stable id" = "Send once through the owner-only helper on your server with a stable id";
 "Send the brief approved in Access & context with this message" = "Send the brief approved in Access & context with this message";
 "Show 50 more messages" = "Show 50 more messages";
 "Show the Reply line and copy it to the clipboard" = "Show the Reply line and copy it to the clipboard";
@@ -766,3 +765,4 @@
 
 "Photo" = "Photo";
 "Аватар из банка; портрет не подтверждён" = "Existing avatar bank; portrait unconfirmed";
+"No SSH alias configured" = "No SSH alias configured";

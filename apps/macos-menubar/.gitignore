@@ -5,3 +5,4 @@ evidence/*.log
 go-smoke/dist/
 go-shared/build-source/
 go-shared/dist/
+packaging/aim-edition.local.json

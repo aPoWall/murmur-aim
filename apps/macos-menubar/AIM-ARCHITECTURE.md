@@ -4,12 +4,17 @@ Review phase: 6 October 2026. Engine 2.12.0; local edition AIM 9.
 This is an operator-specific macOS prototype proposed for upstream review. A PR
 does not publish an app, deploy the dashboard or authorize employee access.
 
-**Upstream adoption blocker:** this branch currently replaces the stock home with
-the AIM shell. `build-aim.sh` stamps a distinct edition/bundle, but there is no
-runtime or target gate keeping the stock build unchanged. Split the neutral
-contracts/extension point from AIM assets, fixed owner bindings and private roster
-assumptions before upstream merge. The complete edition remains on the AIM fork;
-this draft is the concrete review package for that separation.
+**Edition gate.** The stock build is unchanged: its Info.plist has no `AIMShellEdition`,
+so `MurmurMenuBarApp` starts the stock `MurmurAppDelegate` and `MurmurHomeView`, keeps the
+Dock icon and the stock shortcut, and `AIMTheme` falls back to system fonts, colours and
+bordered buttons in the shared profile, pairing, client-setup and outbox views. The edition
+delegate, home and companion start only when `packaging/stamp-aim-edition.py` stamps the key.
+No owner host, helper path, Murmur store, dashboard URL, person roster, private peer, agent
+label or conversation exists in the source: `AIMEditionConfig` reads them from the stamped
+Info.plist and validates every value; the owner-side helper reads labels and owner threads
+from optional `agent-labels.json` and `owner-threads.json` in its own server root. Operator
+values live in `packaging/aim-edition.local.json`, which git ignores; the repository carries
+`aim-edition.example.json` only.
 
 ## What the person can do
 
@@ -65,7 +70,7 @@ warnings remain visible. The feature neither imports contacts nor uploads photos
 
 ## Links and opening
 
-The canonical operator board is `https://content.aimindset.org/murmur/`, behind the
+The operator board is the edition's `AIMBoardURL`, behind the
 closed network and owner session. Dashboard navigation uses that prefix with
 `view=mesh`, `section=history|map|contacts`, and an encoded exact actor ID.
 `AIMCompanionModel.board` owns the app's base URL. Settings can explicitly select

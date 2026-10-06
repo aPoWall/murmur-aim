@@ -11,16 +11,41 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import sys
 import sqlite3
 from pathlib import Path
 
-ROOT = Path.home() / 'mesh-comms'
-OWNER_THREADS = {'agent-jarvis': {
-    'title': 'OPS · Murmur · Васильев–JARVIS',
-    'url': 'codex://threads/01a0ed94-6541-7423-a18f-42545746f731',
-}}
-AVATAR_IDS = {'alex', 'ira', 'dan', 'vlada', 'katya', 'anca', 'mykhailo', 'olya', 'vasiliev', 'sergey', 'khabarov', 'kirill_oleinichenko'}
+def _setting(name, pattern, default=''):
+    """Edition settings arrive as environment from the app, already validated there; check again here."""
+    value = os.environ.get(name, default)
+    return value if re.fullmatch(pattern, value) and '..' not in value.split('/') else default
+
+
+def _setting_list(name, pattern):
+    return {item for item in os.environ.get(name, '').split(',') if re.fullmatch(pattern, item)}
+
+
+ROOT = Path.home() / _setting('MURMUR_COMPANION_ROOT', r'[A-Za-z0-9_.][A-Za-z0-9._-]*(/[A-Za-z0-9_.][A-Za-z0-9._-]*)*', 'murmur-companion')
+DATABASE = _setting('MURMUR_COMPANION_DB', r'[A-Za-z0-9_.][A-Za-z0-9._-]*(/[A-Za-z0-9_.][A-Za-z0-9._-]*)*')
+OWNER = _setting('MURMUR_COMPANION_OWNER', r'[a-z0-9_]{1,40}', 'owner')
+AVATAR_IDS = _setting_list('MURMUR_COMPANION_AVATARS', r'[a-z0-9_]{1,40}')
+PRIVATE_PEERS = _setting_list('MURMUR_COMPANION_PRIVATE', r'[a-z0-9][a-z0-9._-]{0,62}')
+
+
+def _owner_file(name):
+    """Optional owner-side JSON beside the helpers: names and threads stay on the owner's server."""
+    try:
+        value = json.loads((ROOT / name).read_text())
+    except (OSError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+OWNER_THREADS = {agent: {'title': row['title'], 'url': row['url']}
+                 for agent, row in _owner_file('owner-threads.json').items()
+                 if isinstance(row, dict) and isinstance(row.get('title'), str) and isinstance(row.get('url'), str)}
+AGENT_LABELS = {agent: label for agent, label in _owner_file('agent-labels.json').items() if isinstance(label, str)}
 AVATARS = {'person:' + pid: '/mesh-comms-avatar-' + pid + '.jpg' for pid in AVATAR_IDS}
 MAX_AVATAR_BYTES = 262144
 CLOSED = {'answered', 'no_reply_needed', 'reported_complete', 'cancelled'}
@@ -35,7 +60,7 @@ def load(name, filename, root=ROOT):
 
 def responsibility(status):
     if status in {'awaiting_user', 'needs_owner_decision'}:
-        return 'alex'
+        return OWNER
     if status in {'awaiting_implementation_owner', 'awaiting_agent'}:
         return 'agent'
     if status in {'awaiting_peer_human', 'awaiting_external_owner', 'awaiting_peer'}:
@@ -46,7 +71,7 @@ def responsibility(status):
 def augment(data, monitor, share):
     if data.get('privacy') != 'owner-metadata' or monitor.get('privacy') != 'operator-only-metadata' or share.get('privacy') != 'metadata-only':
         raise ValueError('safe_snapshot_unavailable')
-    private = {'shaper-viola', 'agent-viola-alex', 'alex-viola'}
+    private = set(PRIVATE_PEERS)
     contours = []
     for c in share.get('private_contours', []):
         private.update([c.get('local_identity'), c.get('peer_identity')])
@@ -72,10 +97,10 @@ def augment(data, monitor, share):
         labels = person.setdefault('agent_labels', {})
         for peer in person.get('agents', []):
             if not isinstance(labels.get(peer), str) or labels[peer].strip() in {'', '-', '—', '–'}:
-                labels[peer] = {'agent-kirill':'Кирилл','agent-danik':'zima blue','agent-jarvis':'JARVIS'}.get(peer, peer)
+                labels[peer] = AGENT_LABELS.get(peer, peer)
     data.update(private_contours=contours, owner_threads=OWNER_THREADS,
                 questions=questions[:100], pending_count=len(questions),
-                decision_count=sum(q['responsibility'] == 'alex' for q in questions),
+                decision_count=sum(q['responsibility'] == OWNER for q in questions),
                 question_scope='Recorded open questions; delivery is not a semantic answer.')
     return data
 
@@ -83,7 +108,7 @@ def augment(data, monitor, share):
 
 def add_avatars(data, people, share):
     """Only current ordinary people with existing operator-approved exact assets."""
-    private = {'shaper-viola', 'agent-viola-alex', 'alex-viola'}
+    private = set(PRIVATE_PEERS)
     for contour in share.get('private_contours', []):
         private.update((contour.get('local_identity'), contour.get('peer_identity')))
     private_people = {b.get('person') for b in people.get('bindings', []) if b.get('agent') in private}
@@ -145,8 +170,10 @@ def dispatch(request, root=ROOT):
         data = add_avatars(data, json.loads((root/'people-data.json').read_text()), share)
         # Expose fixed diagnostic codes only. Raw runner errors and session paths
         # stay on the server. A failed wake is separate from transport delivery.
-        db_path = Path.home()/'.local/var/murmur-sasha/murmur.db'
+        db_path = Path.home()/DATABASE if DATABASE else None
         try:
+            if db_path is None:
+                raise sqlite3.Error('no_database')
             with sqlite3.connect('file:'+str(db_path)+'?mode=ro',uri=True) as db:
                 for peer, item in data.get('peer_policy', {}).get('peers', {}).items():
                     row = db.execute("select wake_error from local_messages where direction='inbound' and sender=? order by created_at desc limit 1",(peer,)).fetchone()

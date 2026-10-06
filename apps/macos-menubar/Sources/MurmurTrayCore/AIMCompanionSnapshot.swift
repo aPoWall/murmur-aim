@@ -13,12 +13,12 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let photo: String?
         public let photo_note: String?
         public let photo_privacy: String?
-        public var approvedPhoto: String? {
-            let allowed = Set(["alex", "ira", "dan", "vlada", "katya", "anca", "mykhailo", "olya", "vasiliev", "sergey", "khabarov", "kirill_oleinichenko"])
-            let privatePeers = Set(["shaper-viola", "agent-viola-alex", "alex-viola"])
-            guard id.hasPrefix("person:"), allowed.contains(String(id.dropFirst(7))),
+        /// A portrait is shown only for a person the edition lists, never for a private-contour binding.
+        public var approvedPhoto: String? { approvedPhoto(in: .current) }
+        public func approvedPhoto(in config: AIMEditionConfig) -> String? {
+            guard id.hasPrefix("person:"), config.avatarPeople.contains(String(id.dropFirst(7))),
                   photo_privacy == "owner-approved-avatar", !agents.isEmpty,
-                  agents.allSatisfy({ !privatePeers.contains($0) }),
+                  agents.allSatisfy({ !config.privatePeers.contains($0) }),
                   let photo, photo == "/mesh-comms-avatar-" + id.dropFirst(7) + ".jpg"
             else { return nil }
             return photo
@@ -36,7 +36,10 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let responsibility: String?
         public let source_id: String?
         public var needsOwner: Bool {
-            if let responsibility { return responsibility == "alex" }
+            if let responsibility {
+                return responsibility == AIMEditionConfig.defaultOwnerResponsibility
+                    || responsibility == AIMEditionConfig.current.ownerResponsibility
+            }
             return ["awaiting_user", "needs_owner_decision"].contains(status ?? "")
         }
         public var waitingForAgent: Bool { responsibility == "agent" }

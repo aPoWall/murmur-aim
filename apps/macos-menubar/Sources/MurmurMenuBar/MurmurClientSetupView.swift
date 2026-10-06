@@ -28,7 +28,7 @@ struct MurmurClientSetupView: View {
                             .disabled(model.busy || !choice.canConfigure)
                         if !choice.canConfigure {
                             Text(L10n.text("This application uses a custom configuration location that Murmur cannot verify yet."))
-                                .font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+                                .font(AIMTheme.body).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -42,7 +42,7 @@ struct MurmurClientSetupView: View {
                 Text(L10n.text("Reload your AI application or start a new session so it can load Murmur. Your current conversation is not closed automatically."))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(L10n.text("Saved settings are only the first step. Test a returned reply below."))
-                    .foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
                 MurmurDisclosure(title: L10n.text("Changed file and backup")) {
                     Text(receipt.configPath).font(AIMTheme.meta).textSelection(.enabled)
                     if let backup = receipt.backup { Text(L10n.text("Backup: %@", backup)).font(AIMTheme.meta).textSelection(.enabled) }
@@ -52,7 +52,7 @@ struct MurmurClientSetupView: View {
             Divider()
             Text(L10n.text("Test a real reply")).font(AIMTheme.heading)
             Text(L10n.text("Keep both assistants open. The other participant needs their Murmur connection set up too. This test does not start a closed AI session."))
-                .font(AIMTheme.body).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted)).fixedSize(horizontal: false, vertical: true)
+                .font(AIMTheme.body).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
             if peers.isEmpty {
                 Text(L10n.text("No participant is available yet. Finish exchanging the invitation and reply files, then refresh the connection."))
                     .fixedSize(horizontal: false, vertical: true)

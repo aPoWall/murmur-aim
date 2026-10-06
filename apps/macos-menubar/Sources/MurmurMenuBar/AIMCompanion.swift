@@ -15,13 +15,17 @@ import MurmurTrayCore
     private var timer: Timer?
     private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
     @Published var localDashboard = UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
-    static var board: String { UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
-        ? "http://127.0.0.1:8768/" : "https://content.aimindset.org/murmur/" }
+    /// The owner board comes from the edition; without one only the local development preview exists.
+    static var board: String {
+        let preview = "http://127.0.0.1:8768/"
+        return UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview") ? preview
+            : (AIMEditionConfig.current.boardURL?.absoluteString ?? preview)
+    }
     func setLocalDashboard(_ value: Bool) {
         localDashboard = value
         UserDefaults.standard.set(value, forKey: "aimLocalDashboardPreview")
     }
-    var enabled: Bool { previewConnected || UserDefaults.standard.bool(forKey: "aimServerEnabled") }
+    var enabled: Bool { previewConnected || (AIMEditionConfig.current.canReachServer && UserDefaults.standard.bool(forKey: "aimServerEnabled")) }
     var current: Bool { !failed && snapshot?.isCurrent() == true }
     var badge: String {
         guard enabled else { return "" }
@@ -122,7 +126,7 @@ struct AIMCompanionView: View {
     @State private var query = ""
     @State private var showAllQuestions = false
     @State private var showSearch = false
-    @State private var queue = "alex"
+    @State private var queue = "owner"
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
@@ -134,17 +138,17 @@ struct AIMCompanionView: View {
                 Button(L10n.text("Search messages")) { showSearch = true }.help(L10n.text("Search accessible Murmur messages on your server"))
             }
             if !model.enabled {
-                Text(L10n.text("Read the existing VM105 server through your Mac's SSH connection. No new identity or private keys are created."))
-                Button(L10n.text("Connect my server overview")) { model.connect() }.help(L10n.text("Read the VM105 overview over your SSH alias once a minute; no keys are created"))
+                Text(L10n.text("Read the existing owner server through your Mac's SSH connection. No new identity or private keys are created."))
+                Button(L10n.text("Connect my server overview")) { model.connect() }.help(L10n.text("Read the server overview over your SSH alias once a minute; no keys are created"))
             } else {
                 HStack {
-                    Text("VM105 · agent-sasha").font(AIMTheme.heading)
+                    Text(AIMEditionConfig.current.serverLabel).font(AIMTheme.heading)
                     Spacer()
                     Button(L10n.text("Refresh")) { model.refresh() }.help(L10n.text("Read the server overview again now")).disabled(model.busy)
                 }
                 if model.busy && model.snapshot == nil { ProgressView(L10n.text("Reading server…")) }
                 if model.failed {
-                    Text(L10n.text("Server overview unavailable. Check Tailscale and SSH ws-povalyaev. Retained observations are stale.")).foregroundStyle(AIMTheme.signal)
+                    Text(L10n.text("Server overview unavailable. Check the network and the SSH alias. Retained observations are stale.")).foregroundStyle(AIMTheme.signal)
                 }
                 if let data = model.snapshot {
                     Text("Murmur \(data.server_version) · " + L10n.text("Transport") + ": \(data.transport) · " + L10n.text("Codex service") + ": \(data.responder)").font(AIMTheme.meta)
@@ -165,12 +169,12 @@ struct AIMCompanionView: View {
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
                     Picker(L10n.text("Answer queue"), selection: $queue) {
-                        Text(L10n.text("Mine") + " · \(data.ownerQuestions.count)").tag("alex")
+                        Text(L10n.text("Mine") + " · \(data.ownerQuestions.count)").tag("owner")
                         Text(L10n.text("Agents") + " · \(data.agentQuestions.count)").tag("agent")
                         Text(L10n.text("People") + " · \(data.peerQuestions.count)").tag("peer")
                         Text(L10n.text("Review") + " · \(data.verificationQuestions.count)").tag("verify")
                     }.pickerStyle(.segmented)
-                    let questions = data.questions.filter { $0.responsibility == queue }
+                    let questions = queue == "owner" ? data.ownerQuestions : data.questions.filter { $0.responsibility == queue }
                     questionSection(L10n.text("Answer queue"), questions: questions, data: data)
                     if questions.isEmpty { Text(L10n.text("No questions in this queue.")).font(AIMTheme.meta) }
                     if questions.count > 3 {
@@ -234,7 +238,7 @@ struct AIMCompanionSettings: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("Server companion")).font(AIMTheme.heading)
-            Text("VM105 · ws-povalyaev · agent-sasha").font(AIMTheme.meta)
+            Text(AIMEditionConfig.current.serverLabel + " · " + (AIMEditionConfig.current.ownerHost ?? L10n.text("No SSH alias configured"))).font(AIMTheme.meta)
             Text(L10n.text("Reads existing observations once per minute while the app is running. Server monitoring continues when the app closes."))
             HStack {
                 Button(model.enabled ? L10n.text("Disconnect overview") : L10n.text("Connect my server overview")) { model.enabled ? model.disconnect() : model.connect() }.help(L10n.text("Stop or start the once-a-minute read of the overview; server monitoring keeps running"))
@@ -242,7 +246,7 @@ struct AIMCompanionSettings: View {
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
             Toggle(L10n.text("Local dashboard preview on this Mac"), isOn: Binding(get: { model.localDashboard }, set: { model.setLocalDashboard($0) }))
-            Text(model.localDashboard ? "http://127.0.0.1:8768/" : "https://content.aimindset.org/murmur/").font(AIMTheme.meta).textSelection(.enabled)
+            Text(AIMCompanionModel.board).font(AIMTheme.meta).textSelection(.enabled)
             Text(L10n.text("Dates use this Mac's timezone") + " · " + TimeZone.current.identifier).font(AIMTheme.meta)
             Text(L10n.text("Notifications show sender names and counts, without message text. The first snapshot is silent. Delivery does not close a question."))
             Divider()

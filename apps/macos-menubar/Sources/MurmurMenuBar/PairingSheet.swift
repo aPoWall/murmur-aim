@@ -25,7 +25,7 @@ struct PairingSheet: View {
                         Toggle(L10n.text("I will send this Invitation personally to my colleague."), isOn: $model.pairingConfirmed).help(L10n.text("The Invitation carries a server key; confirm before it can be copied"))
                     }
                     Button(L10n.text("Copy Invitation")) { model.copyPairingLine() }.help(L10n.text("Copy the Invitation line to send to your colleague"))
-                        .buttonStyle(AIMQuietButtonStyle())
+                        .aimQuietButtonStyle()
                         .disabled(model.busy || (invitation.containsBrokerCredential && !model.pairingConfirmed))
                 } else {
                     if model.pairingNeedsPublicServer {
@@ -33,10 +33,10 @@ struct PairingSheet: View {
                         TextField("server.example.org:4222", text: $model.pairingServer)
                             .textFieldStyle(.roundedBorder).accessibilityLabel(L10n.text("Public Server address"))
                         Text(L10n.text("This address is used only in the Invitation. Your Service settings stay the same."))
-                            .font(AIMTheme.meta).foregroundStyle(Color(nsColor: AIMAppShellStyle.muted))
+                            .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
                     }
                     Button(L10n.text("Create Invitation")) { model.makeInvitation() }.help(L10n.text("Create an Invitation line for one colleague"))
-                        .buttonStyle(AIMQuietButtonStyle())
+                        .aimQuietButtonStyle()
                         .disabled(model.busy || (model.pairingNeedsPublicServer && model.pairingServer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                 }
             } else if model.pairingOutput == nil && model.pairingMessage == nil {
@@ -58,7 +58,7 @@ struct PairingSheet: View {
                 Button(model.pairingMode == .join ? L10n.text("Use invitation") : L10n.text("Add Contact")) {
                     if model.pairingMode == .join { model.joinInvitationLine() }
                     else { model.addReplyLine() }
-                }.help(L10n.text("Use the pasted line: join with an Invitation or add a Contact from a Reply")).buttonStyle(AIMQuietButtonStyle())
+                }.help(L10n.text("Use the pasted line: join with an Invitation or add a Contact from a Reply")).aimQuietButtonStyle()
                     .disabled(model.busy || model.pairingInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (model.pairingMode == .join && model.pairingIdentity == nil && model.creationAgentID.isEmpty))
             }
             if model.pairingMode != .invite, let output = model.pairingOutput {

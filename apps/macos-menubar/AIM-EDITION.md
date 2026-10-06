@@ -27,7 +27,7 @@ shortcut is retained and avoids MEM PRISM's Option-Command-M.
 
 The app has its own bundle/preferences identity, `org.aimindset.murmur`. It does
 not copy keys, create a new identity on launch, register at login, change MCP
-settings or take ownership of VM105 agent-sasha. An existing local profile can be
+settings or take ownership of the owner's server identity. An existing local profile can be
 chosen through upstream's verified recovery flow. The server companion uses the existing SSH alias for owner-only observations and
 explicit user messages. Remote conversations retain their existing server monitor.
 
@@ -66,11 +66,11 @@ edition; rebuild this fork to retain the customization.
 
 ## AIM 2 – server companion, 2026-09-29
 
-The default Overview reads an owner-only projection over the existing `ws-povalyaev` SSH alias, once per minute while running. It uses `~/mesh-comms/companion.py` from team-ai-infrastructure. No daemon, timer, local identity, broker key or responder is created. Profile onboarding remains in Local.
+The default Overview reads an owner-only projection over the owner's existing SSH alias (`AIMOwnerSSHHost`), once per minute while running. It uses `companion.py` in the configured server root (`AIMServerRoot`). No daemon, timer, local identity, broker key or responder is created. Profile onboarding remains in Local.
 
 The server retains delivery and native WakeMonitor ownership. A live systemd service is displayed independently from the dated budget receipt. Unknown/stale data remains visibly stale. People show observed message dates, not online presence. Alex decisions and incoming review candidates are separate counts.
 
-In AIM 2, opt-in macOS notifications contained counts only; AIM 3 also shows sender names. Notifications use a quiet first baseline and persisted SHA-256 event fingerprints. The app keeps people/questions in memory. It opens the private dashboard, topic deep links and the dedicated Vasiliev–JARVIS Codex session; it does not copy session context or choose a responder from the foreground app.
+In AIM 2, opt-in macOS notifications contained counts only; AIM 3 also shows sender names. Notifications use a quiet first baseline and persisted SHA-256 event fingerprints. The app keeps people/questions in memory. It opens the private dashboard, topic deep links and the owner's dedicated Codex session; it does not copy session context or choose a responder from the foreground app.
 
 Prerequisites: existing SSH alias and host trust, Tailscale, server projection. A failed SSH read times out after 20 seconds and cannot start a second overlapping read. UI refresh uses no model calls. Disconnect stops only this app's read loop.
 
@@ -80,8 +80,8 @@ Runtime remains upstream 2.12.0; AIM shell edition 2. The local app and source a
 
 People is a dedicated server roster with initials, verified nicknames and exact agent IDs.
 The English interface is the default; Russian remains selectable. Original message and
-question text keeps its source language. Danik (zima blue / agent-danik) is distinct from
-Alexander Vasiliev (JARVIS / agent-jarvis and SOTNIK / aim-codex).
+question text keeps its source language. People are told apart by person ID and exact agent bindings,
+never by a similar display name.
 
 Write message sends only after the user presses Send message, through the existing
 SSH identity to the owner-only `mesh-comms/send.py` helper. A stable UUID is retained
@@ -97,7 +97,7 @@ to the budget guard. Keep one Telegram bot poller: the existing owner-only bridg
 `/to agent-id message` in the Murmur group. A configured peer is not proof that the
 recipient imported the pairing reply or can wake an agent.
 
-This build is an operator companion configured for Alex's SSH alias. The public catalog
+This build is an operator companion configured for the owner's SSH alias. The public catalog
 contains product documentation and synthetic previews only; it does not distribute
 credentials, connection invitations, private messages or a universal installer.
 
@@ -156,7 +156,7 @@ in memory through the existing owner SSH alias; it installs no server files,
 marks no inbox items read, starts no model and excludes private message bodies.
 Search result labels resolve the human and agent from the observed roster.
 
-Open questions are grouped into Alex's decisions, agent work, the other side and
+Open questions are grouped into the owner's decisions, agent work, the other side and
 items needing verification. Private connections have a separate status-only
 section. Only an exact verified peer-to-owner mapping opens a Codex chat; there
 is no generic JARVIS fallback for other people. Existing explicit composer and

@@ -21,6 +21,8 @@ cp "$SOURCE/Resources/Info.plist" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier org.aimindset.murmur' "$APP/Contents/Info.plist"
 python3 "$SOURCE/packaging/stamp-version.py" "$APP/Contents/Info.plist" "$RUNTIME/runtime-manifest.json"
 /usr/libexec/PlistBuddy -c "Add :AIMSourceCommit string $(git -C "$SOURCE" rev-parse HEAD)" "$APP/Contents/Info.plist"
+# Operator settings come from packaging/aim-edition.local.json (not in git); see aim-edition.example.json.
+python3 "$SOURCE/packaging/stamp-aim-edition.py" "$APP/Contents/Info.plist" "${AIM_EDITION:-9}"
 /usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string MurmurAIM' "$APP/Contents/Info.plist"
 /usr/bin/ditto "$RUNTIME" "$APP/Contents/Resources/runtime"
 "$BIN/MurmurMenuBar" --aim-icon "$SOURCE/dist/aim-icon.png"

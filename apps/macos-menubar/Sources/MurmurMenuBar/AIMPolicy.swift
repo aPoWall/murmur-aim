@@ -53,7 +53,7 @@ struct AIMPolicyView: View {
                 Spacer()
                 Button(L10n.text("Save rules")) { save() }.help(L10n.text("Save to the server; a newer revision there refuses the write")).disabled(busy || data?.peers[peer] == nil || brief.count > 4000)
             }
-        }.padding(24).frame(width: 650).font(AIMTheme.body).buttonStyle(AIMQuietButtonStyle())
+        }.padding(24).frame(width: 650).font(AIMTheme.body).aimQuietButtonStyle()
             .task { load() }.onChange(of: peer) { _ in populate() }.onExitCommand { if !busy { dismiss() } }
             .interactiveDismissDisabled(busy)
     }
