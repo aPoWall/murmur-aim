@@ -16,7 +16,7 @@
 //
 // v2 (rule 53): every colour of the shell carries two appearances, the N1 profile for the white theme and the
 // N1 dark profile for the black one. A product switches the theme through `AIMThemePolicy.apply`, which sets the
-// appearance of the process; nothing in the shell repaints by hand.
+// appearance of the process. CALayer colours are snapshots: resolve them explicitly and refresh on theme changes.
 //
 // `NSColor(aimHex:)` lives in AIMVoxelView.swift; the files ship together in every product.
 import AppKit
@@ -294,6 +294,23 @@ public enum AIMThemePolicy {
     /// Sets the appearance of the whole process: every window, popover and menu of the product follows, and the
     /// colours of the shell resolve to the matching profile. The system appearance of the Mac is never touched.
     public static func apply(_ mode: Mode) { NSApplication.shared.appearance = appearance(mode) }
+    /// A theme button runs inside the OLD drawing appearance. Setting NSApp.appearance does not change that
+    /// context. Build or refresh product surfaces here so dynamic NSColors resolve against the requested theme.
+    /// Existing CALayer CGColors still need to be reassigned or their owning surface rebuilt on every change.
+    public static func withAppearance<T>(_ mode: Mode, _ body: () -> T) -> T {
+        var result: T!
+        appearance(mode)!.performAsCurrentDrawingAppearance { result = body() }
+        return result
+    }
+    /// Resolve a layer colour outside draw(_:) without inheriting the OS or the previous callback's theme.
+    /// Pass view.effectiveAppearance for a surface with an explicit override (for example a white icon plate).
+    public static func resolvedCGColor(_ color: NSColor, appearance: NSAppearance? = nil) -> CGColor {
+        var result: CGColor!
+        (appearance ?? NSApplication.shared.effectiveAppearance).performAsCurrentDrawingAppearance {
+            result = color.cgColor
+        }
+        return result
+    }
     /// The header character keeps its drawing in both themes: it is drawn in the light appearance on the white
     /// plate, which disappears into a white panel and stands as a tile on a black one.
     public static func plate(_ view: NSView) {

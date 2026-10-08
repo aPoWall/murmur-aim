@@ -57,6 +57,7 @@ struct AIMHomeView: View {
             AIMFooterBridge(keys: window.keysLine, status: model.isDemo ? "preview" : (["Overview", "People"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
+            .preferredColorScheme(window.theme == .dark ? .dark : .light)
             .tint(AIMTheme.signal).aimQuietButtonStyle()
             .background(AIMKeyboardBridge(onEscape: handleEscape, onSettings: { navigation.openSettings() }, onTab: { navigation.select($0) })
                 .frame(width: 0, height: 0).accessibilityHidden(true))

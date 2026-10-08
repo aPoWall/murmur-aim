@@ -66,16 +66,18 @@ struct AIMQuietButtonStyle: ButtonStyle {
 }
 
 @MainActor final class AIMWindowState: NSObject, NSWindowDelegate, ObservableObject {
-    static let shared = AIMWindowState()
+    static let shared = AIMWindowState(defaults: AIMThemeRegression.scratchDefaults ?? .standard)
     /// A saved pin survives migration, Escape and relaunch.
     static let pinKey = "org.aimindset.murmur.pinned"
     /// Rule 49: ⌥⌘U in the family pattern, recorded in settings (rule 50). Until AIM 5 the app held ⌃⌥⌘M.
     static let hotkeyStore = FamilyHotkeyStore(owner: FamilyHotkeys.murmur,
                                                fallback: FamilyHotkey(keyCode: 32, modifiers: [.option, .command], character: "u"))
     var surface: AIMSurface?
+    private weak var attachedWindow: NSWindow?
+    private let defaults: UserDefaults
     @Published var pinned: Bool
     /// Rule 53: white by default, `org.aimindset.murmur.theme`.
-    @Published var theme: AIMThemePolicy.Mode = AIMThemePolicy.load()
+    @Published var theme: AIMThemePolicy.Mode
     @Published var hotkey: FamilyHotkey? = AIMWindowState.hotkeyStore.current
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
@@ -84,8 +86,10 @@ struct AIMQuietButtonStyle: ButtonStyle {
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
     var onStateChange: (() -> Void)?
 
-    override init() {
-        let d = UserDefaults.standard
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        theme = AIMThemePolicy.load(defaults)
+        let d = defaults
         let resolution = AIMPinPolicy.resolve(stored: d.object(forKey: Self.pinKey) == nil ? nil : d.bool(forKey: Self.pinKey),
                                               migrated: d.bool(forKey: AIMPinPolicy.migrationKey))
         if resolution.writePinned { d.set(resolution.pinned, forKey: Self.pinKey) }
@@ -95,15 +99,20 @@ struct AIMQuietButtonStyle: ButtonStyle {
     }
     func setPinned(_ value: Bool) {
         pinned = value
-        UserDefaults.standard.set(value, forKey: Self.pinKey)
+        defaults.set(value, forKey: Self.pinKey)
         surface?.pinned = value
         onStateChange?()
     }
     func setTheme(_ mode: AIMThemePolicy.Mode) {
-        theme = mode
-        AIMThemePolicy.store(mode)
+        AIMThemePolicy.store(mode, defaults)
         AIMThemePolicy.apply(mode)
-        onStateChange?()
+        AIMThemePolicy.withAppearance(mode) {
+            attachedWindow?.appearance = AIMThemePolicy.appearance(mode)
+            attachedWindow?.backgroundColor = AIMAppShellStyle.canvas
+            theme = mode
+            attachedWindow?.contentView?.needsDisplay = true
+            onStateChange?()
+        }
     }
     func hotkeyChanged(_ combo: FamilyHotkey?) {
         hotkey = combo
@@ -111,6 +120,8 @@ struct AIMQuietButtonStyle: ButtonStyle {
     }
     var keysLine: String { hotkey.map { $0.display + " open and close" } ?? "no global key" }
     func attach(_ window: NSWindow) {
+        attachedWindow = window
+        window.appearance = AIMThemePolicy.appearance(theme)
         surface = AIMSurface(host: .window(window), pinned: pinned)
         window.delegate = self
     }
@@ -132,7 +143,7 @@ struct AIMHeaderBridge: NSViewRepresentable {
         // N1 family character in the header; flat family mark remains in the menu bar.
         let voxel = AIMVoxelView(model: AIMVoxelModels.murmur)
         voxel.wantsLayer = true
-        voxel.layer?.backgroundColor = AIMAppShellStyle.plate.cgColor
+        voxel.layer?.backgroundColor = AIMThemePolicy.resolvedCGColor(AIMAppShellStyle.plate, appearance: AIMThemePolicy.appearance(.light))
         voxel.toolTip = "murmur aim \u{00B7} live character \u{00B7} click: scatter and assemble"
         voxel.frame = header.markView.bounds
         voxel.autoresizingMask = [.width, .height]
@@ -190,7 +201,7 @@ struct AIMHotkeyBridge: NSViewRepresentable {
 
 /// Fixture-only offscreen capture; no window, profile, daemon or AI-client changes.
 @MainActor enum AIMPreview {
-    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-render"]
+    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-check-theme", "--aim-render"]
     static var isRequested: Bool { ProcessInfo.processInfo.arguments.contains(where: commands.contains) }
     static func runIfRequested() -> Bool {
         let args = ProcessInfo.processInfo.arguments
@@ -198,6 +209,7 @@ struct AIMHotkeyBridge: NSViewRepresentable {
             save(AIMTheme.appIcon(), to: args[index + 1]); return true
         }
         if args.contains("--aim-check-avatars") { AIMAvatarChecks.run(); return true }
+        if args.contains("--aim-check-theme") { AIMThemeRegression.run(); return true }
         if args.contains("--aim-check-shell") { checkShell(); return true }
         guard let index = args.firstIndex(of: "--aim-render"), args.indices.contains(index + 1) else { return false }
         let model = TrayModel(startRuntime: false)
