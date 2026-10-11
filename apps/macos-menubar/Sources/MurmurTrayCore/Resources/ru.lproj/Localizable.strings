@@ -766,3 +766,18 @@
 "Photo" = "Фото";
 "Аватар из банка; портрет не подтверждён" = "Аватар из банка; портрет не подтверждён";
 "No SSH alias configured" = "SSH-алиас не задан";
+
+"The team registry and your connected agents. Access rules decide what can be sent." = "Реестр команды и подключённые агенты. Правила доступа определяют, что можно отправить.";
+"Connected only" = "Только подключённые";
+"contacts" = "контактов";
+"More" = "Ещё";
+"History in dashboard" = "История на дашборде";
+"Private connection · status only" = "Приватный контур · только статус";
+"No connected sending route" = "Нет подключённого маршрута отправки";
+"Connection and access details" = "Подключение и правила доступа";
+"No contacts match these filters." = "Нет контактов по этим фильтрам.";
+"Incoming message" = "Входящее сообщение";
+"Outgoing message" = "Исходящее сообщение";
+"Recent messages · open a row to read its text. No read receipts are sent." = "Последние сообщения · откройте строку, чтобы прочитать текст. Отметка о прочтении не отправляется.";
+"Follow macOS appearance" = "Следовать теме macOS";
+"System appearance follows macOS automatically. Manual theme changes stay local to this app." = "Системная тема меняется вместе с macOS. Ручной выбор действует только в этом приложении.";

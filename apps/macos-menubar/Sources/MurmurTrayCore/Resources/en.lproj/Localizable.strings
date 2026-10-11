@@ -766,3 +766,18 @@
 "Photo" = "Photo";
 "Аватар из банка; портрет не подтверждён" = "Existing avatar bank; portrait unconfirmed";
 "No SSH alias configured" = "No SSH alias configured";
+
+"The team registry and your connected agents. Access rules decide what can be sent." = "The team registry and your connected agents. Access rules decide what can be sent.";
+"Connected only" = "Connected only";
+"contacts" = "contacts";
+"More" = "More";
+"History in dashboard" = "History in dashboard";
+"Private connection · status only" = "Private connection · status only";
+"No connected sending route" = "No connected sending route";
+"Connection and access details" = "Connection and access details";
+"No contacts match these filters." = "No contacts match these filters.";
+"Incoming message" = "Incoming message";
+"Outgoing message" = "Outgoing message";
+"Recent messages · open a row to read its text. No read receipts are sent." = "Recent messages · open a row to read its text. No read receipts are sent.";
+"Follow macOS appearance" = "Follow macOS appearance";
+"System appearance follows macOS automatically. Manual theme changes stay local to this app." = "System appearance follows macOS automatically. Manual theme changes stay local to this app.";

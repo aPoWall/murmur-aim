@@ -111,6 +111,11 @@ import MurmurTrayCore
         }
         let reloaded = AIMWindowState(defaults: defaults)
         need(reloaded.theme == .light, "new controller reloads saved theme")
+        reloaded.setFollowSystem(true)
+        need(reloaded.followsSystem && defaults.bool(forKey: "org.aimindset.murmur.followSystemAppearance"), "system choice persists in isolated defaults")
+        reloaded.setTheme(.dark)
+        need(!reloaded.followsSystem && !defaults.bool(forKey: "org.aimindset.murmur.followSystemAppearance"), "manual theme leaves automatic mode")
+        reloaded.setTheme(.light)
         print("\(checks) theme checks, \(failures) failures")
         exit(failures == 0 ? 0 : 1)
     }

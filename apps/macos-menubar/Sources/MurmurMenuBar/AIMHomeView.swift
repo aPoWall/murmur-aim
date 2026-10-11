@@ -295,6 +295,9 @@ struct AIMHomeView: View {
             Button(window.theme == .dark ? L10n.text("White theme") : L10n.text("Black theme")) { window.setTheme(window.theme == .dark ? .light : .dark) }
                 .help(L10n.text("Stored as org.aimindset.murmur.theme and applied at once"))
             Divider()
+            Toggle(L10n.text("Follow macOS appearance"), isOn: Binding(get: { window.followsSystem }, set: { window.setFollowSystem($0) }))
+            Text(L10n.text("System appearance follows macOS automatically. Manual theme changes stay local to this app.")).font(AIMTheme.meta)
+            Divider()
             Text(L10n.text("Global key")).font(AIMTheme.heading)
             Text(L10n.text("One combination opens and closes this window from any app. Press the field, then the keys: esc keeps the old one, delete clears it. A combination another AIM app or macOS holds is refused by name."))
                 .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)

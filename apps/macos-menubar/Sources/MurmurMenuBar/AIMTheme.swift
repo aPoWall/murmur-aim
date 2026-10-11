@@ -78,6 +78,8 @@ struct AIMQuietButtonStyle: ButtonStyle {
     @Published var pinned: Bool
     /// Rule 53: white by default, `org.aimindset.murmur.theme`.
     @Published var theme: AIMThemePolicy.Mode
+    @Published var followsSystem: Bool
+    private var appearanceObservation: NSKeyValueObservation?
     @Published var hotkey: FamilyHotkey? = AIMWindowState.hotkeyStore.current
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
@@ -89,6 +91,7 @@ struct AIMQuietButtonStyle: ButtonStyle {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         theme = AIMThemePolicy.load(defaults)
+        followsSystem = defaults.bool(forKey: "org.aimindset.murmur.followSystemAppearance")
         let d = defaults
         let resolution = AIMPinPolicy.resolve(stored: d.object(forKey: Self.pinKey) == nil ? nil : d.bool(forKey: Self.pinKey),
                                               migrated: d.bool(forKey: AIMPinPolicy.migrationKey))
@@ -96,6 +99,30 @@ struct AIMQuietButtonStyle: ButtonStyle {
         if resolution.markMigrated { d.set(true, forKey: AIMPinPolicy.migrationKey) }
         pinned = resolution.pinned
         super.init()
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.refreshSystemAppearance() }
+        }
+        if followsSystem { NSApp.appearance = nil; refreshSystemAppearance() }
+    }
+    func setFollowSystem(_ enabled: Bool) {
+        followsSystem = enabled
+        defaults.set(enabled, forKey: "org.aimindset.murmur.followSystemAppearance")
+        if enabled { NSApp.appearance = nil; refreshSystemAppearance() }
+        else { setTheme(theme) }
+    }
+    private func refreshSystemAppearance() {
+        guard followsSystem else { return }
+        let mode: AIMThemePolicy.Mode = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light
+        renderTheme(mode)
+    }
+    private func renderTheme(_ mode: AIMThemePolicy.Mode) {
+        AIMThemePolicy.withAppearance(mode) {
+            attachedWindow?.appearance = AIMThemePolicy.appearance(mode)
+            attachedWindow?.backgroundColor = AIMAppShellStyle.canvas
+            theme = mode
+            attachedWindow?.contentView?.needsDisplay = true
+            onStateChange?()
+        }
     }
     func setPinned(_ value: Bool) {
         pinned = value
@@ -104,15 +131,11 @@ struct AIMQuietButtonStyle: ButtonStyle {
         onStateChange?()
     }
     func setTheme(_ mode: AIMThemePolicy.Mode) {
+        followsSystem = false
+        defaults.set(false, forKey: "org.aimindset.murmur.followSystemAppearance")
         AIMThemePolicy.store(mode, defaults)
         AIMThemePolicy.apply(mode)
-        AIMThemePolicy.withAppearance(mode) {
-            attachedWindow?.appearance = AIMThemePolicy.appearance(mode)
-            attachedWindow?.backgroundColor = AIMAppShellStyle.canvas
-            theme = mode
-            attachedWindow?.contentView?.needsDisplay = true
-            onStateChange?()
-        }
+        renderTheme(mode)
     }
     func hotkeyChanged(_ combo: FamilyHotkey?) {
         hotkey = combo

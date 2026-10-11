@@ -32,7 +32,7 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Rule 47: the menu bar item is the entrance, the Dock carries no icon (LSUIElement, accessory policy).
         // Rule 53: the theme is applied before the first window is built.
-        AIMThemePolicy.apply(AIMWindowState.shared.theme)
+        if !AIMWindowState.shared.followsSystem { AIMThemePolicy.apply(AIMWindowState.shared.theme) }
         NSApp.applicationIconImage = AIMTheme.appIcon()
         let appMenu = NSMenu()
         appMenu.addItem(CommandMenuItem(L10n.text("Open Murmur")) { [weak self] in self?.showWindow() })

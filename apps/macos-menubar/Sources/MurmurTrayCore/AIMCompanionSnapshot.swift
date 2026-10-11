@@ -8,6 +8,8 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let agents: [String]
         public let last_at: String?
         public let nickname: String?
+        public let role: String?
+        public let contact_state: String?
         public let agent_labels: [String: String]?
         public let writable_agents: [String]?
         public let photo: String?
