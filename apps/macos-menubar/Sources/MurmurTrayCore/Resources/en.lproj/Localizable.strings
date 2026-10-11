@@ -767,7 +767,7 @@
 "Аватар из банка; портрет не подтверждён" = "Existing avatar bank; portrait unconfirmed";
 "No SSH alias configured" = "No SSH alias configured";
 
-"The team registry and your connected agents. Access rules decide what can be sent." = "The team registry and your connected agents. Access rules decide what can be sent.";
+"The team registry and your connected assistants. Access rules decide what can be sent." = "The team registry and your connected assistants. Access rules decide what can be sent.";
 "Connected only" = "Connected only";
 "contacts" = "contacts";
 "More" = "More";

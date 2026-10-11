@@ -767,7 +767,7 @@
 "Аватар из банка; портрет не подтверждён" = "Аватар из банка; портрет не подтверждён";
 "No SSH alias configured" = "SSH-алиас не задан";
 
-"The team registry and your connected agents. Access rules decide what can be sent." = "Реестр команды и подключённые агенты. Правила доступа определяют, что можно отправить.";
+"The team registry and your connected assistants. Access rules decide what can be sent." = "Реестр команды и подключённые помощники. Правила доступа определяют, что можно отправить.";
 "Connected only" = "Только подключённые";
 "contacts" = "контактов";
 "More" = "Ещё";

@@ -14,7 +14,7 @@ struct AIMPeopleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("People & agents")).font(AIMTheme.title)
-            Text(L10n.text("The team registry and your connected agents. Access rules decide what can be sent.")).font(AIMTheme.meta)
+            Text(L10n.text("The team registry and your connected assistants. Access rules decide what can be sent.")).font(AIMTheme.meta)
             HStack {
                 TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
                 Toggle(L10n.text("Connected only"), isOn: $connectedOnly).toggleStyle(.checkbox)
