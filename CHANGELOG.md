@@ -40,7 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A first letter from a peer is bound to nobody, so it still wakes every session; a project
   that should not take such letters sets `MURMUR_WAKE_ONLY_BOUND=1` in its settings `env`, and
   its sessions then wake only on replies in their own conversations
-  (`not-bound-to-this-session` in the ledger for the rest).
+  (`not-bound-to-this-session` in the ledger for the rest). The two sides of one DM
+  (`dm:a:b`, `dm:b:a`) are one conversation for the binding, and the sending session also owns
+  the peer: a new letter from a peer it wrote to within the window goes to that session alone,
+  in any conversation. A conversation binding outranks the peer binding.
 
 - **`doctor --peer` answers for that peer** (#282). The `peers` stage demanded a fresh
   two-way proof for every configured contact, so on a profile with many contacts it stayed

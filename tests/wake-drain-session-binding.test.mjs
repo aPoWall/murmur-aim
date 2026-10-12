@@ -76,6 +76,12 @@ const inbound = (db, conversationId, sender = "agent-peer") => db.prepare(
    VALUES (?, '2026-10-07T00:00:00.000Z', ?, ?, 'inbound', 'reply', 1)`,
 ).run(`m${++seq}-${process.pid}`, sender, conversationId);
 
+const writePeerBinding = (f, peerId, { session = SESSION_A, pid = process.pid, updatedAt = new Date().toISOString() } = {}) => {
+  fs.mkdirSync(f.bindingsDir, { recursive: true });
+  const file = path.join(f.bindingsDir, `peer-${createHash("sha256").update(peerId).digest("hex")}.json`);
+  fs.writeFileSync(file, JSON.stringify({ peerId, sessionId: session, pid, updatedAt }));
+};
+
 const writeBinding = (f, conversationId, { session = SESSION_A, pid = process.pid, updatedAt = new Date().toISOString() } = {}) => {
   fs.mkdirSync(f.bindingsDir, { recursive: true });
   const file = path.join(f.bindingsDir, `${createHash("sha256").update(conversationId).digest("hex")}.json`);
@@ -135,6 +141,9 @@ test("a reply wakes only the Claude Code session that sent on the conversation",
   assert.equal(binding.sessionId, SESSION_A);
   assert.equal(binding.conversationId, "conv-bound");
   assert.equal(binding.pid, a.child.pid);
+  const peerBinding = JSON.parse(fs.readFileSync(
+    path.join(f.bindingsDir, `peer-${createHash("sha256").update("agent-b").digest("hex")}.json`), "utf8"));
+  assert.deepEqual([peerBinding.peerId, peerBinding.sessionId, peerBinding.pid], ["agent-b", SESSION_A, a.child.pid]);
 
   const db = storeWithMessages(f);
   seedCursors(f);
@@ -243,4 +252,45 @@ test("an only-bound drain that cannot name its session wakes on nothing", (t) =>
   const run = f.drain("", ["--once"], { MURMUR_WAKE_ONLY_BOUND: "1" });
   assert.equal(run.status, 0, run.stderr);
   assert.deepEqual(f.ledger().map((e) => e.reason), ["not-bound-to-this-session", "not-bound-to-this-session"]);
+});
+
+// 12.10: the peer answers in its own DM name (`dm:agent-zed:agent-misha`) while we wrote in
+// `dm:agent-misha:agent-zed`. Both sides of one DM are one conversation.
+test("a DM binding holds whichever side named the conversation first", (t) => {
+  const f = fixture(t);
+  const db = storeWithMessages(f);
+  seedCursors(f);
+  writeBinding(f, "dm:agent-misha:agent-zed");
+  inbound(db, "dm:agent-zed:agent-misha", "agent-zed");
+  assert.equal(f.drain(SESSION_B).status, 0);
+  assert.deepEqual(f.ledger().map((e) => e.reason), ["bound-to-other-session"]);
+  assert.equal(f.drain(SESSION_A).status, 2);
+});
+
+test("a new letter from a peer goes to the session that last wrote to that peer", (t) => {
+  const f = fixture(t);
+  const db = storeWithMessages(f);
+  seedCursors(f);
+  writePeerBinding(f, "agent-jarvis");
+  inbound(db, "conv-new", "agent-jarvis");
+  inbound(db, "conv-new", "agent-stranger");
+  const other = f.drain(SESSION_B);
+  assert.equal(other.status, 2, other.stderr);
+  assert.match(other.stderr, /1 new inbound message\(s\):\n  rowid=2 \[agent-stranger\]/);
+  assert.deepEqual(f.ledger().map((e) => [e.rowid, e.reason]), [[1, "bound-to-other-session"]]);
+  const owner = f.drain(SESSION_A, ["--once"], { MURMUR_WAKE_ONLY_BOUND: "1" });
+  assert.equal(owner.status, 2, owner.stderr);
+  assert.match(owner.stderr, /1 new inbound message\(s\):\n  rowid=1 \[agent-jarvis\]/);
+});
+
+test("a conversation binding outranks the peer binding", (t) => {
+  const f = fixture(t);
+  const db = storeWithMessages(f);
+  seedCursors(f);
+  writePeerBinding(f, "agent-jarvis", { session: SESSION_A });
+  writeBinding(f, "conv-b", { session: SESSION_B });
+  inbound(db, "conv-b", "agent-jarvis");
+  assert.equal(f.drain(SESSION_A).status, 0);
+  assert.deepEqual(f.ledger().map((e) => e.reason), ["bound-to-other-session"]);
+  assert.equal(f.drain(SESSION_B).status, 2);
 });

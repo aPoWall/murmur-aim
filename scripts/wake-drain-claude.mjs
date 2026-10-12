@@ -88,7 +88,9 @@
 // that conversation then wakes only the owner; every other session skips it with reason
 // "bound-to-other-session" (in the ledger, like any other skip). The binding is honoured
 // while it is fresh and the owner's MCP process is alive; otherwise every session wakes,
-// as before. A conversation nobody has sent on yet is never bound.
+// as before. A conversation nobody has sent on yet is never bound. `dm:a:b` and `dm:b:a`
+// are one conversation. When the conversation is not bound, the sender is: the session that
+// last wrote to a peer also owns that peer's new letters, under the same freshness rules.
 //   MURMUR_WAKE_BINDINGS_DIR        binding directory (default: <store dir>/.claude-session-bindings)
 //   MURMUR_WAKE_BIND_TTL_SECONDS    how long a binding holds after its last send (default 28800)
 //   MURMUR_WAKE_ONLY_BOUND          "1": this session wakes only on replies in conversations
@@ -172,32 +174,52 @@ function pidAlive(pid) {
 // conversations bound to itself. Letters nobody asked for go to the other sessions.
 const ONLY_BOUND = process.env.MURMUR_WAKE_ONLY_BOUND === "1";
 
-/** The session key of the conversation's live owner, or null when it is not bound. */
-function liveOwner(conversationId) {
-  if (!conversationId) return null;
-  if (bindingCache.has(conversationId)) return bindingCache.get(conversationId);
+// The two sides of one DM may name it `dm:a:b` and `dm:b:a`; both are one conversation.
+function canonicalConversationId(conversationId) {
+  const dm = /^dm:([^:]+):([^:]+)$/.exec(conversationId);
+  return dm ? `dm:${[dm[1], dm[2]].sort().join(":")}` : conversationId;
+}
+
+/** The session key in one binding file if it is fresh and its owner is alive, else null. */
+function readOwner(file, field, value) {
+  if (bindingCache.has(file)) return bindingCache.get(file);
   let owner = null;
   try {
-    const file = join(BINDINGS_DIR, `${createHash("sha256").update(conversationId).digest("hex")}.json`);
-    const binding = JSON.parse(readFileSync(file, "utf8"));
+    const binding = JSON.parse(readFileSync(join(BINDINGS_DIR, file), "utf8"));
     const key = String(binding.sessionId || "").slice(0, 8);
     const age = Date.now() - Date.parse(binding.updatedAt);
-    if (binding.conversationId === conversationId && key
+    if (binding[field] === value && key
         && age >= 0 && age <= BIND_TTL_MS && pidAlive(Number(binding.pid))) {
       owner = key;
     }
   } catch {
-    // No binding, or an unreadable one: the conversation is not bound, wake as before.
+    // No binding, or an unreadable one: not bound.
   }
-  bindingCache.set(conversationId, owner);
+  bindingCache.set(file, owner);
   return owner;
 }
 
-/** Why this session must not wake on the row's conversation, or null. */
-function bindingSkip(conversationId) {
+const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+/**
+ * The session that owns this row: the live owner of its conversation, otherwise the session
+ * that last wrote to its sender (a new letter from a peer goes to whoever is talking to it).
+ * null when neither is bound.
+ */
+function liveOwner(conversationId, sender) {
+  if (conversationId) {
+    const canonical = canonicalConversationId(conversationId);
+    const owner = readOwner(`${digest(canonical)}.json`, "conversationId", canonical);
+    if (owner) return owner;
+  }
+  return sender ? readOwner(`peer-${digest(sender)}.json`, "peerId", sender) : null;
+}
+
+/** Why this session must not wake on the row, or null. */
+function bindingSkip(row) {
   // Without its own key a drain cannot tell its conversations from anyone else's.
   if (!SESSION_KEY) return ONLY_BOUND ? "not-bound-to-this-session" : null;
-  const owner = liveOwner(conversationId);
+  const owner = liveOwner(row.conversationId, row.sender);
   if (owner && owner !== SESSION_KEY) return "bound-to-other-session";
   if (ONLY_BOUND && owner !== SESSION_KEY) return "not-bound-to-this-session";
   return null;
@@ -337,7 +359,7 @@ function skipReason(row) {
   // Daemon-owned diagnostics are never AI work. Keep their skip in the same
   // durable ledger as explicit filters before advancing this session's cursor.
   if (Number(row.wakeEligible) === 0 && String(row.conversationId).startsWith("murmur:doctor:")) return "doctor-protocol";
-  const bound = bindingSkip(row.conversationId);
+  const bound = bindingSkip(row);
   if (bound) return bound;
   if (SKIP_SENDERS.has(row.sender)) return "sender-filtered";
   if (SKIP_CONVERSATIONS.has(row.conversationId)) return "conversation-filtered";

@@ -136,22 +136,35 @@ const recordCodexTaskPeerBinding = (conversationId: string, peerId: string): voi
 const claudeSessionId = process.env.CODEX_THREAD_ID ? "" : (process.env.CLAUDE_CODE_SESSION_ID || "").trim();
 const sessionBindingDir = path.resolve(path.dirname(dbPath), ".claude-session-bindings");
 
-const sessionBindingPath = (directory: string, conversationId: string): string =>
-  path.join(directory, `${createHash("sha256").update(conversationId).digest("hex")}.json`);
+// A direct conversation is named sender-first, so the two sides of one DM may carry
+// `dm:a:b` and `dm:b:a`. The binding treats both as one conversation.
+const canonicalConversationId = (conversationId: string): string => {
+  const dm = /^dm:([^:]+):([^:]+)$/.exec(conversationId);
+  return dm ? `dm:${[dm[1], dm[2]].sort().join(":")}` : conversationId;
+};
 
-const recordClaudeSessionBinding = (conversationId: string): void => {
+const digest = (value: string): string => createHash("sha256").update(value).digest("hex");
+
+const writeBindingFile = (file: string, record: Record<string, unknown>): void => {
+  const tmp = `${file}.${process.pid}`;
+  writeFileSync(tmp, JSON.stringify({
+    ...record,
+    sessionId: claudeSessionId,
+    pid: process.pid,
+    updatedAt: new Date().toISOString(),
+  }), { mode: 0o600 });
+  renameSync(tmp, file);
+};
+
+// Two records per send: the conversation (a reply on it wakes this session) and the peer
+// (a new letter from that peer, in any conversation, wakes this session too).
+const recordClaudeSessionBinding = (conversationId: string, peerId: string): void => {
   if (!claudeSessionId || !conversationId) return;
   try {
     mkdirSync(sessionBindingDir, { recursive: true, mode: 0o700 });
-    const bindingPath = sessionBindingPath(sessionBindingDir, conversationId);
-    const tmp = `${bindingPath}.${process.pid}`;
-    writeFileSync(tmp, JSON.stringify({
-      conversationId,
-      sessionId: claudeSessionId,
-      pid: process.pid,
-      updatedAt: new Date().toISOString(),
-    }), { mode: 0o600 });
-    renameSync(tmp, bindingPath);
+    const canonical = canonicalConversationId(conversationId);
+    writeBindingFile(path.join(sessionBindingDir, `${digest(canonical)}.json`), { conversationId: canonical });
+    if (peerId) writeBindingFile(path.join(sessionBindingDir, `peer-${digest(peerId)}.json`), { peerId });
   } catch {
     // A missing binding degrades to the old behaviour: every session wakes on the reply.
   }
@@ -450,7 +463,7 @@ const handleTool = async (name: string, args: Record<string, unknown>): Promise<
     // Enqueue to outbox — daemon will flush to NATS
     await outbox.enqueue(resolveMessageSubject(peer, routing.channelId), envelope);
     recordCodexTaskPeerBinding(conversationId, to);
-    recordClaudeSessionBinding(conversationId);
+    recordClaudeSessionBinding(conversationId, to);
 
     // Store outbound copy in message store
     await store.append({
@@ -534,7 +547,7 @@ const handleTool = async (name: string, args: Record<string, unknown>): Promise<
     try {
       await outbox.enqueue(resolveMessageSubject(peer, routing.channelId), envelope);
       recordCodexTaskPeerBinding(conversationId, to);
-      recordClaudeSessionBinding(conversationId);
+      recordClaudeSessionBinding(conversationId, to);
     } catch (error) {
       clearSynchronousReplySuppression(suppressionMarker);
       throw error;

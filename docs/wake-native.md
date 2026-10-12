@@ -218,6 +218,9 @@ Drain semantics:
   owner's MCP process is alive and for `MURMUR_WAKE_BIND_TTL_SECONDS` (default 28800)
   after its last send. Unbound conversations, a closed owner, and a drain without a
   session key wake every session as above. `MURMUR_WAKE_BINDINGS_DIR` moves the directory.
+  `dm:a:b` and `dm:b:a` bind as one conversation. Each send also binds the peer
+  (`peer-<sha256(peer)>.json`): when a row's conversation is not bound, its sender is looked up,
+  so a new letter from a peer this session wrote to goes to this session alone.
 - Projects that should not take letters nobody asked them for set `MURMUR_WAKE_ONLY_BOUND=1`
   in their own `.claude/settings.json` `env`. A session there wakes only on replies in
   conversations bound to itself; a first letter from a peer, or a reply bound elsewhere, is
