@@ -209,7 +209,10 @@ const digest = (value) => createHash("sha256").update(value).digest("hex");
 function liveOwner(conversationId, sender) {
   if (conversationId) {
     const canonical = canonicalConversationId(conversationId);
-    const owner = readOwner(`${digest(canonical)}.json`, "conversationId", canonical);
+    const owner = readOwner(`${digest(canonical)}.json`, "conversationId", canonical)
+      // An MCP server from before the DM rule still writes the id as given.
+      || (canonical !== conversationId
+        ? readOwner(`${digest(conversationId)}.json`, "conversationId", conversationId) : null);
     if (owner) return owner;
   }
   return sender ? readOwner(`peer-${digest(sender)}.json`, "peerId", sender) : null;

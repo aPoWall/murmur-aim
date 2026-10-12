@@ -294,3 +294,14 @@ test("a conversation binding outranks the peer binding", (t) => {
   assert.deepEqual(f.ledger().map((e) => e.reason), ["bound-to-other-session"]);
   assert.equal(f.drain(SESSION_B).status, 2);
 });
+
+test("a binding written under the raw DM id by an older MCP server still holds", (t) => {
+  const f = fixture(t);
+  const db = storeWithMessages(f);
+  seedCursors(f);
+  writeBinding(f, "dm:agent-misha:agent-jarvis");
+  inbound(db, "dm:agent-misha:agent-jarvis", "agent-jarvis");
+  assert.equal(f.drain(SESSION_B).status, 0);
+  assert.deepEqual(f.ledger().map((e) => e.reason), ["bound-to-other-session"]);
+  assert.equal(f.drain(SESSION_A).status, 2);
+});
