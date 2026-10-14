@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import CoreText
+import UserNotifications
 import MurmurTrayCore
 
 /// N1 product assembly. Shared files are vendored byte-for-byte; transport stays upstream.
@@ -224,10 +225,24 @@ struct AIMHotkeyBridge: NSViewRepresentable {
 
 /// Fixture-only offscreen capture; no window, profile, daemon or AI-client changes.
 @MainActor enum AIMPreview {
-    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-check-theme", "--aim-render"]
+    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-check-theme", "--aim-render", "--aim-notification-status"]
     static var isRequested: Bool { ProcessInfo.processInfo.arguments.contains(where: commands.contains) }
     static func runIfRequested() -> Bool {
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("--aim-notification-status") {
+            // Read the OS decision for this bundle. No activation, permission prompt,
+            // notification delivery, runtime startup or preference writes.
+            Task { @MainActor in
+                let settings = await UNUserNotificationCenter.current().notificationSettings()
+                let names: [UNAuthorizationStatus: String] = [.notDetermined:"not_determined", .denied:"denied", .authorized:"authorized", .provisional:"provisional"]
+                print("{\"bundle\":\"\(Bundle.main.bundleIdentifier ?? "unknown")\",\"authorization\":\"\(names[settings.authorizationStatus] ?? "unknown")\",\"alerts\":\(settings.alertSetting.rawValue),\"sounds\":\(settings.soundSetting.rawValue)}")
+                exit(0)
+            }
+            Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { _ in
+                print("{\"authorization\":\"unavailable\"}"); exit(1)
+            }
+            RunLoop.main.run(); return true
+        }
         if let index = args.firstIndex(of: "--aim-icon"), args.indices.contains(index + 1) {
             save(AIMTheme.appIcon(), to: args[index + 1]); return true
         }

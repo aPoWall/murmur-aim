@@ -11,3 +11,15 @@ Validation before packaging: release Swift compilation passed; 247 offscreen the
 Companion and board share mesh-comms-query.py byte-for-byte. Board assets and owner-only web sender are a separate infra PR. Web sender defaults disabled; local preview uses synthetic data. Owner decision topics, agent work, peer replies and verification are separate queues.
 
 Next: review the two PRs and test the packaged candidate. Validate owner policy revision, duplicate status receipt and linked dashboard on a test peer before enabling web sending. Production rollout is separate from this test phase.
+
+## Review correction candidate – 2026-10-14
+
+Completed native turns may explicitly return [[MURMUR_NO_REPLY_REQUIRED]] under the existing owner instructions. The runtime stores that semantic decision in the accepted-turn receipt and never sends the placeholder. Empty final answers, missing completion, failed and interrupted turns remain failures. The diagnosis found JARVIS-only instructions in the existing shared Danik/Misha responder working directory; their scope is preserved. No previous DLQ delivery is replayed or relabelled.
+
+Notifications retain the current attention keys before old hashes in the bounded 8192-hash history. First observation, repeated refresh, queue reappearance and restart stay quiet. getNotificationSettings reads the OS authorization without activation or a new permission request; --aim-notification-status is a metadata-only diagnostic that starts no companion/runtime and sends no notification. This is distinct from the saved notifications boolean.
+
+The portable private deny defaults mirror the canonical mesh_comms_policy.PRIVATE_PEERS and are contract-tested in the infra PR; they also consume the selected edition's extra deny IDs and status-only source contours. The query source remains byte-identical across repositories.
+
+Live read-only projection on 14 October: 11 contacts, 27 open topics, 3 owner decisions with source ID/date/next action (Ira pairing, Keyboard form destination, Radar historical advertising import). OPS owns operator-state updates; this patch does not write that ledger.
+
+Required acceptance after packaging: exact source/runtime manifests, signature, native probe, avatar/query boundaries, no-reply regressions and CI. Native installed AIM10, production helpers, existing permissions and schedules remain unchanged until exact-head review and rollout.

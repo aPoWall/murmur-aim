@@ -30,7 +30,9 @@ ROOT = Path.home() / _setting('MURMUR_COMPANION_ROOT', r'[A-Za-z0-9_.][A-Za-z0-9
 DATABASE = _setting('MURMUR_COMPANION_DB', r'[A-Za-z0-9_.][A-Za-z0-9._-]*(/[A-Za-z0-9_.][A-Za-z0-9._-]*)*')
 OWNER = _setting('MURMUR_COMPANION_OWNER', r'[a-z0-9_]{1,40}', 'owner')
 AVATAR_IDS = _setting_list('MURMUR_COMPANION_AVATARS', r'[a-z0-9_]{1,40}')
-PRIVATE_PEERS = _setting_list('MURMUR_COMPANION_PRIVATE', r'[a-z0-9][a-z0-9._-]{0,62}')
+# Portable mirror of mesh_comms_policy.PRIVATE_PEERS. Contract tests require parity;
+# the in-memory SSH reader must also deny these when an old edition omits settings.
+PRIVATE_PEERS = {'agent-viola-alex','shaper-viola'} | _setting_list('MURMUR_COMPANION_PRIVATE', r'[a-z0-9][a-z0-9._-]{0,62}')
 
 
 def _owner_file(name):
@@ -139,7 +141,7 @@ def contact_history(peer, root, stores):
     share = json.loads((root / 'share-data.json').read_text())
     if share.get('privacy') != 'metadata-only':
         raise ValueError('safe_snapshot_unavailable')
-    private = {'shaper-viola', 'agent-viola-alex'} | set(PRIVATE_PEERS)
+    private = set(PRIVATE_PEERS)
     for contour in share.get('private_contours', []):
         private.update((contour.get('local_identity'), contour.get('peer_identity')))
     if peer in private:
