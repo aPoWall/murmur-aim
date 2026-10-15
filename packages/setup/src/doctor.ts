@@ -203,5 +203,5 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
   const wakeFault = local.wake.faults.lastFault === 'accepted-turn-unobservable'
     ? { reason: 'accepted-turn-unobservable', fixHint: failureHints(context.serviceName)['accepted-turn-unobservable'] } : null;
   return { schema: 'murmur.doctor/1', generatedAt, agentId: (config as AgentConfig | null)?.agentId ?? null,
-    peerCheck, wakeFault, stages, summary: { worst, failedStage } };
+    peerCheck, wakeFault, wakeReaders: local.wake.readers, stages, summary: { worst, failedStage } };
 }

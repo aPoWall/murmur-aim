@@ -37,6 +37,24 @@ async function fixture(t) {
   return { context, config, snapshot, observation, write, read, db, cleanup, adapter };
 }
 
+test('doctor traffic stays in durable history without filling the personal unread badge', async t => {
+  const f = await fixture(t), store = new SQLiteMessageStore(f.context.storePath);
+  f.cleanup.push(() => store.close());
+  for (const [msgId, conversationId, text] of [['human', 'chat', 'MURMUR-DOCTOR-REPLY mentioned by a person'],
+    ['probe', 'murmur:doctor:synthetic', 'diagnostic']]) {
+    await store.append({ msgId, conversationId, direction: 'inbound', sender: 'agent-b', text, createdAt: at, transport: 'nats' });
+  }
+  const before = await fs.readFile(path.join(f.context.dataDir, 'read-state.json'), 'utf8');
+  assert.equal((await f.read()).inbox.unread, 1);
+  assert.equal((await f.read()).inbox.total, 1);
+  assert.deepEqual((await readInbox(f.context)).messages.map(m => m.msgId), ['human']);
+  assert.equal(await fs.readFile(path.join(f.context.dataDir, 'read-state.json'), 'utf8'), before);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM local_messages').get().n, 2);
+  await markInboxRead(f.context);
+  assert.equal((await f.read()).inbox.unread, 0, 'a cursor beyond the last personal message is still valid');
+  assert.equal((await readInbox(f.context)).unread, 0);
+});
+
 test('an unobservable accepted turn exposes its reason and can be dismissed without execution', async t => {
   const f = await fixture(t), store = new SQLiteMessageStore(f.context.storePath);
   f.cleanup.push(() => store.close());

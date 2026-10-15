@@ -1,9 +1,10 @@
 # Onboarding CLI
 
-The publishable `@murmurv2/cli` package exposes the same commands as `murmur`.
-During rehearsal, install only from the coordinator's explicit registry:
-`npm install --global @murmurv2/cli --registry <approved-registry-url>`.
-The public npm hold remains until a reviewed release is actually published.
+The `@murmurv2/cli` package exposes the same commands as `murmur`.
+Version 2.12.0 is published on npm; this source branch prepares 2.12.1 and must be
+built locally or installed from its reviewed candidate artifacts until publication.
+See [release preparation](releases/2.12.1.md). Rehearsals use only the selected
+registry or local tarballs; they do not publish a release.
 The package contains compiled runtime files and a Windows x64 service helper;
 it needs Node.js >=22.13.0 but no consumer-side compiler or install hooks.
 See the [CLI package guide](../packages/setup/README.md).

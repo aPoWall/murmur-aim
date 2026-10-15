@@ -58,6 +58,34 @@ test('other settings and hooks are kept, with a private backup of the original',
   assert.equal((await f.ourHooks()).length, 1);
 });
 
+test('a dedicated Claude project gets project MCP/settings and one stable wake key', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  const context = { ...f.context, clientProjectDir: project };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const plan = await previewClientConfiguration(context, f.adapter, 'claude-code');
+  assert.equal(plan.configPath, path.join(project, '.mcp.json'));
+  assert.equal(plan.wakeHook.settingsPath, path.join(project, '.claude', 'settings.json'));
+  const result = await configureClient(context, f.adapter, 'claude-code', false, plan.planId);
+  const settings = JSON.parse(await fs.readFile(result.wakeHook.settingsPath, 'utf8'));
+  assert.match(settings.hooks.Stop[0].hooks[0].command, /--session-key [a-f0-9]{8}$/);
+  assert.equal((await configureClient(context, f.adapter, 'claude-code')).changed, false);
+  await assert.rejects(fs.stat(f.configPath), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(f.settingsPath), { code: 'ENOENT' });
+  await assert.rejects(configureClient({ ...context, clientProjectDir: path.join(f.home, 'absent') }, f.adapter, 'claude-code'), /client.project-directory-required/);
+});
+
+test('project connection refuses an inherited wake hook without rewriting global or project files', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  await configureClient(f.context, f.adapter, 'claude-code');
+  const before = await fs.readFile(f.settingsPath, 'utf8');
+  await assert.rejects(configureClient({ ...f.context, clientProjectDir: project }, f.adapter, 'claude-code', true), /client.inherited-wake-hook-conflict/);
+  assert.equal(await fs.readFile(f.settingsPath, 'utf8'), before);
+  await assert.rejects(fs.stat(path.join(project, '.mcp.json')), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(path.join(project, '.claude')), { code: 'ENOENT' });
+});
+
 test('a different Murmur wake hook is replaced only on request, and the .sh variant goes', async t => {
   const f = await fixture(t);
   await fs.mkdir(path.dirname(f.settingsPath));

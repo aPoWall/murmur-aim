@@ -103,7 +103,13 @@ const DB = (dbArgument > 0 && process.argv[dbArgument + 1]) || process.env.MURMU
 // the first session to reach the hook advances it past the message and every other live
 // session — including the one holding the conversation — never sees it (see
 // murmur-coldidle-watch.sh for the measurement that produced this).
-const SESSION_KEY = (process.env.MURMUR_WAKE_SESSION_KEY || process.env.CLAUDE_CODE_SESSION_ID || "").slice(0, 8);
+const sessionArgument = process.argv.indexOf("--session-key");
+const explicitSession = sessionArgument > 0 ? process.argv[sessionArgument + 1] : undefined;
+if (sessionArgument > 0 && !/^[a-zA-Z0-9_-]{1,8}$/.test(explicitSession ?? "")) {
+  process.stderr.write("murmur wake: invalid --session-key\n");
+  process.exit(0);
+}
+const SESSION_KEY = (explicitSession || process.env.MURMUR_WAKE_SESSION_KEY || process.env.CLAUDE_CODE_SESSION_ID || "").slice(0, 8);
 const suffix = SESSION_KEY ? `-${SESSION_KEY}` : "";
 // Store key: cursor, lock and anchor describe one store. Shared between two profiles (or a
 // test next to a live profile), the store with larger rowids moves the other's anchor forward
@@ -439,6 +445,12 @@ async function main() {
   // DB not present (daemon never started) → nothing to do, and say which path was tried.
   try { statSync(DB); } catch (err) { bail("store not readable", err); }
   const deadline = ONCE || SESSION ? 0 : Date.now() + MAX_SECONDS * 1000;
+  // Own the lane before any cursor initialization or legacy adoption: otherwise a
+  // losing reader can reset the winner's cursor and replay an already emitted row.
+  if ((!ONCE && !SESSION) || explicitSession) {
+    if (!acquireLock()) process.exit(0);
+    process.on("exit", releaseLock);
+  }
 
   if (legacyPending(ANCHOR, LEGACY_ANCHOR) || legacyPending(CURSOR, LEGACY_CURSOR)) {
     const tip = await readStore(maxInbound, deadline);
@@ -502,10 +514,6 @@ async function main() {
     if (batch) { writeCursor(batch.examinedTo); advanceAnchor(batch.examinedTo); }
     process.exit(0);
   }
-
-  // poll mode: only one poller at a time
-  if (!acquireLock()) process.exit(0);
-  process.on("exit", releaseLock);
 
   while (Date.now() < deadline) {
     const batch = await readStore(db => drainBatch(db, readCursor()), deadline);

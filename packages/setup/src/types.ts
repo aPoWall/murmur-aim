@@ -7,6 +7,8 @@ export interface ServiceContext {
   nodePath: string;
   logDir: string;
   serviceName: string;
+  /** Explicit project-scoped Claude Code connection; never inferred from cwd. */
+  clientProjectDir?: string;
 }
 
 export type ServiceManager = "windows-service" | "scheduled-task" | "launchd" | "systemd" | "none";

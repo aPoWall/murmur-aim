@@ -4,8 +4,9 @@ import { realpath } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { loadConfig, readJson, safeError, validAgentId, type AgentConfig } from "./config.js";
 import { readOutboxAttention } from "./outbox-attention.js";
-import { assistantRead, wakeColumns } from "./message-status.js";
+import { assistantRead, wakeColumns, personalInboxSql } from "./message-status.js";
 import type { PlatformAdapter, ServiceContext, ServiceSnapshot } from "./types.js";
+import { readWakeReaders } from './wake-readers.js';
 
 export type Measurement = { measuredAt: string | null; unknownReason: string | null };
 const measured = (at: string): Measurement => ({ measuredAt: at, unknownReason: null });
@@ -116,14 +117,16 @@ export async function readStatus({ context: c, adapter, now = Date.now }: Status
   try {
     db = new DatabaseSync(c.storePath, { readOnly: true });
     db.exec("PRAGMA busy_timeout=1000; BEGIN");
-    const summary = db.prepare("SELECT COUNT(*) AS total, MAX(created_at) AS lastAt, COALESCE(MAX(rowid),0) AS tip FROM local_messages WHERE direction='inbound'").get() as any;
+    const summary = db.prepare(`SELECT COUNT(CASE WHEN ${personalInboxSql} THEN 1 END) AS total,
+      MAX(CASE WHEN ${personalInboxSql} THEN created_at END) AS lastAt,
+      COALESCE(MAX(rowid),0) AS tip FROM local_messages WHERE direction='inbound'`).get() as any;
     inbox.total = Number(summary.total); inbox.lastAt = summary.lastAt;
     inbox.measurements.store = measured(at);
     try {
       const cursor = await readJson(path.join(c.dataDir, "read-state.json"));
       if (cursor.schema !== "murmur.read/1" || cursor.agentId !== config?.agentId || !Number.isSafeInteger(cursor.rowid)
         || cursor.rowid < 0 || cursor.rowid > Number(summary.tip)) throw new Error("inbox.cursor-invalid");
-      inbox.unread = Number((db.prepare("SELECT COUNT(*) AS n FROM local_messages WHERE direction='inbound' AND rowid>?").get(cursor.rowid) as any).n);
+      inbox.unread = Number((db.prepare(`SELECT COUNT(*) AS n FROM local_messages WHERE direction='inbound' AND ${personalInboxSql} AND rowid>?`).get(cursor.rowid) as any).n);
       inbox.measurements.cursor = measured(at);
     } catch { /* A missing cursor is not an empty inbox. */ }
     const counts = Object.fromEntries(db.prepare("SELECT status, COUNT(*) AS n FROM outbox GROUP BY status").all().map((r: any) => [r.status, Number(r.n)]));
@@ -207,6 +210,7 @@ export async function readStatus({ context: c, adapter, now = Date.now }: Status
         unknownReason: outbox.measurements.store.unknownReason, source: "durable-outbox" },
     },
     wake: {
+      readers: await readWakeReaders(c),
       config: { enabled: config ? config.wake?.enabled !== false : null,
         mode: config ? configuredWakeMode(config) : null,
         responder: config ? configuredWakeMode(config) === "monitor" ? "codex" : config.onReceive ? null : "none" : null,

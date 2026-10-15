@@ -189,7 +189,19 @@ export function createDarwinAdapter(options: DarwinOptions = {}): PlatformAdapte
     if (absent(loaded)) return;
     if (loaded.code !== 0) throw new Error("darwin-cannot-inspect-service-before-stop");
     requireSameLoadedPath(ctx, loaded);
-    if (await readOwned(ctx) !== plist(ctx)) throw new Error("darwin-stop-profile-mismatch");
+    let owned = await readOwned(ctx);
+    // Upgrading from a Cellar-bound Node must still allow Stop before Install.
+    // Accept only the known Homebrew spelling change; all profile/runtime fields
+    // and the ownership marker must otherwise match byte for byte.
+    const oldNode = owned?.match(/<key>ProgramArguments<\/key><array><string>((?:\/opt\/homebrew|\/usr\/local)\/Cellar\/(node(?:@\d+)?)\/[^<\/]+\/bin\/node)<\/string>/);
+    if (oldNode) {
+      const prefix = oldNode[1].split('/Cellar/')[0], formula = oldNode[2];
+      const stable = [`${prefix}/opt/${formula}/bin/node`, ...(formula === 'node' ? [`${prefix}/bin/node`] : [])];
+      if (stable.includes(ctx.nodePath)) owned = owned!
+        .replace(`<array><string>${oldNode[1]}</string>`, `<array><string>${xml(ctx.nodePath)}</string>`)
+        .replace(`<key>PATH</key><string>${path.dirname(oldNode[1])}:`, `<key>PATH</key><string>${path.dirname(ctx.nodePath)}:`);
+    }
+    if (owned !== plist(ctx)) throw new Error("darwin-stop-profile-mismatch");
     const result = await run(launchctl, ["bootout", target(ctx)]);
     if (result.code !== 0 && !absent(result)) throw new Error(`darwin-bootout-failed:${result.code}`);
   }
@@ -222,10 +234,30 @@ export function createDarwinAdapter(options: DarwinOptions = {}): PlatformAdapte
     // Do not guess a writable MCP target for non-default Claude profiles.
     // Shared setup may resolve it by a client-supported configuration query.
     const claudeConfig = env.CLAUDE_CONFIG_DIR ? null : path.join(home, ".claude.json");
+    const claudeDesktop = await hasApp(["Claude.app"], "com.anthropic.claudefordesktop");
+    async function hasBundledClaudeCode() {
+      if (!claudeDesktop) return false;
+      const root = path.join(home, "Library", "Application Support", "Claude", "claude-code");
+      const directories = async (dir: string) => (await fs.readdir(dir, { withFileTypes: true }).catch(() => []))
+        .filter(entry => entry.isDirectory()).map(entry => path.join(dir, entry.name));
+      // Known desktop layouts: version/claude and version/build/claude.app/Contents/MacOS/claude.
+      // Inspect metadata only; never run a discovered binary or recurse through user files.
+      for (const version of await directories(root)) {
+        const builds = [version, ...await directories(version)];
+        for (const build of builds) for (const candidate of [path.join(build, "claude"),
+          path.join(build, "claude.app", "Contents", "MacOS", "claude")]) {
+          if (await accessible(candidate, constants.X_OK) && await fs.stat(candidate).then(s => s.isFile(), () => false)) return true;
+        }
+      }
+      return false;
+    }
+    const claudeCli = await hasExecutable("claude");
+    const bundledCode = !claudeCli && await hasBundledClaudeCode();
     return [
-      { id: "claude-code", installed: await hasExecutable("claude"), configPath: claudeConfig, format: "json",
+      { id: "claude-code", installed: claudeCli || bundledCode, configPath: claudeConfig, format: "json",
+        ...(bundledCode ? { detail: "Claude Code in the Claude desktop application" } : {}),
         ...(claudeConfig === null ? { detail: "Custom CLAUDE_CONFIG_DIR detected; MCP config target requires client verification" } : {}) },
-      { id: "claude-desktop", installed: await hasApp(["Claude.app"], "com.anthropic.claudefordesktop"), configPath: path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"), format: "json" },
+      { id: "claude-desktop", installed: claudeDesktop, configPath: path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"), format: "json" },
       { id: "codex-cli", installed: await hasExecutable("codex"), configPath: codexConfig, format: "toml" },
       { id: "codex-desktop", installed: await hasApp(["Codex.app", "ChatGPT.app"], "com.openai.codex"), configPath: codexConfig, format: "toml" },
     ];

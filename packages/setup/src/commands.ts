@@ -4,7 +4,7 @@ import { constants } from 'node:fs';
 import { access, mkdir, realpath, rmdir, stat } from 'node:fs/promises';
 import { loadConfig, readJson, safeError } from './config.js';
 import { readStatus } from './status.js';
-import { assistantRead, wakeColumns } from './message-status.js';
+import { assistantRead, wakeColumns, personalInboxSql } from './message-status.js';
 import { writeState } from './state.js';
 import type { PlatformAdapter, ServiceContext } from './types.js';
 
@@ -94,10 +94,10 @@ export async function readInbox(context: ServiceContext, limit = 20) {
         || state.rowid < 0 || state.rowid > tip) throw new Error('inbox.cursor-invalid');
       cursor = state.rowid;
     } catch { /* Reading messages must not invent or repair read state. */ }
-    const unread = cursor === null ? null : Number((db.prepare("SELECT COUNT(*) AS n FROM local_messages WHERE direction='inbound' AND rowid>?").get(cursor) as any).n);
+    const unread = cursor === null ? null : Number((db.prepare(`SELECT COUNT(*) AS n FROM local_messages WHERE direction='inbound' AND ${personalInboxSql} AND rowid>?`).get(cursor) as any).n);
     const rows = db.prepare(`SELECT rowid,conversation_id AS conversationId,msg_id AS msgId,sender,text,
       created_at AS createdAt,transport,channel_id AS channelId,sender_member_id AS senderMemberId,
-      addressee_member_id AS addresseeMemberId,${wakeColumns(db)} FROM local_messages WHERE direction='inbound'
+      addressee_member_id AS addresseeMemberId,${wakeColumns(db)} FROM local_messages WHERE direction='inbound' AND ${personalInboxSql}
       ORDER BY created_at DESC,rowid DESC LIMIT ?`).all(limit) as Array<Record<string, unknown>>;
     db.exec('COMMIT');
     return { schema: 'murmur.inbox/1', agentId: config.agentId, readCursor: cursor,

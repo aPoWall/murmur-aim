@@ -1,5 +1,7 @@
 # Murmur Connect CLI
 
+
+> Development source: **2.12.1 (unreleased)**. The published stable installation below remains 2.12.0. See [release preparation](../../docs/releases/2.12.1.md) for the coordinated package set and upgrade checks.
 The command-line tool of Murmur Connect, known as Murmur for short. Set up your Identity, exchange an Invitation and a Reply, and connect your
 Assistant to Murmur. The executable is `murmur`.
 
@@ -76,3 +78,7 @@ Service's profile before returning its existing readable folder under
 `murmur.logs/1` with `source: "native"`. Missing or unverified Services and folders
 are refused; the command does not create directories or change the Service.
 Pass the same `--service-name` used during installation when it was customized.
+
+## Dedicated Claude Code folder (2.12.1 candidate)
+
+Use `clients preview/configure --client claude-code --project-dir ABSOLUTE` to connect a dedicated existing folder. The writer preserves the selected identity, writes project MCP/hooks, shares one wake cursor across chats there, and refuses inherited wake hooks before mutation. See [desktop assistant setup](../../docs/desktop-assistants.md#one-dedicated-conversation-in-claudes-code-tab-2121-candidate). Status/doctor report live reader counts on macOS/Linux and explicit unknowns elsewhere. Homebrew Node paths use a verified stable executable; explicit runtime overrides remain unchanged.

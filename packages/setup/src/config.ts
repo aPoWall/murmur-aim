@@ -69,6 +69,10 @@ export function humanError(error: unknown): string {
     return 'Enter a valid public Server address with --broker, such as nats://server.example.com:4222. Do not include an access key in the address.';
   }
   const messages: Record<string, string> = {
+    'client.inherited-wake-hook-conflict': 'A global or parent-folder Murmur hook already wakes chats. Review and remove that older hook before connecting a dedicated folder; no settings were changed.',
+    'client.project-directory-required': 'Create and select a dedicated folder for your Murmur conversation, then try again.',
+    'client.project-must-be-dedicated': 'Choose a dedicated Murmur folder, not the assistant configuration home.',
+    'client.project-only-for-claude-code': 'The dedicated folder connection is available for Claude Code, including the Code tab in Claude.',
     'accepted-turn-unobservable': 'The Assistant accepted this message, but its outcome cannot be checked. Inspect its session before dismissing the alert; do not send the instruction again.',
     'wake.selection-invalid': 'Choose a message and the expected Identity, then try again.',
     'wake.identity-changed': 'The selected Identity has changed. Check its name before dismissing this alert.',

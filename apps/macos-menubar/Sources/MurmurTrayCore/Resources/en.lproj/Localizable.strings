@@ -766,3 +766,9 @@
 "Photo" = "Photo";
 "Аватар из банка; портрет не подтверждён" = "Existing avatar bank; portrait unconfirmed";
 "No SSH alias configured" = "No SSH alias configured";
+
+"For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection." = "For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection.";
+
+"For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically." = "For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically.";
+
+"Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately." = "Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately.";

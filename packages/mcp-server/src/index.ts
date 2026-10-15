@@ -26,6 +26,7 @@ import { NatsBroker } from "@murmurv2/broker-nats";
 import { codexTaskConversationId, defaultPeerConversationId } from "./codex-routing.js";
 import { buildReplyMatcher, createReplySignalTap, requestDelivery, requestTiming, waitForReply } from "./request-reply.js";
 import { AgentConfigCache, type AgentConfig } from "./agent-config.js";
+import { serverInstructions } from "./instructions.js";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -824,8 +825,9 @@ rl.on("line", async (line) => {
     if (req.method === "initialize") {
       ok(req.id, {
         protocolVersion: "2024-11-05",
-        serverInfo: { name: "murmur-v2-mcp", version: "0.2.0" },
+        serverInfo: { name: "murmur-v2-mcp", version: "0.2.4" },
         capabilities: { tools: {} },
+        instructions: serverInstructions,
       });
       return;
     }

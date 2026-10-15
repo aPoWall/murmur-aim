@@ -11,7 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NATS transport security (TLS + per-peer auth)** — reviewed and CI-green in #103, held for a coordinated broker/peer credential cutover. It intentionally makes existing non-loopback `nats://` configurations fail closed, so it ships with a maintenance window, not as a routine merge. Two gaps to close first: the Kubernetes ACL example does not cover JetStream subjects (`$JS.API.*`, `$JS.ACK.*`, `_INBOX.*`), and the dashboard's NATS client supports a token only, no user/password or CA.
 - **Turning on `ackSecurity.requireSigned`** — a rollout step, not a code step. Until every peer runs 2.5.0+ and the flag is set, unsigned ACKs are still accepted.
 
+## [2.12.1] - Unreleased
+
+### Added
+- **Connect the assistant you actually use** (#283). The website has a separate
+  English/Russian path and copyable prompt for an existing installation. It checks
+  tools and contacts in the person's usual conversation and requires a returned reply,
+  without creating another identity or a terminal-only helper.
+- **Dedicated Claude Code folder.** `clients preview/configure --project-dir`
+  installs project MCP settings and a shared wake key. Concurrent chats in that
+  folder cannot deliver one letter repeatedly. Inherited wake hooks are refused
+  before configuration changes. Status/doctor expose verified live reader counts
+  on macOS/Linux, with unknown results reported explicitly.
+- **MCP usage instructions at initialization.** The optional standard `instructions`
+  field explains peer messaging, local-only history, late replies and consent boundaries.
+  It does not contain private profile data and does not configure a missing connection.
+
 ### Changed
+- **Client selection explains Claude Chat versus Code.** The macOS connection screen
+  identifies the Chat tab, the Code tab and terminal sessions, and the shared Codex
+  configuration. Each connection still requires its own confirmation.
+- **Coordinated package set for 2.12.1.** The CLI follows product version 2.12.1;
+  all twelve public libraries receive patch versions and internal dependency floors
+  follow this set. MCP reports its package version 0.2.4. Third-party dependencies and
+  the Node.js 22.13.0 minimum are unchanged. See [release preparation](docs/releases/2.12.1.md).
 - **«Murmur Connect» is the project's full name** on the site (`<title>`, `og:site_name`, structured
   data, header), in the README, the repository description, the npm package descriptions and
   `server.json`. The app, the `murmur` command and the package names are unchanged; Murmur is the
@@ -25,6 +48,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Russian guides next to the English ones.
 
 ### Fixed
+- **Claude Code inside Claude.app is detected** without a separate terminal CLI.
+- **Homebrew Node paths survive upgrades.** New service/client settings persist a
+  verified stable Node path; an owned old Cellar-bound service can still be stopped
+  before reinstalling. Explicit executable overrides are preserved.
+- **Doctor traffic no longer fills the personal inbox/unread badge.** Reserved
+  diagnostic conversations stay in durable history; real letters are not marked read.
+- **Windows upgrade instructions keep service controls available** (#291). Remove
+  the selected service through the old tray before quitting it and running setup.
+  Main already carries the actionable installer refusal from #298; this release
+  includes it. No unattended service replacement or identity migration is added.
+- **Copy feedback reflects the clipboard result.** Both website prompts have independent
+  copy controls. A failed browser API and failed fallback no longer report success.
+- **Connection checks do not promise an AI reply.** The site distinguishes service
+  transport from the assistant's response, and says explicitly that opening Claude
+  Desktop Chat does not start a turn or read incoming messages automatically.
 - **`doctor --peer` answers for that peer** (#282). The `peers` stage demanded a fresh
   two-way proof for every configured contact, so on a profile with many contacts it stayed
   `peers.unmeasured` even when the selected peer had just replied to the roundtrip. With

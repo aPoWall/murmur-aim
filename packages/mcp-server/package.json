@@ -1,6 +1,6 @@
 {
   "name": "@murmurv2/mcp-server",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -9,9 +9,9 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@murmurv2/broker-nats": "^0.3.4",
-    "@murmurv2/core": "^0.6.3",
-    "@murmurv2/security": "^0.1.1"
+    "@murmurv2/broker-nats": "^0.3.7",
+    "@murmurv2/core": "^0.6.6",
+    "@murmurv2/security": "^0.1.3"
   },
   "license": "MIT",
   "repository": {

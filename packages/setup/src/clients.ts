@@ -15,6 +15,21 @@ async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clien
   const client = (await adapter.detectClients(c)).find(item => item.id === clientId);
   if (!client || !client.installed) throw new Error('client.not-detected');
   if (!client.configPath || !path.isAbsolute(client.configPath)) throw new Error('client.config-path-unverified');
+  if (c.clientProjectDir) {
+    if (clientId !== 'claude-code') throw new Error('client.project-only-for-claude-code');
+    if (!path.isAbsolute(c.clientProjectDir) || !(await stat(c.clientProjectDir).catch(() => null))?.isDirectory()) throw new Error('client.project-directory-required');
+    // An inherited global/ancestor hook would still wake other chats. Refuse before
+    // writing anything; never silently remove a person's existing integration.
+    const parents = new Set([path.dirname(client.configPath)]);
+    let parent = path.dirname(c.clientProjectDir);
+    while (true) { parents.add(parent); const next = path.dirname(parent); if (next === parent) break; parent = next; }
+    for (const dir of parents) {
+      if (dir === c.clientProjectDir) throw new Error('client.project-must-be-dedicated');
+      const file = await readClientFile(path.join(dir, '.claude', 'settings.json'));
+      if (file.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
+    }
+    return { ...client, configPath: path.join(c.clientProjectDir, '.mcp.json') };
+  }
   return { ...client, configPath: client.configPath };
 }
 async function readClientFile(file: string) {
@@ -59,8 +74,9 @@ const WAKE_WINDOW_SECONDS = 28800;
 function desiredWakeHook(c: ServiceContext) {
   // Claude Code ends a hook without its own `timeout` after 600 s (hooks reference, asyncRewake);
   // the entry carries the same window the drain script is asked for, or the script never gets it.
+  const lane = c.clientProjectDir ? createHash('sha256').update(c.clientProjectDir).digest('hex').slice(0, 8) : null;
   return { type: 'command', asyncRewake: true, timeout: WAKE_WINDOW_SECONDS,
-    command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}` };
+    command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}${lane ? ` --session-key ${lane}` : ''}` };
 }
 const isMurmurWakeHook = (hook: unknown): hook is Record<string, any> & { command: string } =>
   object(hook) && typeof hook.command === 'string' && hook.command.includes('wake-drain-claude');
@@ -161,8 +177,7 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
  * nothing about a live session having been woken, which is a separate proof.
  */
 export async function claudeWakeHookState(c: ServiceContext, adapter: PlatformAdapter): Promise<'current' | 'outdated' | 'absent'> {
-  const client = (await adapter.detectClients(c).catch(() => []))
-    .find(item => item.id === 'claude-code' && item.installed && item.configPath && path.isAbsolute(item.configPath));
+  const client = await selectedClient(c, adapter, 'claude-code').catch(() => null);
   if (!client?.configPath) return 'absent';
   const settings = await readClientFile(claudeSettingsPath(client.configPath)).catch(() => null);
   if (!settings?.existed) return 'absent';

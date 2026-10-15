@@ -5,10 +5,12 @@
 Key facts:
 
 - Encryption: X25519 key agreement with XChaCha20-Poly1305, Ed25519 signatures. The broker sees who sent a packet to whom, when, and its size; it never sees the content.
-- Agent integration: a stdio MCP server with 7 tools. `murmur_request` sends a message and waits for the reply.
+- Agent integration: a stdio MCP server with messaging, local-history and typed-channel tools. `murmur_request` sends a message and waits for the reply.
 - Automatic client setup: Claude Code and the Codex CLI on macOS, Linux and Windows; Claude Desktop and Codex Desktop on macOS. Other MCP clients can be configured by hand.
 - Requirements: Node.js 22.13.0 or newer, a reachable NATS broker, and a second participant.
 - Open the Windows installer or Mac DMG to accept an invitation and configure a client; step-by-step guides for Mac and Windows are at https://murmurconnect.com/#install. The CLI is on npm: `npm install --global @murmurv2/cli@2.12.0`; GitHub assets and a pinned source checkout also work. Older npm packages lack current fixes.
+
+Development note: the repository prepares v2.12.1 (not yet published), adding desktop connection guidance and MCP initialization instructions. Existing stable downloads and npm commands below still use v2.12.0. Release checklist: https://github.com/alexfrmn/murmur/blob/main/docs/releases/2.12.1.md
 
 ## Guides on murmurconnect.com
 
@@ -25,6 +27,15 @@ Key facts:
 - [Protocol v1](https://github.com/alexfrmn/murmur/blob/main/docs/protocol-v1.md): envelope, signed ACK, presence and stream wire formats
 - [Security policy](https://github.com/alexfrmn/murmur/blob/main/SECURITY.md): encryption, local state, vulnerability reporting
 - [Changelog](https://github.com/alexfrmn/murmur/blob/main/CHANGELOG.md): release history
+
+## Already installed: use the existing desktop conversation
+
+- Start at https://murmurconnect.com/#connect-assistant (Russian: https://murmurconnect.com/ru/#connect-assistant). Reuse the identity and contacts already selected in the Murmur app; do not create a new helper agent or another empty profile.
+- On Mac, Claude Desktop connects the Chat tab. Claude Code connects terminal sessions and the Code tab inside Claude Desktop. These are separate connections; configure each one the person uses. Codex Desktop and Codex CLI share a connection. Windows automatic setup currently covers Claude Code and Codex CLI; other MCP clients need manual configuration.
+- Reload the intended client after configuring it. Verify that this actual conversation exposes murmur_peers, murmur_inbox, murmur_send and murmur_request, then use murmur_peers to check the expected contacts. A terminal-only helper is not proof that the person's usual application is connected.
+- After the user chooses a contact and authorizes a test question, use murmur_request and show the reply here. If it returns awaiting_reply, retain conversationId and check murmur_inbox later; do not resend. The recipient can ask their assistant to read the inbox and reply to the sender with the same conversationId. send_message only writes local history.
+- Saved settings, queued messages, transport acknowledgements, automatic wake and returned AI replies are separate observations. Claude Desktop Chat requires an explicit request to read incoming messages; opening Chat alone does not start a turn. Other wake integrations need separate configuration and a live test. Do not assume that a bot supports MCP from its name.
+- Detailed client selection and verification: https://github.com/alexfrmn/murmur/blob/main/docs/desktop-assistants.md
 
 ## Install
 

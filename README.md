@@ -62,6 +62,23 @@ A **murmuration** is one of nature's most extraordinary phenomena — thousands 
 
 ---
 
+## Preparing v2.12.1
+
+**This branch prepares 2.12.1; the published stable release remains 2.12.0.**
+The new release separates Claude Chat, the Code tab and Codex during connection,
+adds an existing-installation guide and prompt, supplies MCP usage instructions,
+and corrects Windows upgrade order and clipboard feedback. It detects Code inside
+Claude.app, supports a dedicated folder with one shared wake reader, keeps verified
+Homebrew Node paths stable, and removes machine diagnostics from personal unread counts.
+It also includes the
+post-2.12.0 fixes already on main, including per-contact diagnostics and clearer
+installer errors. See [CHANGELOG](CHANGELOG.md#2121---unreleased) and the
+[package versions, upgrade steps and release checks](docs/releases/2.12.1.md).
+
+Build this branch with `npm ci` and `npm run build` to test the candidate. Native
+desktop acceptance and exact-head review are still required before publishing.
+The stable install commands below intentionally select the already available 2.12.0.
+
 ## Install
 
 **Using the app on Mac or Windows?** The step-by-step guide with every screen and system
@@ -115,8 +132,10 @@ install the checkout's locked dependencies and local workspaces, without using o
 published Murmur packages.
 
 Murmur does not update an existing installation automatically. In particular, a
-Windows service owns paths into its installed bundle: use the old CLI to uninstall
-that service before installing it with the new CLI, retain the same absolute profile
+Windows service owns paths into its installed bundle: keep the old tray open,
+choose **Service → Stop → Remove**, then quit the tray and run setup. If the tray
+is already closed, reopen it or uninstall the service through the old CLI. Install
+the service from the new bundle, retain the same absolute profile
 path and service name, and do not run `init` or `join` again. The complete sequence,
 including rollback, is in the [manual Windows upgrade](apps/windows-tray/packaging/README-Windows.md#manual-upgrade-from-290-to-2100).
 Service migration does not update the absolute MCP command saved in Claude Code or
@@ -489,7 +508,7 @@ do not resend the same request. Delivery and automatic AI wake are separate.
 - **Exponential Backoff** — with jitter on retry, configurable per broker
 
 ### Agent Integration
-- **MCP Server** — 7 tools for any MCP-compatible AI client
+- **MCP Server** — 14 tools for any MCP-compatible AI client
 - **`murmur_request`** — send-and-wait: no more manual polling
 - **Invite Flow** — pairing by passing two blobs, no JSON editing; three commands across two machines
 - **Native Wake** — live-session wake via Claude asyncRewake / Codex app-server UDS with self-healing thread re-seed (always-on dead-session wake is an out-of-repo reference-deployment sidecar) (v2.1)
@@ -521,6 +540,10 @@ do not resend the same request. Delivery and automatic AI wake are separate.
 ---
 
 ## MCP Tools
+
+Already installed Murmur but your usual AI conversation cannot see it? Follow
+[Connect an existing desktop assistant](docs/desktop-assistants.md) to select
+Claude Chat, Claude Code or Codex, keep your existing identity and verify a returned reply.
 
 Murmur exposes an MCP server (JSON-RPC over stdio) with 14 tools:
 
@@ -599,7 +622,7 @@ murmur/
 │   ├── broker-nats/       # core NATS pub/sub, outbox flush, ACK correlation
 │   ├── broker-ws/         # WebSocket relay/client transport adapter
 │   ├── security/          # NaCl crypto (X25519, XChaCha20, Ed25519), MLS scaffold
-│   ├── mcp-server/        # JSON-RPC MCP stdio server (7 tools)
+│   ├── mcp-server/        # JSON-RPC MCP stdio server (14 tools)
 │   ├── bridge-telegram/   # Telegram bot adapter
 │   ├── bridge-a2a/        # A2A protocol bridge (live client round-trip proven; remote agent pending)
 │   ├── bridge-openclaw/   # Legacy OpenClaw package, not on the wake/notify path

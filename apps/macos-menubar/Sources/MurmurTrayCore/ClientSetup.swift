@@ -11,6 +11,16 @@ public enum AIClientKind: String, Decodable, Sendable, CaseIterable {
         case .codexDesktop: "Codex"
         }
     }
+    public var setupHint: String {
+        switch self {
+        case .claudeCode:
+            L10n.text("For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection.")
+        case .claudeDesktop:
+            L10n.text("For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically.")
+        case .codexCLI, .codexDesktop:
+            L10n.text("Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately.")
+        }
+    }
 }
 public struct DetectedAIClient: Decodable, Sendable, Identifiable {
     public let id: AIClientKind

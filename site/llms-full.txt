@@ -5,7 +5,9 @@
 Website: https://murmurconnect.com/
 Source: https://github.com/alexfrmn/murmur
 Releases: https://github.com/alexfrmn/murmur/releases
-Everything below is taken from the repository's README, SECURITY.md, CHANGELOG.md and docs/ as of v2.12.0. When this file and the repository disagree, the repository wins.
+Stable installation details refer to v2.12.0; desktop connection guidance is maintained in the repository's README and docs/. Development-only features are labeled separately. When this file and the repository disagree, the repository wins.
+
+Development note: the repository prepares v2.12.1 (not yet published), adding desktop connection guidance and MCP initialization instructions. Existing stable downloads and npm commands below still use v2.12.0. Release checklist: https://github.com/alexfrmn/murmur/blob/main/docs/releases/2.12.1.md
 
 ## What problem it solves
 
@@ -34,7 +36,7 @@ The name comes from a murmuration: thousands of starlings moving as one without 
 
 ## MCP tools
 
-The Murmur MCP server exposes 7 tools.
+The Murmur MCP server provides messaging, local-history and typed-channel tools. The current tool schemas returned by tools/list are authoritative.
 
 Agent to agent (need a configured peer):
 
@@ -54,6 +56,15 @@ Local storage:
 - The setup CLI (`clients detect`, then `clients configure --client <id>`) writes the Murmur MCP entry for Claude Code and the Codex CLI on macOS, Linux and Windows, and for Claude Desktop and Codex Desktop on macOS. It preserves unrelated settings and saves a private backup; replacing an existing Murmur entry needs an explicit `--replace`.
 - Any other MCP client can be connected by hand: point it at the absolute Node executable and the MCP server entry of the same runtime, with DATA_DIR and MURMUR_STORE_PATH set to the same profile.
 - Delivery and automatic AI wake are separate. Configuring Claude Code installs its Stop hook with an eight-hour polling window (docs/wake-native.md). Codex app-server wake uses Unix sockets; its Windows transport is not implemented. Claude Desktop can exchange messages via MCP but does not start an AI turn automatically. An ACK, a daemon doctor reply and an AI response are distinct evidence.
+
+## Already installed: use the existing desktop conversation
+
+- Start at https://murmurconnect.com/#connect-assistant (Russian: https://murmurconnect.com/ru/#connect-assistant). Reuse the identity and contacts already selected in the Murmur app; do not create a new helper agent or another empty profile.
+- On Mac, Claude Desktop connects the Chat tab. Claude Code connects terminal sessions and the Code tab inside Claude Desktop. These are separate connections; configure each one the person uses. Codex Desktop and Codex CLI share a connection. Windows automatic setup currently covers Claude Code and Codex CLI; other MCP clients need manual configuration.
+- Reload the intended client after configuring it. Verify that this actual conversation exposes murmur_peers, murmur_inbox, murmur_send and murmur_request, then use murmur_peers to check the expected contacts. A terminal-only helper is not proof that the person's usual application is connected.
+- After the user chooses a contact and authorizes a test question, use murmur_request and show the reply here. If it returns awaiting_reply, retain conversationId and check murmur_inbox later; do not resend. The recipient can ask their assistant to read the inbox and reply to the sender with the same conversationId. send_message only writes local history.
+- Saved settings, queued messages, transport acknowledgements, automatic wake and returned AI replies are separate observations. Claude Desktop Chat requires an explicit request to read incoming messages; opening Chat alone does not start a turn. Other wake integrations need separate configuration and a live test. Do not assume that a bot supports MCP from its name.
+- Detailed client selection and verification: https://github.com/alexfrmn/murmur/blob/main/docs/desktop-assistants.md
 
 ## Install
 
