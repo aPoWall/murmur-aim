@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.12.1] - Unreleased
 
 ### Added
+- **Windows release installer in CI.** The native bundle job builds setup.exe,
+  verifies silent install/upgrade/uninstall and refusal while a registered service
+  references the installation, and preserves installer provenance with the ZIP.
 - **Personal inbox in the Mac app.** Show the latest 20 incoming messages as plain
   text without marking them read or sending a reply. Opt-in notifications report
   unread-count increases while the app is open, without message bodies.
@@ -32,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It does not contain private profile data and does not configure a missing connection.
 
 ### Changed
+- **Website lab themes.** Dark/light palettes, locally hosted Onest and Fira Code,
+  lighter mobile headings and reduced-motion support across both languages.
 - **Client selection explains Claude Chat versus Code.** The macOS connection screen
   identifies the Chat tab, the Code tab and terminal sessions, and the shared Codex
   configuration. Each connection still requires its own confirmation.

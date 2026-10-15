@@ -24,6 +24,16 @@ Setup then enumerates tray processes through WMI and terminates only processes w
 
 Provision Inno Setup 6 on the native Windows bundle job and run the wrapper against that job's verified payload. Upload executable and adjacent proof JSON alongside ZIP; publishing remains a separate release action. Unsigned binaries retain Windows first-open warnings.
 
+The Windows companion CI job now uses the runner's Inno Setup 6 to build the actual
+release installer. `check-setup-ci.ps1` accepts only a disposable GitHub-hosted
+Windows runner and refuses a pre-existing Murmur installation or shortcut. It
+checks a silent install, installed payload hashes and CLI version, refusal while
+a stopped test service references the installation (exit 7, unchanged payload),
+upgrade after removing that service, and uninstall. A file outside the install
+directory must survive throughout. The job uploads the installer, its provenance
+and `installer-acceptance.json` alongside the ZIP and combined SHA256SUMS.
+This does not prove interactive dialogs, a live daemon, sign-in or reboot behavior.
+
 Compile local tests with /DAcceptanceTest=1 for separate AppId, install directory and shortcut names. Tests should cover clean install, marker/default Startup, upgrade with a running tray (one restarted process), uninstall (zero own processes/files), foreign-bundle survival, and a foreign shortcut: interactive setup asks with No as the default, declining stops setup, silent setup replaces it, and `/SHORTCUTCONFLICT=fail` exits with code 7. Native tests and shortcut inspection do not prove a reboot/login or complete onboarding GUI journey.
 
 When automating setup from PowerShell 7, wait for the setup process itself:
