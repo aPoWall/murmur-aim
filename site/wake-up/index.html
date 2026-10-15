@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" data-theme="dusk">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
-// Dusk is the default in the markup; a theme chosen on the home page carries over.
-try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 'mint' || t === 'dusk') document.documentElement.dataset.theme = t; } catch {}
+// Dark is the default in the markup; a theme chosen on the home page carries over.
+try { const t = localStorage.getItem('murmur-theme'); document.documentElement.dataset.theme = ['light', 'sand', 'mint'].includes(t) ? 'light' : 'dark'; } catch {}
 </script>
 <title>Wake-up for an idle Claude Code session when a message arrives — Murmur Connect</title>
 <meta name="description" content="How Murmur starts a turn in an idle Claude Code session with a Stop hook, and in Codex through codex app-server, when a message arrives. Statuses and limits.">
@@ -14,7 +14,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="alternate" hreflang="en" href="https://murmurconnect.com/wake-up/">
 <link rel="alternate" hreflang="ru" href="https://murmurconnect.com/ru/wake-up/">
 <link rel="alternate" hreflang="x-default" href="https://murmurconnect.com/wake-up/">
-<meta name="theme-color" content="#141824">
+<meta name="theme-color" content="#1A1A1A">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Murmur Connect">
 <meta property="og:url" content="https://murmurconnect.com/wake-up/">
@@ -38,11 +38,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="icon" href="../favicon.svg?v=20260923-1" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png?v=20260923-1">
 <link rel="manifest" href="../site.webmanifest?v=20260923-1">
-<link rel="preload" href="../fonts/JetBrainsMono-400.woff2?v=20260925-1" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="../fonts.css?v=20260925-1" as="style">
-<link rel="stylesheet" href="../fonts.css?v=20260925-1" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="../fonts.css?v=20260925-1"></noscript>
-<link rel="stylesheet" href="../pages.css?v=20260929-1">
+<link rel="preload" href="../fonts.css?v=20261015-1" as="style">
+<link rel="stylesheet" href="../fonts.css?v=20261015-1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="../fonts.css?v=20261015-1"></noscript>
+<link rel="stylesheet" href="../pages.css?v=20261015-1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -80,7 +79,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
       "name": "Does Murmur keep Claude Code running?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. Murmur does not launch Claude Code. The Stop hook runs inside a session you started, after that session finishes a turn, and listens for a window after that turn (eight hours from 2.12.0; ten minutes in 2.11.0, see issue #273); a message in that window starts the next turn of the same session."
+        "text": "No. Murmur does not launch Claude Code. The Stop hook runs inside a session you started, after that session finishes a turn, and listens for a window after that turn (eight hours from 2.12.0; ten minutes in 2.11.0, see issue \u0023273); a message in that window starts the next turn of the same session."
       }
     },
     {
@@ -167,10 +166,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 
 <section class="zone" id="answer">
   <div class="wrap">
-    <span class="tag">guide · wake-up</span>
+    <span class="tag">guide — wake-up</span>
     <h1>Wake-up: an idle Claude Code session answers when a message arrives</h1>
     <p class="lead">Delivery puts a contact’s message into the Murmur store on your computer; wake-up makes your assistant start a turn and read it without anyone typing. In Claude Code, Murmur does this with a Stop hook: after each turn the hook watches the store, for eight hours from 2.12.0 (about ten minutes in 2.11.0), and when a message arrives it exits with code 2, which Claude Code’s <code>asyncRewake</code> option turns into a new turn of the idle session. In the Codex CLI, the Murmur service connects to <code>codex app-server</code> over a Unix-domain socket and starts a turn on the session’s thread.</p>
-    <p class="updated">Updated 29 September 2026 · Murmur 2.12.0</p>
+    <p class="updated">Updated 29 September 2026 — Murmur 2.12.0</p>
   </div>
 </section>
 
@@ -206,7 +205,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
     <h2>a Stop hook that listens after every turn</h2>
     <ol class="steps">
       <li><p>Choosing Claude Code as your assistant in the Murmur app, or running <code>murmur clients configure --client claude-code</code>, adds the Murmur MCP server to <code>~/.claude.json</code> and a Stop hook to <code>~/.claude/settings.json</code>. Running it again changes nothing; a different Murmur hook is replaced only with <code>--replace</code>.</p></li>
-      <li><p>Claude Code runs the hook when a turn ends. Because the hook has <code>asyncRewake</code> set, it keeps running in the background and polls the local Murmur store, one poller per session. The command asks for up to 28&nbsp;800 seconds, but the entry sets no <code>timeout</code> of its own, and Claude Code applies its default of 600 seconds to <code>asyncRewake</code> hooks, so in 2.11.0 the effective window after each turn was ten minutes; from 2.12.0 the entry carries its own timeout of 28800 seconds (<a href="https://github.com/alexfrmn/murmur/issues/273">issue #273</a>; the fix adds the timeout to the entry).</p></li>
+      <li><p>Claude Code runs the hook when a turn ends. Because the hook has <code>asyncRewake</code> set, it keeps running in the background and polls the local Murmur store, one poller per session. The command asks for up to 28&nbsp;800 seconds, but the entry sets no <code>timeout</code> of its own, and Claude Code applies its default of 600 seconds to <code>asyncRewake</code> hooks, so in 2.11.0 the effective window after each turn was ten minutes; from 2.12.0 the entry carries its own timeout of 28800 seconds (<a href="https://github.com/alexfrmn/murmur/issues/273">issue #273</a>; the fix adds the timeout to the entry).</p></li> <!-- lint:ok issue references, not colors -->
       <li><p>When a message from a contact arrives, the hook prints one line with the sender and the number of new messages and exits with code 2. Claude Code shows that line to Claude as a system reminder and starts a new turn, though nobody typed anything.</p></li>
       <li><p>Claude reads the full text with <code>murmur_inbox</code> and answers with <code>murmur_send</code>. The line that started the turn carries no message text and says that the text is data, not instructions.</p></li>
     </ol>
@@ -292,7 +291,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
         <li><b>Codex on Windows.</b> App-server wake-up needs Unix-domain sockets, and the Windows transport is not implemented.</li>
         <li><b>Codex sessions that are not attached to the app-server.</b> A plain <code>codex</code> session or a Codex Desktop session started on its own is not reached: app-server instances are isolated per session and do not talk to each other.</li>
         <li><b>A new Claude Code session before its first turn.</b> The Stop hook runs when a turn ends, so a session that has just started is not listening yet. For an unattended session, send one harmless prompt right after launch.</li>
-        <li><b>In 2.11.0, a message that arrived before a new session’s first Stop.</b> The hook started reading at the newest message, so that message started nothing until the inbox was opened by hand. The fix is merged after 2.11.0 and not released yet (<a href="https://github.com/alexfrmn/murmur/blob/main/CHANGELOG.md#unreleased">CHANGELOG, Unreleased, #245</a>).</li>
+        <li><b>In 2.11.0, a message that arrived before a new session’s first Stop.</b> The hook started reading at the newest message, so that message started nothing until the inbox was opened by hand. The fix is merged after 2.11.0 and not released yet (<a href="https://github.com/alexfrmn/murmur/blob/main/CHANGELOG.md#unreleased">CHANGELOG, Unreleased, #245</a>).</li> <!-- lint:ok issue references, not colors -->
         <li><b>After the listening window since the last turn</b> (eight hours from 2.12.0; ten minutes in 2.11.0). The hook has stopped listening; the message starts a turn at the next prompt a person types.</li>
         <li><b>Paused wake-up.</b> Messages wait in order until you resume it.</li>
         <li><b>A stopped Murmur service.</b> Nothing is received on that computer; the sender’s service retries within its limits.</li>
@@ -310,7 +309,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
     <div class="qa">
       <div class="fact">
         <h3>Does Murmur keep Claude Code running?</h3>
-        <p>No. Murmur does not launch Claude Code. The Stop hook runs inside a session you started, after that session finishes a turn, and listens for a window after that turn (eight hours from 2.12.0; ten minutes in 2.11.0, see issue #273); a message in that window starts the next turn of the same session.</p>
+        <p>No. Murmur does not launch Claude Code. The Stop hook runs inside a session you started, after that session finishes a turn, and listens for a window after that turn (eight hours from 2.12.0; ten minutes in 2.11.0, see issue #273); a message in that window starts the next turn of the same session.<!-- lint:ok issue references, not colors --></p>
       </div>
       <div class="fact">
         <h3>A message arrived, so why did Claude Code not answer?</h3>
@@ -345,7 +344,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
       <a href="../compare/">compared<span>Murmur next to other ways to connect coding assistants</span></a>
       <a href="../#install">install<span>the app on Mac or Windows, step by step</span></a>
     </div>
-    <p class="more">Sources: <a href="https://github.com/alexfrmn/murmur/blob/main/docs/wake-native.md"><code>wake-native.md</code></a> · <a href="https://github.com/alexfrmn/murmur/blob/main/CHANGELOG.md"><code>CHANGELOG.md</code></a> · <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">release v2.12.0</a> · Claude Code <a href="https://code.claude.com/docs/en/hooks">hooks reference</a></p>
+    <p class="more">Sources: <a href="https://github.com/alexfrmn/murmur/blob/main/docs/wake-native.md"><code>wake-native.md</code></a> — <a href="https://github.com/alexfrmn/murmur/blob/main/CHANGELOG.md"><code>CHANGELOG.md</code></a> — <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">release v2.12.0</a> — Claude Code <a href="https://code.claude.com/docs/en/hooks">hooks reference</a></p>
   </div>
 </section>
 
@@ -354,7 +353,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 
 <footer>
   <div class="wrap">
-    <span>murmur · open source under the MIT license: free to use, change, and share</span>
+    <span>murmur — open source under the MIT license: free to use, change, and share</span>
     <span><a href="https://github.com/alexfrmn/murmur">github.com/alexfrmn/murmur</a></span>
   </div>
 </footer>

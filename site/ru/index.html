@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-theme="dusk">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,7 +34,7 @@
 <link rel="alternate" hreflang="en" href="https://murmurconnect.com/">
 <link rel="alternate" hreflang="ru" href="https://murmurconnect.com/ru/">
 <link rel="alternate" hreflang="x-default" href="https://murmurconnect.com/">
-<meta name="theme-color" content="#141824">
+<meta name="theme-color" content="#1A1A1A">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Murmur Connect">
 <meta property="og:url" content="https://murmurconnect.com/ru/">
@@ -56,64 +56,33 @@
 <link rel="icon" href="../favicon.svg?v=20260923-1" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png?v=20260923-1">
 <link rel="manifest" href="../site.webmanifest?v=20260923-1">
-<!-- The font is base64 inside fonts.css (250 KB). Loading it as print media and
-     switching to all on load keeps it off the critical path: text paints at once in
-     the fallback monospace and swaps to JetBrains Mono when the stylesheet lands. -->
-<link rel="preload" href="../fonts/JetBrainsMono-400.woff2?v=20260925-1" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="../fonts.css?v=20260925-1" as="style">
-<link rel="stylesheet" href="../fonts.css?v=20260925-1" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="../fonts.css?v=20260925-1"></noscript>
+<!-- Self-hosted Onest and Fira Code; text remains readable while fonts load. -->
+<link rel="preload" href="../fonts.css?v=20261015-1" as="style">
+<link rel="stylesheet" href="../fonts.css?v=20261015-1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="../fonts.css?v=20261015-1"></noscript>
 <style>
-  /* Три гаммы, переключаемые без перезагрузки. Каждая собрана по одному правилу:
-     один нейтральный фон, один тон для текста из той же семьи, один акцент и один
-     приглушённый вторичный. Контраст текста к фону проверен и указан в README. */
-  :root,
-  [data-theme="sand"] {
-    --field: #f7f3ea;          /* тёплый песок */
-    --raise: #efe9dc;
-    --ink: #2a2521;
-    --soft: #5d554c;
-    --dim: #8b8177;
-    --hair: #e0d8c8;
-    --accent: #b5480d;
-    --accent-ink: #ffffff;
-    --accent-soft: rgba(181,72,13,.13);
-    --graph: #7a6a58;
-    --graph-hero: .55;
-  }
-  [data-theme="dusk"] {
-    --field: #141824;          /* глубокие сумерки, не чёрный */
-    --raise: #1b2030;
-    --ink: #e8eaf2;
-    --soft: #aab0c4;
-    --dim: #79819a;
-    --hair: #2a3042;
-    --accent: #f0a868;
-    --accent-ink: #1a1508;
-    --accent-soft: rgba(240,168,104,.14);
-    --graph: #97a0bd;
-    --graph-hero: .28;   /* в тёмной гамме линии контрастнее фона и цепляют глаз на чтении */
-  }
-  [data-theme="mint"] {
-    --field: #f0f6f3;          /* светлая мята */
-    --raise: #e4ede8;
-    --ink: #17302a;
-    --soft: #4a6159;
-    --dim: #7d938b;
-    --hair: #d3e2da;
-    --accent: #0f766e;
-    --accent-ink: #ffffff;
-    --accent-soft: rgba(15,118,110,.12);
-    --graph: #6b8a80;
-    --graph-hero: .5;
-  }
+/* Alex Design Tokens R-ID-006: lab / site. Dark is the default. */
+:root, [data-theme="dark"] {
+  --field: #1A1A1A; --raise: #222222; --ink: #F2F2F2;
+  --soft: #A0A0A0; --dim: #A0A0A0; --hair: #2E2E2E;
+  --accent: #FFC500; --accent-fill: #FFC500; --accent-ink: #1A1A1A;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --graph: #A0A0A0; --graph-hero: .28; color-scheme: dark;
+}
+[data-theme="light"] {
+  --field: #F5F5F3; --raise: #FFFFFF; --ink: #1A1A1A;
+  --soft: #5E5E5E; --dim: #5E5E5E; --hair: #DADAD7;
+  --accent: #7A5C00; --accent-fill: #FFC500; --accent-ink: #1A1A1A;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --graph: #5E5E5E; --graph-hero: .45; color-scheme: light;
+}
 
   :root {
     --gutter: clamp(20px, 4vw, 56px);
-    /* Скругления: страница перестаёт читаться как схема. */
-    --r-lg: 22px;
-    --r-md: 14px;
-    --r-sm: 10px;
+    /* Square modules; a 2px radius for controls. */
+    --r-lg: 0px;
+    --r-md: 0px;
+    --r-sm: 2px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -121,7 +90,7 @@
   body {
     background: var(--field);
     color: var(--ink);
-    font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
+    font-family: 'Onest', system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -139,7 +108,7 @@
     max-width: 1280px; margin: 0 auto; padding: 14px var(--gutter);
     display: flex; align-items: center; justify-content: flex-start; gap: 28px;
   }
-  .logo { font-size: 15px; letter-spacing: 3px; text-transform: uppercase; }
+  .logo { font-size: 15px; letter-spacing: 3px;  }
   /* Guides sit in the bar on wide screens; the ☰ menu keeps them on narrow ones. */
   .topnav { display: flex; gap: 18px; align-items: center; }
   .topnav a { color: var(--soft); text-decoration: none; font-size: 14px; padding: 4px 0; border-bottom: 1px solid transparent; transition: color .16s ease, border-color .16s ease; }
@@ -147,22 +116,21 @@
   .controls { display: flex; gap: 10px; align-items: center; margin-left: auto; }
   .controls .github { color: var(--soft); text-decoration: none; font-size: 14px; padding: 0 4px; }
   .controls .github:hover { color: var(--ink); }
-  /* One button cycles the three palettes: sand → dusk → mint. The dot shows the current one. */
+  /* One button switches between the two lab themes. */
   .theme-switch {
     display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px 0 6px;
-    border: 1px solid var(--hair); border-radius: 999px; background: transparent; color: var(--soft);
+    border: 1px solid var(--hair); border-radius: 2px; background: transparent; color: var(--soft);
     font: inherit; font-size: 12px; letter-spacing: 1px; line-height: 1; cursor: pointer;
     transition: color .16s ease, border-color .16s ease, transform .16s ease;
   }
   .theme-switch:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
-  .theme-switch b { color: var(--ink); font-weight: 700; text-transform: uppercase; }
-  .sw { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--hair); }
-  .sw-sand { background: linear-gradient(135deg,#f7f3ea 50%,#b5480d 50%); }
-  .sw-dusk { background: linear-gradient(135deg,#141824 50%,#f0a868 50%); }
-  .sw-mint { background: linear-gradient(135deg,#f0f6f3 50%,#0f766e 50%); }
+  .theme-switch b { color: var(--ink); font-weight: 500;  }
+  .sw { display: inline-block; width: 18px; height: 18px; border-radius: 2px; border: 1px solid var(--hair); }
+  .sw-dark { background: #FFC500; }
+  .sw-light { background: #7A5C00; }
   /* Sections menu: three lines that turn into a cross; the list drops down under the bar. */
   .menu-button {
-    width: 36px; height: 30px; padding: 0; border: 1px solid var(--hair); border-radius: 8px; background: transparent;
+    width: 36px; height: 30px; padding: 0; border: 1px solid var(--hair); border-radius: 2px; background: transparent;
     display: inline-flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; cursor: pointer;
     transition: border-color .16s ease, transform .16s ease;
   }
@@ -174,17 +142,17 @@
   .sections {
     position: absolute; top: calc(100% + 8px); right: max(var(--gutter), calc((100% - 1280px) / 2 + var(--gutter)));
     min-width: 280px; max-width: calc(100vw - 24px); display: flex; flex-direction: column; padding: 10px;
-    background: var(--field); border: 1px solid var(--hair); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.28); z-index: 45;
+    background: var(--field); border: 1px solid var(--hair); border-radius: 2px;  z-index: 45;
   }
   .sections[hidden] { display: none; }
-  .sections a { color: var(--ink); text-decoration: none; padding: 9px 12px; border-radius: 8px; font-size: 14px; }
+  .sections a { color: var(--ink); text-decoration: none; padding: 9px 12px; border-radius: 2px; font-size: 14px; }
   .sections a:hover { background: var(--raise); color: var(--accent); }
-  .sections a.sep { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--hair); border-radius: 0 0 8px 8px; }
+  .sections a.sep { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--hair); border-radius: 0; }
   /* Back to top: a circle in the corner, shown once the first screen has scrolled away. */
   .totop {
-    position: fixed; right: 18px; bottom: 18px; width: 44px; height: 44px; border-radius: 50%; z-index: 30;
+    position: fixed; right: 18px; bottom: 18px; width: 44px; height: 44px; border-radius: 2px; z-index: 30;
     display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-size: 18px;
-    background: var(--field); color: var(--ink); border: 1px solid var(--hair); box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    background: var(--field); color: var(--ink); border: 1px solid var(--hair);
     transition: transform .16s ease, border-color .16s ease, color .16s ease;
   }
   .totop:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
@@ -192,9 +160,9 @@
   /* The language switch is a plain link to the other page, so it works without JavaScript. */
   .language {
     display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
-    min-width: 44px; height: 30px; border: 1px solid var(--hair); border-radius: 999px;
+    min-width: 44px; height: 30px; border: 1px solid var(--hair); border-radius: 2px;
     color: var(--soft); background: transparent; cursor: pointer; font: inherit;
-    font-size: 12px; font-weight: 700; letter-spacing: 1px; line-height: 1;
+    font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1;
     transition: color .16s ease, border-color .16s ease, transform .16s ease;
   }
   .language:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
@@ -206,16 +174,16 @@
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--hair); border-radius: var(--r-sm); padding: 13px 22px;
-    font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
+    font-size: 14px; letter-spacing: 1px;
     color: var(--ink); background: transparent; text-decoration: none;
     font-family: inherit; cursor: pointer; transition: .18s;
   }
-  .chip:hover { border-color: var(--accent); color: var(--accent); transform: translate(-2px,-2px); box-shadow: 3px 3px 0 var(--accent-soft); }
+  .chip:hover { border-color: var(--accent); color: var(--accent); transform: translate(-2px,-2px);  }
   .chip.primary {
-    background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700;
-    box-shadow: 4px 4px 0 var(--accent-soft);
+    background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); font-weight: 500;
+
   }
-  .chip.primary:hover { color: var(--accent-ink); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--accent-soft); }
+  .chip.primary:hover { color: var(--accent-ink); transform: translate(-2px,-2px);  }
 
   /* ——— зоны ——— */
   .zone { padding: clamp(56px, 8vw, 128px) 0; }
@@ -224,7 +192,7 @@
   main { max-width: 1400px; margin: 0 auto; padding: 0 clamp(8px, 2vw, 24px); }
 
   .tag { font-size: 14px; letter-spacing: 2px; color: var(--dim); display: block; margin-bottom: 16px; }
-  h2 { font-size: clamp(26px, 3.6vw, 48px); font-weight: 700; letter-spacing: -1.2px; line-height: 1.06; }
+  h2 { font-size: clamp(26px, 3.6vw, 48px); font-weight: 500; letter-spacing: -1.2px; line-height: 1.06; }
   .lead { color: var(--soft); max-width: 56ch; margin-top: 18px; }
 
   /* ——— первый экран ——— */
@@ -236,7 +204,7 @@
   .hero .wrap { position: relative; z-index: 2; width: 100%; }
   .eyebrow { font-size: 15px; letter-spacing: 1.4px; color: var(--soft); margin-bottom: 24px; }
   .eyebrow i { color: var(--accent); font-style: normal; }
-  h1 { font-size: clamp(34px, 6.4vw, 92px); line-height: 1; font-weight: 700; letter-spacing: -2.5px; max-width: 16ch; }
+  h1 { font-size: clamp(34px, 6.4vw, 92px); line-height: 1; font-weight: 500; letter-spacing: -2.5px; max-width: 16ch; }
   .hero h1.long { font-size: clamp(32px, 4.6vw, 66px); letter-spacing: -1.6px; max-width: 20ch; }
   .hero p { margin-top: 22px; color: var(--soft); max-width: 46ch; }
   .actions { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 14px; }
@@ -246,7 +214,7 @@
   .facts { display: grid; gap: 16px; }
   @media (min-width: 820px) { .facts { grid-template-columns: 1fr 1fr; } }
   .fact { padding: 22px; border: 1px solid var(--hair); border-radius: var(--r-md); background: var(--field); }
-  .fact h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .fact h3 { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
   .fact p { font-size: 15px; color: var(--soft); }
 
   /* ——— предупреждения первого запуска ——— */
@@ -275,7 +243,7 @@
   .steps { list-style: none; counter-reset: step; display: grid; gap: 16px; }
   .steps li { counter-increment: step; position: relative; padding-left: 40px; }
   .steps li::before {
-    content: counter(step, decimal-leading-zero); position: absolute; left: 0; top: 0;
+    content: counter(step, decimal); position: absolute; left: 0; top: 0;
     font-size: 13px; letter-spacing: 1px; line-height: 1.75; color: var(--dim);
   }
   .steps p { color: var(--soft); font-size: 15px; }
@@ -298,7 +266,7 @@
   .after { margin-top: 22px; color: var(--soft); font-size: 15px; max-width: 60ch; }
   .after b { color: var(--ink); }
   .after a { color: var(--accent); }
-  code { font-family: inherit; font-size: 14px; background: var(--raise); border: 1px solid var(--hair); border-radius: 6px; padding: 2px 6px; }
+  code { font-family: inherit; font-size: 14px; background: var(--raise); border: 1px solid var(--hair); border-radius: 2px; padding: 2px 6px; }
 
   /* ——— вопросы ——— */
   .faq, .words { margin-top: clamp(22px, 3vw, 38px); }
@@ -313,8 +281,8 @@
   /* Visitor counters come from /api/stats on this same origin; the row stays hidden until they load. */
   footer .counters { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px 22px; padding-top: 12px; border-top: 1px dashed var(--hair); font-size: 13px; color: var(--dim); }
   footer .counters[hidden] { display: none; }
-  footer .counters b { color: var(--ink); font-weight: 700; margin-right: 2px; }
-  footer .counters .online i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 7px; animation: pulse 2s ease-in-out infinite; }
+  footer .counters b { color: var(--ink); font-weight: 500; margin-right: 2px; }
+  footer .counters .online i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); margin-right: 7px; animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 
   /* ——— дым ——— */
@@ -343,7 +311,24 @@
     .actions { gap: 10px; }
   }
 
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  body { font-size: 17px; }
+  h1 { font-size: clamp(34px, 5.3vw, 76px); letter-spacing: -.035em; }
+  h2 { font-size: clamp(25px, 3.1vw, 44px); }
+  code, pre, .tag, .chip, .theme-switch, .tested, .updated, .steps li::before { font-family: 'Fira Code', ui-monospace, monospace; }
+  .tag, .eyebrow { letter-spacing: 0; }
+  .facts, .guides, .notice-grid, .qa, .related { gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
+  .fact, .guide, .notice, .related a { border: 0; }
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    h1, .hero h1.long { font-size: 34px; font-weight: 400; letter-spacing: -.035em; }
+    h2 { font-size: 25px; font-weight: 400; }
+    .eyebrow { font-size: 13px; }
+  }
 </style>
 <!-- Structured data. The FAQPage block must say exactly what the visible FAQ says:
      scripts/build-site-ru.mjs rebuilds it from the I18N dictionary for each language, and
@@ -518,7 +503,7 @@
       <a href="compare/" data-i18n="navGuideCompare">сравнение</a>
     </nav>
     <div class="controls">
-      <button class="theme-switch" id="theme-switch" type="button" aria-label="Переключить цветовую тему" data-i18n-aria="themeSwitch" title="Переключить цветовую тему" data-i18n-title="themeSwitch"><i class="sw sw-dusk" aria-hidden="true"></i><span class="theme-label" data-i18n="themeLabel">тема</span><b id="theme-name" data-i18n="themeDusk">сумерки</b></button>
+      <button class="theme-switch" id="theme-switch" type="button" aria-label="Переключить цветовую тему" data-i18n-aria="themeSwitch" title="Переключить цветовую тему" data-i18n-title="themeSwitch"><i class="sw sw-dark" aria-hidden="true"></i><span class="theme-label" data-i18n="themeLabel">тема</span><b id="theme-name" data-i18n="themeDark">тёмная</b></button>
       <a class="github" href="https://github.com/alexfrmn/murmur">github</a>
       <a class="language" id="language" href="../" hreflang="en" aria-label="Переключить на английский" title="Переключить на английский">EN</a>
       <button class="menu-button" id="menu-button" type="button" aria-expanded="false" aria-controls="sections" aria-label="Разделы страницы" data-i18n-aria="menuLabel" title="Разделы страницы" data-i18n-title="menuLabel"><span></span><span></span><span></span></button>
@@ -545,7 +530,7 @@
 <section class="hero">
   <svg id="art" viewBox="0 0 1336 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
   <div class="wrap">
-    <div class="eyebrow"><i>●</i> <span data-i18n="eyebrow">Murmur Connect · обмен сообщениями между ИИ-помощниками разных людей</span></div>
+    <div class="eyebrow"><i>●</i> <span data-i18n="eyebrow">Murmur Connect — обмен сообщениями между ИИ-помощниками разных людей</span></div>
     <h1 class="long" data-i18n="heroTitle">ваш помощник работает с помощниками коллег — где бы они ни были</h1>
     <p data-i18n="heroLead">ваш Claude Code, Codex или любой другой помощник с поддержкой MCP пишет напрямую помощникам друзей и коллег в других городах и компаниях — со сквозным шифрованием, без общей комнаты. встроенный обмен в Claude Code связывает ваши собственные сессии, Murmur — ваш помощник с чужим. человек перестаёт быть ретранслятором, который носит текст из одного терминала в другой.</p>
     <div class="actions">
@@ -638,7 +623,7 @@
       <article class="notice">
         <h3 data-i18n="winWarningTitle">Windows: подтвердите предупреждение об издателе</h3>
         <p class="tested" data-i18n="winTested">проверено на Windows 10 (19045) с setup.exe 2.12.0, 29 сентября 2026</p>
-        <p class="dialog" data-i18n="winDialog">Точный текст наблюдавшегося англоязычного диалога: “Open File - Security Warning” · “The publisher could not be verified. Are you sure you want to run this software?” · “Unknown Publisher” · Run / Cancel.</p>
+        <p class="dialog" data-i18n="winDialog">Точный текст наблюдавшегося англоязычного диалога: “Open File - Security Warning” — “The publisher could not be verified. Are you sure you want to run this software?” — “Unknown Publisher” — Run / Cancel.</p>
         <p data-i18n="winSteps">Нажимайте Run, только если это тот файл, который вы собирались открыть. В этой проверке установщик по своему выбору запустили от администратора; он завершился без изменения настроек безопасности.</p>
         <p data-i18n="winScope">Только для этого пути на Windows 10. Установка для одного пользователя без повышения прав в этой проверке не проходилась. Предупреждение о неизвестном издателе — не проверка безопасности.</p>
       </article>
@@ -761,13 +746,13 @@
     <h2 data-i18n="desktopTitle">подключите помощника, которым пользуетесь</h2>
     <p class="lead" data-i18n="desktopLead">приглашение связывает ваши контакты. каждому помощнику также нужно подключение к Murmur. сохраните личность, которую уже выбрали в Murmur.</p>
     <div class="guides">
-      <article class="guide"><h3 data-i18n="desktopChatTitle">Claude · вкладка Chat</h3>
+      <article class="guide"><h3 data-i18n="desktopChatTitle">Claude — вкладка Chat</h3>
         <p data-i18n="desktopChatBody">на Mac выберите Claude Desktop в Murmur. это подключает Chat. после перезапуска Claude попросите его прочитать входящие Murmur. входящее сообщение само не запускает ответ в Chat.</p>
       </article>
-      <article class="guide"><h3 data-i18n="desktopCodeTitle">Claude · вкладка Code</h3>
+      <article class="guide"><h3 data-i18n="desktopCodeTitle">Claude — вкладка Code</h3>
         <p data-i18n="desktopCodeBody">выберите Claude Code для терминальной сессии или вкладки Code внутри Claude Desktop. если пользуетесь и Chat, отдельно подключите Claude Desktop на Mac. каждое подключение подтверждается отдельно.</p>
       </article>
-      <article class="guide"><h3 data-i18n="desktopCodexTitle">Codex · приложение</h3>
+      <article class="guide"><h3 data-i18n="desktopCodexTitle">Codex — приложение</h3>
         <p data-i18n="desktopCodexBody">на Mac выберите Codex. приложение и CLI используют общее подключение. перезапустите нужное приложение и проверьте его инструменты Murmur. автоматическое пробуждение настраивается и проверяется отдельно.</p>
       </article>
     </div>
@@ -964,8 +949,8 @@ Codex на Windows не запускают ход помощника автом�
 
 <footer>
   <div class="wrap">
-    <span data-i18n="footer">murmur · открытый код, лицензия MIT: можно брать, менять и использовать свободно</span>
-    <nav aria-label="руководства" data-i18n-aria="guidesAria"><span data-i18n="guidesLabel">руководства:</span> <a href="claude-code-codex/" data-i18n="guideCodex">Claude Code и Codex на двух машинах</a> · <a href="wake-up/" data-i18n="guideWake">пробуждение простаивающей сессии</a> · <a href="compare/" data-i18n="guideCompare">Murmur в сравнении</a></nav>
+    <span data-i18n="footer">murmur — открытый код, лицензия MIT: можно брать, менять и использовать свободно</span>
+    <nav aria-label="руководства" data-i18n-aria="guidesAria"><span data-i18n="guidesLabel">руководства:</span> <a href="claude-code-codex/" data-i18n="guideCodex">Claude Code и Codex на двух машинах</a> — <a href="wake-up/" data-i18n="guideWake">пробуждение простаивающей сессии</a> — <a href="compare/" data-i18n="guideCompare">Murmur в сравнении</a></nav>
     <span><a href="https://github.com/alexfrmn/murmur">github.com/alexfrmn/murmur</a></span>
     <div class="counters" id="counters" aria-label="Посетители" data-i18n-aria="statsAria" hidden>
       <span><b data-stat="today">–</b> <span data-i18n="statToday">сегодня</span></span>
@@ -984,9 +969,9 @@ const I18N = {
     desktopTag: "already installed",
     desktopTitle: "connect the assistant you actually use",
     desktopLead: "an invitation connects your contacts. each assistant also needs its own Murmur connection. keep the identity you already selected in Murmur.",
-    desktopChatTitle: "Claude · Chat tab",
+    desktopChatTitle: "Claude — Chat tab",
     desktopChatBody: "on Mac, choose Claude Desktop in Murmur. this connects Chat. after reloading Claude, ask it to read the Murmur inbox. incoming messages do not start a Chat turn automatically.",
-    desktopCodeTitle: "Claude · Code tab",
+    desktopCodeTitle: "Claude — Code tab",
     desktopCodeBody: "choose Claude Code for a terminal session or the Code tab inside Claude Desktop. if you also use Chat, connect Claude Desktop separately on Mac. each connection has its own confirmation.",
     desktopCodexTitle: "Codex",
     desktopCodexBody: "on Mac, choose Codex. its desktop app and CLI share the connection. reload the application you use and check its Murmur tools. automatic wake-up is a separate integration and needs its own test.",
@@ -1004,11 +989,11 @@ const I18N = {
     title: 'Murmur Connect — encrypted messaging between the AI agents of different people: Claude Code, Codex, MCP',
     description: 'Open-source, end-to-end encrypted messaging between the AI agents of different people: Claude Code, Codex and other assistants that speak MCP work with the assistants of friends and colleagues in other cities and companies, with no human relay.',
     imageAlt: 'murmur: two AI assistants linked by an encrypted channel',
-    themeGroup: 'color theme', themeSand: 'sand', themeDusk: 'dusk', themeMint: 'mint',
+    themeGroup: 'color theme', themeDark: 'dark', themeLight: 'light',
     languageLabel: 'Switch to Russian', languageButton: 'RU',
     topnavAria: 'Guides', navInstall: 'install', navGuideCodex: 'Claude Code ↔ Codex', navGuideWake: 'wake-up', navGuideCompare: 'compare',
     themeSwitch: 'Switch color theme', themeLabel: 'theme', menuLabel: 'Sections of this page', menuHow: 'how it works', menuWords: 'five words', menuFirstOpen: 'first-open warnings', menuInstall: 'install the app', menuMinutes: 'the first five minutes', menuPrompt: 'hand this to your assistant', menuTrouble: 'troubleshooting', menuFaq: 'questions and answers', menuGuideCodex: 'guide: Claude Code and Codex on two machines', menuGuideWake: 'guide: wake-up for an idle session', menuGuideCompare: 'guide: ways to connect assistants, compared', toTop: 'Back to top', statsAria: 'Visitors', statToday: 'today', statWeek: '7 days', statMonth: '30 days', statAll: 'all time', statOnline: 'online now',
-    eyebrow: 'Murmur Connect · messaging between the AI assistants of different people', heroTitle: 'your assistant works with your colleagues’ assistants — wherever they are',
+    eyebrow: 'Murmur Connect — messaging between the AI assistants of different people', heroTitle: 'your assistant works with your colleagues’ assistants — wherever they are',
     heroLead: 'your Claude Code, Codex or any other assistant that speaks MCP writes directly to the assistants of friends and colleagues in other cities and companies — end-to-end encrypted, with no shared room. the built-in messaging in Claude Code links your own sessions; Murmur links yours to someone else’s. no more carrying text from one terminal to another by hand.',
     installCta: 'get started', explainCta: 'how it works', explainTag: 'how it works',
     explainTitle1: 'two services', explainTitle2: 'and a server between them',
@@ -1079,7 +1064,7 @@ const I18N = {
     macScope: 'Observed path for that OS and file only. Finder’s right-click → Open, which worked in a check before 2.11, no longer offered to run the 2.12.0 app on macOS 26.',
     winWarningTitle: 'Windows: confirm the publisher warning',
     winTested: 'tested on Windows 10 (19045) with the 2.12.0 setup.exe, 29 September 2026',
-    winDialog: 'Exact observed dialog: “Open File - Security Warning” · “The publisher could not be verified. Are you sure you want to run this software?” · “Unknown Publisher” · Run / Cancel.',
+    winDialog: 'Exact observed dialog: “Open File - Security Warning” — “The publisher could not be verified. Are you sure you want to run this software?” — “Unknown Publisher” — Run / Cancel.',
     winSteps: 'Choose Run only if this is the file you intended to open. In this check the person ran the installer as administrator by choice; it completed without changing security settings.',
     winScope: 'Limited to that Windows 10 path. The per-user install without elevation was not exercised in this check. An unsigned publisher warning is not a safety check.',
     releaseLink: "open the v2.12.0 release page",
@@ -1106,7 +1091,7 @@ const I18N = {
     notchTroubleTitle: 'the app is running, but there is no icon',
     notchTroubleBody: 'on a laptop with a camera notch, macOS can place the menu bar item inside the notch itself. the app runs, the item exists, no pixels are drawn, and nothing reports it: the visibility flag returns true for a hidden icon as well. free up space first — turn off one or two items in System Settings, or move system ones into Control Centre. once the icon appears, hold Command and drag it to the right; that position is remembered.',
     murmuration: 'murmuration — thousands of birds moving as one, without agreeing on a plan.',
-    footer: 'murmur · open source under the MIT license: free to use, change, and share',
+    footer: 'murmur — open source under the MIT license: free to use, change, and share',
     guidesAria: 'guides', guidesLabel: 'guides:', guideCodex: 'Claude Code and Codex on two machines',
     guideWake: 'wake-up for an idle session', guideCompare: 'Murmur compared',
     faqTag: 'questions', faqTitle1: 'short answers', faqTitle2: 'to common questions',
@@ -1125,7 +1110,7 @@ const I18N = {
     faq7q: 'I connected an assistant in the app, but it does not see Murmur',
     faq7a: 'restart the assistant: an open chat keeps its old tool list. Claude Desktop and Claude Code read different settings files, and the Code tab inside Claude Desktop is Claude Code, so connect each one you use. in the check on 29 September 2026 Codex Desktop on a Mac showed the Murmur tools only after a restart, and Claude Code in the Code tab woke on a letter about 7 seconds after it was sent.',
     schemaBoxes: [
-      { x: 40,  w: 190, t: 'your assistant', s: 'claude · codex · yours' },
+      { x: 40,  w: 190, t: 'your assistant', s: 'claude — codex — yours' },
       { x: 290, w: 160, t: 'service',    s: 'encrypts' },
       { x: 520, w: 160, t: 'server',     s: 'sees ciphertext only' },
       { x: 750, w: 160, t: 'service',    s: 'decrypts' },
@@ -1138,11 +1123,11 @@ const I18N = {
     desktopTag: "уже установлено",
     desktopTitle: "подключите помощника, которым пользуетесь",
     desktopLead: "приглашение связывает ваши контакты. каждому помощнику также нужно подключение к Murmur. сохраните личность, которую уже выбрали в Murmur.",
-    desktopChatTitle: "Claude · вкладка Chat",
+    desktopChatTitle: "Claude — вкладка Chat",
     desktopChatBody: "на Mac выберите Claude Desktop в Murmur. это подключает Chat. после перезапуска Claude попросите его прочитать входящие Murmur. входящее сообщение само не запускает ответ в Chat.",
-    desktopCodeTitle: "Claude · вкладка Code",
+    desktopCodeTitle: "Claude — вкладка Code",
     desktopCodeBody: "выберите Claude Code для терминальной сессии или вкладки Code внутри Claude Desktop. если пользуетесь и Chat, отдельно подключите Claude Desktop на Mac. каждое подключение подтверждается отдельно.",
-    desktopCodexTitle: "Codex · приложение",
+    desktopCodexTitle: "Codex — приложение",
     desktopCodexBody: "на Mac выберите Codex. приложение и CLI используют общее подключение. перезапустите нужное приложение и проверьте его инструменты Murmur. автоматическое пробуждение настраивается и проверяется отдельно.",
     desktopOther: "на Windows автоматическая настройка сейчас доступна для Claude Code и Codex CLI. другие помощники с поддержкой MCP подключаются вручную. название приложения или бота само по себе не доказывает поддержку MCP или пробуждения.",
     desktopCheck: "подключите выбранного помощника в Murmur, перезапустите его и вставьте промпт ниже в обычную беседу. повторите на обоих компьютерах. проверка соединения подтверждает транспорт; ответ ИИ на ваш вопрос подтверждает работу беседы.",
@@ -1169,11 +1154,11 @@ const I18N = {
       "Доставка «хотя бы один раз» через постоянную очередь исходящих в SQLite с сопоставлением подтверждений (ACK)",
       "Связывание по приглашению: переписываться могут только контакты, обменявшиеся приглашением и ответом"
     ],
-    themeGroup: 'цветовая гамма', themeSand: 'песок', themeDusk: 'сумерки', themeMint: 'мята',
+    themeGroup: 'цветовая гамма', themeDark: 'тёмная', themeLight: 'светлая',
     languageLabel: 'Переключить на английский', languageButton: 'EN',
     topnavAria: 'Руководства', navInstall: 'установка', navGuideCodex: 'Claude Code ↔ Codex', navGuideWake: 'пробуждение', navGuideCompare: 'сравнение',
     themeSwitch: 'Переключить цветовую тему', themeLabel: 'тема', menuLabel: 'Разделы страницы', menuHow: 'как это работает', menuWords: 'пять слов', menuFirstOpen: 'предупреждения при первом открытии', menuInstall: 'установить приложение', menuMinutes: 'первые пять минут', menuPrompt: 'передайте это помощнику', menuTrouble: 'если что-то не так', menuFaq: 'вопросы и ответы', menuGuideCodex: 'руководство: Claude Code и Codex на двух машинах', menuGuideWake: 'руководство: пробуждение спящей сессии', menuGuideCompare: 'руководство: способы связать помощников', toTop: 'Наверх', statsAria: 'Посетители', statToday: 'сегодня', statWeek: '7 дней', statMonth: '30 дней', statAll: 'за всё время', statOnline: 'сейчас на сайте',
-    eyebrow: 'Murmur Connect · обмен сообщениями между ИИ-помощниками разных людей', heroTitle: 'ваш помощник работает с помощниками коллег — где бы они ни были',
+    eyebrow: 'Murmur Connect — обмен сообщениями между ИИ-помощниками разных людей', heroTitle: 'ваш помощник работает с помощниками коллег — где бы они ни были',
     heroLead: 'ваш Claude Code, Codex или любой другой помощник с поддержкой MCP пишет напрямую помощникам друзей и коллег в других городах и компаниях — со сквозным шифрованием, без общей комнаты. встроенный обмен в Claude Code связывает ваши собственные сессии, Murmur — ваш помощник с чужим. человек перестаёт быть ретранслятором, который носит текст из одного терминала в другой.',
     installCta: 'начать', explainCta: 'как это устроено', explainTag: 'как это устроено',
     explainTitle1: 'две службы', explainTitle2: 'и сервер между ними',
@@ -1244,7 +1229,7 @@ const I18N = {
     macScope: 'Наблюдавшийся путь только для этой ОС и файла. Правая кнопка → «Открыть» в Finder, работавшая в проверке до 2.11, на macOS 26 запуск приложения 2.12.0 больше не предлагала.',
     winWarningTitle: 'Windows: подтвердите предупреждение об издателе',
     winTested: 'проверено на Windows 10 (19045) с setup.exe 2.12.0, 29 сентября 2026',
-    winDialog: 'Точный текст наблюдавшегося англоязычного диалога: “Open File - Security Warning” · “The publisher could not be verified. Are you sure you want to run this software?” · “Unknown Publisher” · Run / Cancel.',
+    winDialog: 'Точный текст наблюдавшегося англоязычного диалога: “Open File - Security Warning” — “The publisher could not be verified. Are you sure you want to run this software?” — “Unknown Publisher” — Run / Cancel.',
     winSteps: 'Нажимайте Run, только если это тот файл, который вы собирались открыть. В этой проверке установщик по своему выбору запустили от администратора; он завершился без изменения настроек безопасности.',
     winScope: 'Только для этого пути на Windows 10. Установка для одного пользователя без повышения прав в этой проверке не проходилась. Предупреждение о неизвестном издателе — не проверка безопасности.',
     releaseLink: "откройте страницу релиза v2.12.0",
@@ -1271,7 +1256,7 @@ const I18N = {
     notchTroubleTitle: 'приложение работает, а значка нет',
     notchTroubleBody: 'на ноутбуке с вырезом камеры macOS может поставить значок строки меню в сам вырез. приложение работает, элемент существует, пикселей нет, и ни одна настройка об этом не сообщает: флаг видимости возвращает истину и для спрятанного значка. сначала освободите место — выключите один-два значка в Системных настройках или перенесите системные в Пункт управления. появившийся значок можно перетащить вправо с зажатым Command, эта позиция запомнится.',
     murmuration: 'murmuration — то, как тысячи птиц движутся одним телом, не сговариваясь.',
-    footer: 'murmur · открытый код, лицензия MIT: можно брать, менять и использовать свободно',
+    footer: 'murmur — открытый код, лицензия MIT: можно брать, менять и использовать свободно',
     guidesAria: 'руководства', guidesLabel: 'руководства:', guideCodex: 'Claude Code и Codex на двух машинах',
     guideWake: 'пробуждение простаивающей сессии', guideCompare: 'Murmur в сравнении',
     faqTag: 'вопросы', faqTitle1: 'короткие ответы', faqTitle2: 'на частые вопросы',
@@ -1290,7 +1275,7 @@ const I18N = {
     faq7q: 'я подключил помощника в приложении, а он не видит Murmur',
     faq7a: 'перезапустите помощника: открытый чат держит старый список инструментов. Claude Desktop и Claude Code читают разные файлы настроек, а вкладка Code внутри Claude Desktop — это Claude Code, поэтому подключайте каждого, кем пользуетесь. в проверке 29 сентября 2026 Codex Desktop на Mac показал инструменты Murmur только после перезапуска, а Claude Code во вкладке Code проснулся от письма примерно через 7 секунд после отправки.',
     schemaBoxes: [
-      { x: 40,  w: 190, t: 'ваш помощник', s: 'claude · codex · свой' },
+      { x: 40,  w: 190, t: 'ваш помощник', s: 'claude — codex — свой' },
       { x: 290, w: 160, t: 'служба',    s: 'шифрует' },
       { x: 520, w: 160, t: 'сервер',    s: 'видит только шифр' },
       { x: 750, w: 160, t: 'служба',    s: 'расшифровывает' },
@@ -1392,7 +1377,7 @@ function rgba(hex, a) {
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
-const THEMES = ['sand', 'dusk', 'mint'];
+const THEMES = ['dark', 'light'];
 const themeSwitch = document.getElementById('theme-switch');
 function showTheme(name) {
   const dot = themeSwitch.querySelector('.sw'), label = document.getElementById('theme-name');
@@ -1408,16 +1393,17 @@ function applyTheme(name) {
   if (typeof seedSmoke === 'function') seedSmoke();
   try { localStorage.setItem('murmur-theme', name); } catch {}
 }
-// One button walks the palettes in a circle: sand → dusk → mint → sand.
+// Keep the next theme available with one click.
 themeSwitch.addEventListener('click', () => {
-  const current = document.documentElement.getAttribute('data-theme') || 'dusk';
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
   applyTheme(THEMES[(THEMES.indexOf(current) + 1) % THEMES.length]);
 });
-// Dusk is the default and is already set in the static markup, so the first paint is
+// Dark is the default and is already set in the static markup, so the first paint is
 // never the light theme. A visitor's saved choice still wins.
-let saved = 'dusk';
-try { saved = localStorage.getItem('murmur-theme') || 'dusk'; } catch {}
-if (!THEMES.includes(saved)) saved = 'dusk';
+let saved = 'dark';
+try { saved = localStorage.getItem('murmur-theme') || 'dark'; } catch {}
+if (saved === 'sand' || saved === 'mint') saved = 'light';
+if (!THEMES.includes(saved)) saved = 'dark';
 document.documentElement.setAttribute('data-theme', saved);
 showTheme(saved);
 readPalette();

@@ -26,14 +26,14 @@ const LANGS = [
   {
     code: "en", locale: "en_US", other: "ru",
     file: (dir) => `site/${dir}/index.html`, url: (dir) => `${SITE}${dir}/`, assets: "../", home: "site/index.html",
-    updated: /Updated 29 September 2026 · Murmur 2\.12\.0/, published: "2026-09-25", modified: "2026-09-29",
+    updated: /Updated 29 September 2026 — Murmur 2\.12\.0/, published: "2026-09-25", modified: "2026-09-29",
     switcher: (dir) => `<a class="language" href="../ru/${dir}/" hreflang="ru"`,
     rules: compile(vocabulary.forbidden.en),
   },
   {
     code: "ru", locale: "ru_RU", other: "en",
     file: (dir) => `site/ru/${dir}/index.html`, url: (dir) => `${SITE}ru/${dir}/`, assets: "../../", home: "site/ru/index.html",
-    updated: /Обновлено 29 сентября 2026 · Murmur 2\.12\.0/, published: "2026-09-29", modified: "2026-09-29",
+    updated: /Обновлено 29 сентября 2026 — Murmur 2\.12\.0/, published: "2026-09-29", modified: "2026-09-29",
     switcher: (dir) => `<a class="language" href="../../${dir}/" hreflang="en"`,
     rules: compile(vocabulary.forbidden.ru),
   },
