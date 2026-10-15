@@ -23,3 +23,9 @@ The portable private deny defaults mirror the canonical mesh_comms_policy.PRIVAT
 Live read-only projection on 14 October: 11 contacts, 27 open topics, 3 owner decisions with source ID/date/next action (Ira pairing, Keyboard form destination, Radar historical advertising import). OPS owns operator-state updates; this patch does not write that ledger.
 
 Required acceptance after packaging: exact source/runtime manifests, signature, native probe, avatar/query boundaries, no-reply regressions and CI. Native installed AIM10, production helpers, existing permissions and schedules remain unchanged until exact-head review and rollout.
+
+## Menu placement follow-up · 2026-10-15
+
+The AIM edition now opens its existing panel below its own status item on that display. Opening through the menu, application reopen or hotkey recalculates the anchor, so a saved central window frame cannot detach the entry. Visible panels re-anchor after display changes. A hidden or unmeasurable status item retains the independent window fallback. Pin still controls dismissal only.
+
+Offscreen shell checks cover ordinary, left/right edge, negative-coordinate and short displays plus hidden-item fallback. Native live acceptance records menu and panel frames separately; reboot, notch overflow and physically reconnecting displays remain manual checks. No profile, responder, transport or global hotkey changes.
