@@ -43,6 +43,11 @@ struct MurmurClientSetupView: View {
                 Text(L10n.text("Connection saved for %@", receipt.client.title)).font(AIMTheme.heading)
                 Text(L10n.text("Reload your AI application or start a new session so it can load Murmur. Your current conversation is not closed automatically."))
                     .fixedSize(horizontal: false, vertical: true)
+                if receipt.client == .claudeCode {
+                    Text(L10n.text("Open this folder in Claude Code and keep one mail conversation there: %@",
+                                   URL(fileURLWithPath: receipt.configPath).deletingLastPathComponent().path))
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
                 Text(L10n.text("Saved settings are only the first step. Test a returned reply below."))
                     .foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
                 MurmurDisclosure(title: L10n.text("Changed file and backup")) {

@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import Combine
+import UserNotifications
 import SwiftUI
 import MurmurTrayCore
 
@@ -54,7 +55,7 @@ private final class CommandMenuItem: NSMenuItem {
 }
 
 @MainActor
-private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotificationCenterDelegate {
     private let model = TrayModel()
     private var item: NSStatusItem?
     private var window: NSWindow?
@@ -62,6 +63,7 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
     private var shortcut: GlobalShortcut?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         // The window is the primary entrance; the menu-bar item is a shortcut.
         NSApp.applicationIconImage = MurmurMark.image(state: .ready, size: 512, description: "Murmur")
         let appMenu = NSMenu()
@@ -114,6 +116,17 @@ private final class MurmurAppDelegate: NSObject, NSApplicationDelegate, NSMenuDe
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor in self.showWindow() }
+        completionHandler()
+    }
 
     func applicationWillTerminate(_ notification: Notification) {
         shortcut?.unregister()

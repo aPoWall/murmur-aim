@@ -380,5 +380,10 @@
   "updates.rootTooltip": "Declared stable release; separate from message delivery health",
   "updates.unavailable": "Update information unavailable; try checking again",
   "updates.unknown": "unknown",
-  "wake.settingUnknown": "The wake-up setting was not confirmed"
+  "wake.settingUnknown": "The wake-up setting was not confirmed",
+  "assistants.inheritedWakeConflict": "Murmur Wake-up is already configured globally or in a parent folder. Review and remove that connection before connecting a dedicated folder; no settings were changed.",
+  "assistants.projectDirectoryRequired": "Create and select a dedicated folder for your Murmur conversation, then try again.",
+  "assistants.projectMustBeDedicated": "Choose a dedicated Murmur folder, not the assistant configuration home.",
+  "assistants.projectOnlyForClaudeCode": "A dedicated folder connection is available for Claude Code, including the Code tab in Claude.",
+  "assistants.projectPathInvalid": "Choose an existing folder using its full absolute path, then try again."
 }

@@ -70,7 +70,8 @@ adds an existing-installation guide and prompt, supplies MCP usage instructions,
 and corrects Windows upgrade order and clipboard feedback. It detects Code inside
 Claude.app, supports a dedicated folder with one shared wake reader, keeps verified
 Homebrew Node paths stable, and removes machine diagnostics from personal unread counts.
-It also includes the
+The Mac app adds a read-only personal inbox, optional count-only notifications and
+actionable pairing errors. It also includes the
 post-2.12.0 fixes already on main, including per-contact diagnostics and clearer
 installer errors. See [CHANGELOG](CHANGELOG.md#2121---unreleased) and the
 [package versions, upgrade steps and release checks](docs/releases/2.12.1.md).

@@ -216,7 +216,7 @@ test('stop refuses another profile reusing the same serviceName without any boot
   assert.ok(f.calls.every(([, args]) => args[0] !== 'bootout'));
 });
 
-test('a Homebrew upgrade can stop the owned Cellar-bound service before reinstalling with a stable Node path', async t => {
+test('a Homebrew upgrade can stop the owned Cellar-bound service before reinstalling with a stable Node path', { skip: skipPosixServiceHost }, async t => {
   let loaded = false;
   const f = await fixture(t, (file, args, ctx, home) => args[0] === 'bootout' ? ok() : loaded
     ? ok(`path = ${path.join(home, 'Library', 'LaunchAgents', ctx.serviceName + '.plist')}\n state = running\n pid = 123\n`)

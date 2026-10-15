@@ -14,12 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.12.1] - Unreleased
 
 ### Added
+- **Personal inbox in the Mac app.** Show the latest 20 incoming messages as plain
+  text without marking them read or sending a reply. Opt-in notifications report
+  unread-count increases while the app is open, without message bodies.
 - **Connect the assistant you actually use** (#283). The website has a separate
   English/Russian path and copyable prompt for an existing installation. It checks
   tools and contacts in the person's usual conversation and requires a returned reply,
   without creating another identity or a terminal-only helper.
 - **Dedicated Claude Code folder.** `clients preview/configure --project-dir`
-  installs project MCP settings and a shared wake key. Concurrent chats in that
+  installs project MCP settings and a shared wake key. The Mac connection button
+  selects this mode through a folder picker. Concurrent chats in that
   folder cannot deliver one letter repeatedly. Inherited wake hooks are refused
   before configuration changes. Status/doctor expose verified live reader counts
   on macOS/Linux, with unknown results reported explicitly.
@@ -33,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configuration. Each connection still requires its own confirmation.
 - **Coordinated package set for 2.12.1.** The CLI follows product version 2.12.1;
   all twelve public libraries receive patch versions and internal dependency floors
-  follow this set. MCP reports its package version 0.2.4. Third-party dependencies and
+  follow this set. MCP reports its package version 0.2.4. Direct third-party requirements and
   the Node.js 22.13.0 minimum are unchanged. See [release preparation](docs/releases/2.12.1.md).
 - **«Murmur Connect» is the project's full name** on the site (`<title>`, `og:site_name`, structured
   data, header), in the README, the repository description, the npm package descriptions and
@@ -48,6 +52,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Russian guides next to the English ones.
 
 ### Fixed
+- **Mac pairing errors preserve actionable causes:** own Identity, changed Contact,
+  missing settings, permission problems, existing output and timeout are distinct.
+  Unknown command output stays private. Existing settings now have a direct first-screen entry.
+- **Security dependency:** the lockfile resolves `proxy-addr` 2.0.8, fixing
+  [GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h).
+  Direct dependency requirements remain unchanged.
+- **macOS SDK 27 builds:** all menu app screens use the existing SwiftUI property
+  wrapper alias, avoiding a macro plugin absent from standalone Command Line Tools.
+- **Cross-platform setup messages:** new project connection errors have actionable
+  English/Russian Windows messages; the Homebrew service fixture runs on POSIX hosts.
 - **Claude Code inside Claude.app is detected** without a separate terminal CLI.
 - **Homebrew Node paths survive upgrades.** New service/client settings persist a
   verified stable Node path; an owned old Cellar-bound service can still be stopped

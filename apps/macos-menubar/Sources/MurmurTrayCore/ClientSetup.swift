@@ -1,5 +1,22 @@
 import Foundation
 
+public enum ClientSetupError: Error, LocalizedError, Sendable {
+    case inheritedHook, projectFolder
+    static func from(code: String?) -> Self? {
+        switch code {
+        case "client.inherited-wake-hook-conflict": .inheritedHook
+        case "client.project-directory-required", "client.project-must-be-dedicated", "client.project-path-invalid": .projectFolder
+        default: nil
+        }
+    }
+    public var errorDescription: String? {
+        switch self {
+        case .inheritedHook: L10n.text("An older global or parent-folder Murmur connection already wakes chats. Ask your assistant to review that older hook before connecting this folder. No settings were changed.")
+        case .projectFolder: L10n.text("Choose a separate Murmur folder for your mail conversation. Do not select Claude's settings folder.")
+        }
+    }
+}
+
 public enum AIClientKind: String, Decodable, Sendable, CaseIterable {
     case claudeCode = "claude-code", claudeDesktop = "claude-desktop"
     case codexCLI = "codex-cli", codexDesktop = "codex-desktop"
@@ -126,16 +143,31 @@ public struct ClientSetupClient: Sendable {
               list.clients.allSatisfy({ $0.configPath.map(explicitAbsolutePath) ?? true }) else { throw ProfileError.invalidResponse }
         return list.clients
     }
-    public func preview(_ client: AIClientKind, expectedAgent: String) throws -> ClientConfigurationPlan {
-        try verify(expectedAgent)
-        return try ClientConfigurationPlan.decode(probe.invoke(["clients", "preview", "--client", client.rawValue]).data,
-                                                 profile: profile, agentID: expectedAgent, client: client)
+    private func projectArguments(_ directory: String?, client: AIClientKind) throws -> [String] {
+        guard let directory else { return [] }
+        guard client == .claudeCode, explicitAbsolutePath(directory) else { throw ClientSetupError.projectFolder }
+        return ["--project-dir", directory]
     }
-    public func configure(_ plan: ClientConfigurationPlan, expectedAgent: String) throws -> ClientConfigurationReceipt {
+    private func verifyProject(_ plan: ClientConfigurationPlan, directory: String?) throws {
+        if let directory, plan.configPath != URL(fileURLWithPath: directory).appendingPathComponent(".mcp.json").path {
+            throw ProfileError.invalidResponse
+        }
+    }
+    public func preview(_ client: AIClientKind, expectedAgent: String, projectDirectory: String? = nil) throws -> ClientConfigurationPlan {
+        let projectArgs = try projectArguments(projectDirectory, client: client)
+        try verify(expectedAgent)
+        let plan = try ClientConfigurationPlan.decode(probe.invoke(["clients", "preview", "--client", client.rawValue] + projectArgs).data,
+                                                 profile: profile, agentID: expectedAgent, client: client)
+        try verifyProject(plan, directory: projectDirectory)
+        return plan
+    }
+    public func configure(_ plan: ClientConfigurationPlan, expectedAgent: String, projectDirectory: String? = nil) throws -> ClientConfigurationReceipt {
         guard plan.agentId == expectedAgent, plan.dataDir == profile.dataDirectory else { throw ProfileError.identityChanged }
+        let projectArgs = try projectArguments(projectDirectory, client: plan.client)
+        try verifyProject(plan, directory: projectDirectory)
         try verify(expectedAgent)
         let argv = ["clients", "configure", "--client", plan.client.rawValue, "--plan-id", plan.planId]
-            + (plan.action == .replace ? ["--replace"] : [])
+            + (plan.action == .replace ? ["--replace"] : []) + projectArgs
         return try ClientConfigurationReceipt.decode(probe.invoke(argv).data, plan: plan)
     }
     public func prepareTest(peerID: String, expectedAgent: String) throws -> ReplyTestPlan {

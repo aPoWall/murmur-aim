@@ -313,6 +313,8 @@ struct ProbeChecks {
         let clientSetupCount = try measuredChecks("ClientSetup") { try runClientSetupChecks(fixtures: directory) }
         let outboxCount = try measuredChecks("OutboxAttention") { try runOutboxAttentionChecks(fixtures: directory) }
         let pairingCount = try measuredChecks("Pairing") { try runPairingChecks(fixtures: directory) }
+        let inboxCount = try measuredChecks("Inbox") { try runInboxChecks(fixtures: directory) }
+        print("\(inboxCount) inbox and notification checks passed (in addition to totals below)")
         print("\(guidanceCount) connection guidance checks passed")
         print("\(7 + companionCount + canonicalCount + extraChecks + controlCount + updateCount + runtimeCount + localizationCount + presentationCount + markCount + onboardingCount + guidanceCount + clientSetupCount + outboxCount + pairingCount) checks passed; canonical \(canonicalCount), transport 7, boundary \(extraChecks), profile controls \(controlCount), updates \(updateCount), bundled runtime \(runtimeCount), localization \(localizationCount), presentation \(presentationCount), mark \(markCount), onboarding \(onboardingCount), guidance \(guidanceCount), client setup \(clientSetupCount), outbox \(outboxCount), pairing \(pairingCount)")
     }

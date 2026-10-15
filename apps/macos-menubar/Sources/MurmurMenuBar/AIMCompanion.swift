@@ -123,10 +123,10 @@ import MurmurTrayCore
 
 struct AIMCompanionView: View {
     @ObservedObject var model: AIMCompanionModel
-    @State private var query = ""
-    @State private var showAllQuestions = false
-    @State private var showSearch = false
-    @State private var queue = "owner"
+    @MurmurViewState private var query = ""
+    @MurmurViewState private var showAllQuestions = false
+    @MurmurViewState private var showSearch = false
+    @MurmurViewState private var queue = "owner"
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)

@@ -119,6 +119,10 @@ public struct CLIProbe: Sendable {
                 throw PairingError.from(code: text.split(whereSeparator: \.isNewline).last.map(String.init), command: arguments.first)
             }
             let errorText = String(data: try Data(contentsOf: stderr), encoding: .utf8) ?? ""
+            if arguments.first == "clients",
+               let known = ClientSetupError.from(code: errorText.split(whereSeparator: \.isNewline).last.map(String.init)) {
+                throw known
+            }
             // Recognize only exact, known init codes before screening raw text.
             // A code containing "token" is not a credential; its stderr payload
             // is never included in the localized message.

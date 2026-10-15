@@ -380,5 +380,10 @@
   "updates.rootTooltip": "Заявленный стабильный выпуск отдельно от здоровья доставки",
   "updates.unavailable": "Данные об обновлениях недоступны; повторите проверку",
   "updates.unknown": "неизвестно",
-  "wake.settingUnknown": "Настройка пробуждения не подтверждена"
+  "wake.settingUnknown": "Настройка пробуждения не подтверждена",
+  "assistants.inheritedWakeConflict": "Общий хук Murmur или хук родительской папки уже активен. Проверьте и уберите его перед подключением отдельной папки; настройки не изменены.",
+  "assistants.projectDirectoryRequired": "Создайте и выберите отдельную папку для беседы Murmur, затем повторите подключение.",
+  "assistants.projectMustBeDedicated": "Выберите отдельную папку Murmur, а не домашнюю папку настроек помощника.",
+  "assistants.projectOnlyForClaudeCode": "Подключение отдельной папки доступно для Claude Code, в том числе во вкладке Code приложения Claude.",
+  "assistants.projectPathInvalid": "Выберите существующую папку по полному абсолютному пути, затем повторите подключение."
 }

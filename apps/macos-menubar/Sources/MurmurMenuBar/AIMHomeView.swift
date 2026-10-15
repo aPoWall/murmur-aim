@@ -6,7 +6,7 @@ import MurmurTrayCore
 struct AIMHomeView: View {
     @ObservedObject var model: TrayModel
     @ObservedObject private var window = AIMWindowState.shared
-    @State private var navigation = AIMPanelNavigation()
+    @MurmurViewState private var navigation = AIMPanelNavigation()
     private var page: String { navigation.page }
     private var pageBinding: Binding<String> { Binding(get: { navigation.page }, set: { navigation.select($0) }) }
     @MurmurViewState private var entry = "welcome"
@@ -231,7 +231,7 @@ struct AIMHomeView: View {
             if model.status != nil && !model.isDemo { MurmurClientSetupView(model: model) }
             if let mismatch = model.status?.modeMismatch { Text(mismatch) }
             operationFeedback
-            if let count = model.status?.inbox.unread { Text(L10n.text("Unread: %@", String(count))) }
+            MurmurInboxView(model: model)
             if let count = model.status?.wake.delivery.pendingUndelivered {
                 Text(L10n.text("Waiting for agent delivery: %@", String(count)))
             }

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ServiceManagement
 import Combine
+import UserNotifications
 import MurmurTrayCore
 
 private struct DoctorRead: Sendable { let value: DoctorSnapshot?; let error: String? }
@@ -22,6 +23,13 @@ final class TrayModel: ObservableObject {
     @Published var checkingStatus = false
     @Published var checkingDoctor = false
     @Published var checkingSelection = false
+    @Published var inbox: InboxSnapshot?
+    @Published var inboxError: String?
+    @Published var checkingInbox = false
+    @Published var inboxNotifications = UserDefaults.standard.bool(forKey: "murmurInboxNotifications")
+    @Published var requestingInboxNotifications = false
+    @Published var inboxNotificationError: String?
+    private var inboxNotificationCounter = InboxNotificationCounter()
     @Published var aiClients: [DetectedAIClient]?
     @Published var configuringAI = false
     @Published var aiSetupError: String?
@@ -251,6 +259,7 @@ final class TrayModel: ObservableObject {
 
     func bind(_ chosen: ProfileBinding, expectedAgent: String? = nil, skipInitialDoctor: Bool = false) {
         selectionID = UUID()
+        resetInbox()
         aiClients = nil; aiReceipt = nil; aiSetupError = nil
         resetReplyTest()
         restoreSetup(for: chosen)
@@ -364,6 +373,7 @@ final class TrayModel: ObservableObject {
             archivedSetupRecord = try onboardingJournal.archiveRecord()
             preferences.set(archivedSetupRecord?.lastPathComponent, forKey: "archivedSetupRecordName")
             selectionID = UUID(); profile = nil; client = nil; agentID = nil; status = nil; doctor = nil
+            resetInbox()
             setupAgentID = nil; setupReplyFile = nil
             creationPlan = nil; creationError = nil
             refreshSavedSetup()
@@ -687,16 +697,31 @@ final class TrayModel: ObservableObject {
     func connectAIClient(_ kind: AIClientKind) {
         guard !busy, !isDemo, let helper = aiSetupClient, let agent = agentID, status != nil else { return }
         let selected = selectionID
+        var selectedDirectory: String?
+        if kind == .claudeCode {
+            let picker = NSOpenPanel()
+            picker.canChooseDirectories = true; picker.canChooseFiles = false
+            picker.allowsMultipleSelection = false; picker.canCreateDirectories = true
+            picker.message = L10n.text("Choose or create a Murmur folder for one mail conversation. Open this same folder in Claude's Code tab afterwards.")
+            picker.prompt = L10n.text("Use this folder")
+            guard picker.runModal() == .OK, let directory = picker.url else { return }
+            selectedDirectory = directory.path
+        }
+        guard selected == selectionID else { return }
+        let projectDirectory = selectedDirectory
         configuringAI = true; aiSetupError = nil
         Task {
             defer { if selected == selectionID { configuringAI = false } }
             do {
-                let plan = try await Task.detached { try helper.preview(kind, expectedAgent: agent) }.value
+                let plan = try await Task.detached { try helper.preview(kind, expectedAgent: agent, projectDirectory: projectDirectory) }.value
                 guard selected == selectionID else { return }
                 let alert = NSAlert()
                 alert.messageText = L10n.text(plan.action == .replace ? "Replace the Murmur connection in %@?" : "Connect %@ to Murmur?", kind.title)
                 alert.informativeText = L10n.text("This connects %@ using the selected Murmur settings. Your sign-in, model choices and other connections are kept. An existing file is backed up before a change. Reload the AI application afterwards.", agent)
                     + "\n\n" + plan.configPath
+                if let projectDirectory {
+                    alert.informativeText += "\n\n" + L10n.text("Open this folder in Claude Code and keep one mail conversation there: %@", projectDirectory)
+                }
                 if plan.action == .replace {
                     alert.informativeText += "\n\n" + L10n.text("This application already has a different Murmur connection. Replacing it switches which connection its assistant uses.")
                 }
@@ -704,13 +729,13 @@ final class TrayModel: ObservableObject {
                 alert.addButton(withTitle: L10n.text("Cancel"))
                 guard alert.runModal() == .alertFirstButtonReturn else { return }
                 aiReceipt = nil; resetReplyTest()
-                let receipt = try await Task.detached { try helper.configure(plan, expectedAgent: agent) }.value
+                let receipt = try await Task.detached { try helper.configure(plan, expectedAgent: agent, projectDirectory: projectDirectory) }.value
                 guard selected == selectionID else { return }
                 aiReceipt = receipt
                 resetReplyTest()
             } catch {
                 guard selected == selectionID else { return }
-                aiSetupError = L10n.text("The change could not be confirmed. Settings may have changed while this window was open. Choose the application again to review its current settings; nothing is retried automatically.")
+                aiSetupError = (error as? ClientSetupError)?.localizedDescription ?? L10n.text("The change could not be confirmed. Settings may have changed while this window was open. Choose the application again to review its current settings; nothing is retried automatically.")
             }
         }
     }
@@ -792,6 +817,62 @@ final class TrayModel: ObservableObject {
             statusError = result.error ?? Verdict(.unknown, reason: L10n.text("Status has not been received yet"))
             profileError = result.error?.reason
             checkingStatus = false
+            if result.status == nil { inbox = nil }
+            let increased = inboxNotificationCounter.observe(result.status?.inbox.unread)
+            if increased && inboxNotifications, let count = result.status?.inbox.unread {
+                let content = UNMutableNotificationContent()
+                content.title = "Murmur"
+                content.body = L10n.text("Unread: %@", String(count))
+                content.sound = .default
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "murmur-personal-inbox", content: content, trigger: nil)) { error in
+                    if error != nil { Task { @MainActor in
+                        self.inboxNotificationError = L10n.text("Notifications could not be shown. Check Murmur notification settings in macOS.")
+                    } }
+                }
+            }
+        }
+    }
+
+    private func resetInbox() {
+        inbox = nil; inboxError = nil; checkingInbox = false
+        inboxNotificationCounter = InboxNotificationCounter()
+    }
+
+    func readInbox() {
+        guard !busy, !checkingInbox, !isDemo, let client, let agent = agentID, status != nil else { return }
+        let selected = selectionID
+        checkingInbox = true; inboxError = nil; inbox = nil
+        Task {
+            let result = await Task.detached { Result { try client.readInbox(expectedAgent: agent) } }.value
+            guard selected == selectionID else { return }
+            checkingInbox = false
+            switch result {
+            case .success(let value):
+                guard agentID == agent, status != nil else { return }
+                inbox = value
+            case .failure:
+                inboxError = L10n.text("Messages could not be loaded. Refresh the connection and try again; no messages were marked as read.")
+            }
+        }
+    }
+
+    func toggleInboxNotifications() {
+        guard !isDemo, !requestingInboxNotifications else { return }
+        if inboxNotifications {
+            inboxNotifications = false
+            UserDefaults.standard.set(false, forKey: "murmurInboxNotifications")
+            return
+        }
+        requestingInboxNotifications = true; inboxNotificationError = nil
+        NSApp.activate(ignoringOtherApps: true)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            Task { @MainActor in
+                self.requestingInboxNotifications = false; self.inboxNotifications = granted
+                self.inboxNotificationCounter = InboxNotificationCounter()
+                _ = self.inboxNotificationCounter.observe(self.status?.inbox.unread)
+                UserDefaults.standard.set(granted, forKey: "murmurInboxNotifications")
+                if !granted { self.inboxNotificationError = L10n.text("Allow Murmur notifications in macOS System Settings, then try again.") }
+            }
         }
     }
 

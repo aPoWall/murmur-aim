@@ -53,11 +53,11 @@ struct AIMMessageSearchView: View {
     let enabled: Bool
     let people: [AIMCompanionSnapshot.Person]
     @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
-    @State private var result: AIMMessageSearchResult?
-    @State private var busy = false
-    @State private var failed = false
-    @State private var selected: AIMMessageSearchResult.Match?
+    @MurmurViewState private var query = ""
+    @MurmurViewState private var result: AIMMessageSearchResult?
+    @MurmurViewState private var busy = false
+    @MurmurViewState private var failed = false
+    @MurmurViewState private var selected: AIMMessageSearchResult.Match?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -126,8 +126,8 @@ struct AIMMessageDetailView: View {
     let match: AIMMessageSearchResult.Match
     let participant: String
     @Environment(\.dismiss) private var dismiss
-    @State private var message: AIMMessageReadResult?
-    @State private var failed = false
+    @MurmurViewState private var message: AIMMessageReadResult?
+    @MurmurViewState private var failed = false
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

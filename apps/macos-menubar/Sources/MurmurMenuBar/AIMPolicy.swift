@@ -12,15 +12,15 @@ enum AIMPolicyTransport {
 struct AIMPolicyView: View {
     let person: AIMCompanionSnapshot.Person
     @Environment(\.dismiss) private var dismiss
-    @State private var data: AIMPeerPolicySnapshot?
-    @State private var peer = ""
-    @State private var sendAllowed = true
-    @State private var trust = "review_required"
-    @State private var context = "message_only"
-    @State private var tone = "concise"
-    @State private var brief = ""
-    @State private var status = ""
-    @State private var busy = false
+    @MurmurViewState private var data: AIMPeerPolicySnapshot?
+    @MurmurViewState private var peer = ""
+    @MurmurViewState private var sendAllowed = true
+    @MurmurViewState private var trust = "review_required"
+    @MurmurViewState private var context = "message_only"
+    @MurmurViewState private var tone = "concise"
+    @MurmurViewState private var brief = ""
+    @MurmurViewState private var status = ""
+    @MurmurViewState private var busy = false
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("Access & context")).font(AIMTheme.title)

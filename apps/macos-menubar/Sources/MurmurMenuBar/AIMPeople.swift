@@ -4,9 +4,9 @@ import MurmurTrayCore
 
 struct AIMPeopleView: View {
     @ObservedObject var model: AIMCompanionModel
-    @State private var query = ""
-    @State private var policyPerson: AIMCompanionSnapshot.Person?
-    @State private var recipient: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var query = ""
+    @MurmurViewState private var policyPerson: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var recipient: AIMCompanionSnapshot.Person?
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("People & agents")).font(AIMTheme.title)
@@ -95,14 +95,14 @@ struct AIMPeopleView: View {
 struct AIMComposeView: View {
     let person: AIMCompanionSnapshot.Person
     @Environment(\.dismiss) private var dismiss
-    @State private var peer: String
-    @State private var message = ""
-    @State private var includeContext = false
-    @State private var selectedPolicy: AIMPeerPolicySnapshot.Policy?
-    @State private var requestID = UUID().uuidString.lowercased()
-    @State private var attempted = false
-    @State private var busy = false
-    @State private var receipt: String?
+    @MurmurViewState private var peer: String
+    @MurmurViewState private var message = ""
+    @MurmurViewState private var includeContext = false
+    @MurmurViewState private var selectedPolicy: AIMPeerPolicySnapshot.Policy?
+    @MurmurViewState private var requestID = UUID().uuidString.lowercased()
+    @MurmurViewState private var attempted = false
+    @MurmurViewState private var busy = false
+    @MurmurViewState private var receipt: String?
     init(person: AIMCompanionSnapshot.Person) {
         self.person = person
         _peer = State(initialValue: person.writable_agents?.first ?? "")
