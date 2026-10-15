@@ -217,7 +217,8 @@ Drain semantics:
   ledger as `bound-to-other-session` and steps over it. The binding holds while the
   owner's MCP process is alive and for `MURMUR_WAKE_BIND_TTL_SECONDS` (default 28800)
   after its last send. Unbound conversations, a closed owner, and a drain without a
-  session key wake every session as above. `MURMUR_WAKE_BINDINGS_DIR` moves the directory.
+  session key wake every session as above. `MURMUR_WAKE_BINDINGS_DIR` moves the directory;
+  set the same absolute path for the MCP process (writer) and Stop hook (reader).
   `dm:a:b` and `dm:b:a` bind as one conversation. Each send also binds the peer
   (`peer-<sha256(peer)>.json`): when a row's conversation is not bound, its sender is looked up,
   so a new letter from a peer this session wrote to goes to this session alone.

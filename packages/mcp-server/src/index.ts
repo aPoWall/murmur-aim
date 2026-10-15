@@ -134,7 +134,7 @@ const recordCodexTaskPeerBinding = (conversationId: string, peerId: string): voi
 // next to the store, where scripts/wake-drain-claude.mjs reads it and lets only that
 // session wake on the reply. Codex tasks have their own binding above and are left out.
 const claudeSessionId = process.env.CODEX_THREAD_ID ? "" : (process.env.CLAUDE_CODE_SESSION_ID || "").trim();
-const sessionBindingDir = path.resolve(path.dirname(dbPath), ".claude-session-bindings");
+const sessionBindingDir = path.resolve(process.env.MURMUR_WAKE_BINDINGS_DIR || path.join(path.dirname(dbPath), ".claude-session-bindings"));
 
 // A direct conversation is named sender-first, so the two sides of one DM may carry
 // `dm:a:b` and `dm:b:a`. The binding treats both as one conversation.

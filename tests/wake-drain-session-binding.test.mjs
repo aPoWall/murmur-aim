@@ -22,11 +22,11 @@ const SESSION_B = "bbbbbbbb-2222-4000-8000-000000000002";
 
 const baseEnv = () => {
   const env = { ...process.env, MURMUR_UPDATE_CHECK: "0" };
-  for (const key of ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "MURMUR_SESSION_ID", "MURMUR_WAKE_SESSION_KEY"]) delete env[key];
+  for (const key of ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "MURMUR_SESSION_ID", "MURMUR_WAKE_SESSION_KEY", "MURMUR_WAKE_BINDINGS_DIR"]) delete env[key];
   return env;
 };
 
-function fixture(t) {
+function fixture(t, customBindings = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "murmur-session-binding-")));
   const children = [];
   const dbs = [];
@@ -40,7 +40,8 @@ function fixture(t) {
   });
   const dataDir = path.join(root, "a");
   const dbPath = path.join(dataDir, "murmur.db");
-  const bindingsDir = path.join(dataDir, ".claude-session-bindings");
+  const bindingsDir = customBindings ? path.join(root, "custom-bindings") : path.join(dataDir, ".claude-session-bindings");
+  const bindingEnv = customBindings ? { MURMUR_WAKE_BINDINGS_DIR: bindingsDir } : {};
   const drain = (session, args = ["--once"], extra = {}) => spawnSync(process.execPath, ["--no-warnings", nodeScript, "--db", dbPath, ...args], {
     encoding: "utf8",
     env: {
@@ -48,6 +49,7 @@ function fixture(t) {
       HOME: root,
       USERPROFILE: root, // os.homedir() on Windows: keep cursors and anchors out of the real home
       CLAUDE_CODE_SESSION_ID: session,
+      ...bindingEnv,
       MURMUR_WAKE_SKIPPED_LOG: path.join(root, "skipped.jsonl"),
       ...extra,
     },
@@ -57,7 +59,7 @@ function fixture(t) {
     if (!fs.existsSync(file)) return [];
     return fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
   };
-  return { root, dataDir, dbPath, bindingsDir, drain, ledger, children, dbs };
+  return { root, dataDir, dbPath, bindingsDir, bindingEnv, drain, ledger, children, dbs };
 }
 
 function storeWithMessages(f) {
@@ -98,6 +100,7 @@ function mcpClient(f, session) {
     env: {
       ...baseEnv(), HOME: f.root, DATA_DIR: f.dataDir, CLAUDE_CODE_SESSION_ID: session,
       MURMUR_STORE_PATH: f.dbPath, MURMUR_CHANNEL_ROSTER_PATH: path.join(f.dataDir, "channel-roster.db"),
+      ...f.bindingEnv,
     },
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -165,6 +168,28 @@ test("a reply wakes only the Claude Code session that sent on the conversation",
   const afterClose = f.drain(SESSION_B);
   assert.equal(afterClose.status, 2, afterClose.stderr);
   assert.match(afterClose.stderr, /Murmur wake: 1 new inbound message\(s\)/);
+});
+
+test("a custom binding directory is shared by the MCP writer and both session drains", { timeout: 30000 }, async (t) => {
+  const f = fixture(t, true);
+  const cli = (id, ...args) => execFileSync(process.execPath, ["packages/setup/bin/murmur.mjs", ...args, "--data-dir", path.join(f.root, id), "--json"], {
+    stdio: ["ignore", "pipe", "pipe"], env: { ...baseEnv(), HOME: f.root },
+  });
+  cli("a", "init", "--agent-id", "agent-a", "--broker-url", "nats://127.0.0.1:1");
+  cli("a", "invite", "--broker", "nats://server.example.com:4222", "--out", path.join(f.root, "invite.txt"));
+  cli("b", "join", "--agent-id", "agent-b", "--invite-file", path.join(f.root, "invite.txt"), "--reply-out", path.join(f.root, "reply.txt"));
+  cli("a", "add-peer", "--reply-file", path.join(f.root, "reply.txt"));
+  const a = mcpClient(f, SESSION_A);
+  assert.equal((await a.call("murmur_send", { to: "agent-b", text: "question", conversationId: "custom-bound" })).status, "queued");
+  const db = storeWithMessages(f);
+  seedCursors(f);
+  inbound(db, "custom-bound", "agent-b");
+  const other = f.drain(SESSION_B);
+  assert.equal(other.status, 0, `another session must stay silent: ${other.stderr}`);
+  assert.equal(f.drain(SESSION_A).status, 2);
+  assert.deepEqual(f.ledger().map(e => e.reason), ["bound-to-other-session"]);
+  assert.equal(fs.readdirSync(f.bindingsDir).length, 2, "both conversation and peer bindings use the override");
+  assert.equal(fs.existsSync(path.join(f.dataDir, ".claude-session-bindings")), false);
 });
 
 test("an unbound conversation still wakes every session", (t) => {
