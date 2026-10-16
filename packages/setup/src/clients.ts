@@ -1,6 +1,6 @@
 import * as TOML from '@iarna/toml';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, rename, rmdir, stat, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, realpath, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -37,11 +37,23 @@ async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clien
     }
     // Desktop forwards Chat/user MCP registrations ahead of project entries.
     // Refuse an occupied dedicated name instead of selecting a global identity.
+    // Code's local scope lives under projects[path] in the same user file and
+    // outranks .mcp.json too. Inspect both path spellings without changing the
+    // selected path used for service identity, folder name or wake lane.
+    const projectPaths = new Set([c.clientProjectDir, await realpath(c.clientProjectDir)]);
     for (const global of clients.filter(item => ['claude-code', 'claude-desktop'].includes(item.id))) {
       if (!global.configPath || !path.isAbsolute(global.configPath)) continue;
       const file = await readClientFile(global.configPath);
       const { original, key } = clientDocument(global, file.text);
       if (original[key]?.[mcpEntryName(c)] !== undefined) throw new Error('client.inherited-mcp-entry-conflict');
+      if (global.id === 'claude-code' && object(original.projects)) {
+        for (const projectPath of projectPaths) {
+          const local = original.projects[projectPath];
+          if (local === undefined) continue;
+          if (!object(local) || local.mcpServers !== undefined && !object(local.mcpServers)) throw new Error('client.mcp-table-invalid');
+          if (local.mcpServers?.[mcpEntryName(c)] !== undefined) throw new Error('client.inherited-mcp-entry-conflict');
+        }
+      }
     }
     return { ...client, configPath: path.join(c.clientProjectDir, '.mcp.json') };
   }

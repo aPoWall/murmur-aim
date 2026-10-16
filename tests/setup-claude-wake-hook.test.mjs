@@ -6,6 +6,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { configureClient, previewClientConfiguration } from '../packages/setup/dist/src/clients.js';
 import { resolveContext } from '../packages/setup/dist/src/paths.js';
 import { main } from '../packages/setup/dist/src/cli.js';
@@ -106,6 +107,40 @@ test('project MCP has its own name when Desktop and user scope already have Murm
     assert.equal(await fs.readFile(occupied, 'utf8'), shadow);
     await fs.writeFile(occupied, before);
   }
+});
+
+for (const spelling of ['lexical', 'canonical']) test(`project configuration refuses a ${spelling} local-scope MCP collision without writes`, async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  let selectedProject = project;
+  if (spelling === 'canonical') {
+    selectedProject = path.join(f.home, 'Murmur-alias');
+    try { await fs.symlink(project, selectedProject, process.platform === 'win32' ? 'junction' : 'dir'); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) { t.skip('filesystem aliases unavailable'); return; }
+      throw error;
+    }
+  }
+  const context = { ...f.context, clientProjectDir: selectedProject };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const name = `murmur-${createHash('sha256').update(selectedProject).digest('hex').slice(0, 8)}`;
+  const localPath = spelling === 'canonical' ? await fs.realpath(selectedProject) : selectedProject;
+  const userBefore = JSON.stringify({ projects: { [localPath]: { mcpServers: { [name]: { command: 'different-identity' } } } } });
+  const projectBefore = '{"mcpServers":{"unrelated":{"command":"keep-me"}}}\n';
+  const settingsBefore = '{"statusLine":{"type":"command","command":"keep-status"}}\n';
+  await fs.writeFile(f.configPath, userBefore);
+  const target = path.join(project, '.mcp.json'), settings = path.join(project, '.claude', 'settings.json');
+  await fs.writeFile(target, projectBefore); await fs.mkdir(path.dirname(settings)); await fs.writeFile(settings, settingsBefore);
+  const filesBefore = (await fs.readdir(project)).sort(), settingsFilesBefore = (await fs.readdir(path.dirname(settings))).sort();
+  await assert.rejects(previewClientConfiguration(context, f.adapter, 'claude-code'), /client.inherited-mcp-entry-conflict/);
+  await assert.rejects(configureClient(context, f.adapter, 'claude-code', true), /client.inherited-mcp-entry-conflict/);
+  assert.equal(await fs.readFile(f.configPath, 'utf8'), userBefore);
+  assert.equal(await fs.readFile(target, 'utf8'), projectBefore);
+  assert.equal(await fs.readFile(settings, 'utf8'), settingsBefore);
+  assert.deepEqual((await fs.readdir(project)).sort(), filesBefore);
+  assert.deepEqual((await fs.readdir(path.dirname(settings))).sort(), settingsFilesBefore);
+  assert.equal(context.clientProjectDir, selectedProject, 'canonical inspection must not change the selected lane or service identity');
+  assert.equal(context.serviceName, f.context.serviceName);
 });
 
 test('reconnecting an older project migrates only its owned Murmur entry after confirmation', async t => {
