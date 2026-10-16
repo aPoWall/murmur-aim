@@ -22,6 +22,6 @@ test('absent, non-executable or different Node aliases never silently switch run
   assert.equal(stableNodeExecutable(current, 'darwin', file => file.includes('/opt/node/') ? current : '/other/node'), '/opt/homebrew/opt/node/bin/node');
   assert.equal(stableNodeExecutable(current, 'linux', () => { throw new Error('must not inspect'); }), current);
   assert.equal(stableNodeExecutable('/custom/node', 'darwin', () => { throw new Error('must not inspect'); }), '/custom/node');
-  assert.equal(resolveContext({ platform: 'darwin', home: '/Users/test', repoRoot: '/runtime', nodePath: current, env: {} }).nodePath, current,
+  assert.equal(resolveContext({ platform: 'darwin', home: '/Users/test', repoRoot: '/runtime', dataDir: '/Users/test/murmur', nodePath: current, env: {} }).nodePath, current,
     'an explicit caller-selected executable is preserved');
 });
