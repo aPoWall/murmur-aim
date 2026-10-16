@@ -6,6 +6,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -18,6 +19,8 @@ import {
   stableEnvelopePayload,
   resolveMessageSubject,
   channelScopedSubject,
+  resolveInstallation,
+  installationStorePath,
   type EnvelopeV1,
   type LocalMessageRecord,
 } from "@murmurv2/core";
@@ -26,6 +29,7 @@ import { NatsBroker } from "@murmurv2/broker-nats";
 import { codexTaskConversationId, defaultPeerConversationId } from "./codex-routing.js";
 import { buildReplyMatcher, createReplySignalTap, requestDelivery, requestTiming, waitForReply } from "./request-reply.js";
 import { AgentConfigCache, type AgentConfig } from "./agent-config.js";
+import { serverInstructions } from "./instructions.js";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -34,11 +38,13 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-// --- Load agent config (optional — gracefully degrade if missing) ---
-const dataDir = process.env.DATA_DIR || ".data";
+// Resolve the same explicit installation as setup/daemon, before opening any store.
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
+process.env.DATA_DIR = dataDir;
+process.env.MURMUR_DATA_DIR = dataDir;
 const configPath = path.join(dataDir, "agent-config.json");
-const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
-const channelRosterPath = process.env.MURMUR_CHANNEL_ROSTER_PATH ?? path.join(dataDir, "channel-roster.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
+const channelRosterPath = installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH);
 // One stdio connection is one chat session. Callers cannot impersonate another
 // session/agent through tool arguments; hosts may supply their stable session ID.
 const presenceSessionId = (process.env.MURMUR_SESSION_ID || process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID || `mcp:${randomUUID()}`).trim();
@@ -127,6 +133,51 @@ const recordCodexTaskPeerBinding = (conversationId: string, peerId: string): voi
   }
 };
 
+// Claude Code session binding (AIM-5939). Every Claude Code session on one profile
+// runs its own Stop-hook drain over the same store, so without a binding a reply wakes
+// every open session. The session that last sent on a conversation owns it: its id goes
+// next to the store, where scripts/wake-drain-claude.mjs reads it and lets only that
+// session wake on the reply. Codex tasks have their own binding above and are left out.
+// A project lane shares its cursor/lock across Claude sessions, so its bindings
+// must name that same lane. Outside a lane the exact Claude session owns replies.
+const claudeSessionId = process.env.CODEX_THREAD_ID ? ""
+  : (process.env.MURMUR_WAKE_SESSION_KEY || process.env.CLAUDE_CODE_SESSION_ID || "").trim();
+const sessionBindingDir = path.resolve(process.env.MURMUR_WAKE_BINDINGS_DIR || path.join(path.dirname(dbPath), ".claude-session-bindings"));
+
+// A direct conversation is named sender-first, so the two sides of one DM may carry
+// `dm:a:b` and `dm:b:a`. The binding treats both as one conversation.
+const canonicalConversationId = (conversationId: string): string => {
+  const dm = /^dm:([^:]+):([^:]+)$/.exec(conversationId);
+  return dm ? `dm:${[dm[1], dm[2]].sort().join(":")}` : conversationId;
+};
+
+const digest = (value: string): string => createHash("sha256").update(value).digest("hex");
+
+const writeBindingFile = (file: string, record: Record<string, unknown>): void => {
+  const tmp = `${file}.${process.pid}`;
+  writeFileSync(tmp, JSON.stringify({
+    ...record,
+    sessionId: claudeSessionId,
+    pid: process.pid,
+    updatedAt: new Date().toISOString(),
+  }), { mode: 0o600 });
+  renameSync(tmp, file);
+};
+
+// Two records per send: the conversation (a reply on it wakes this session) and the peer
+// (a new letter from that peer, in any conversation, wakes this session too).
+const recordClaudeSessionBinding = (conversationId: string, peerId: string): void => {
+  if (!claudeSessionId || !conversationId) return;
+  try {
+    mkdirSync(sessionBindingDir, { recursive: true, mode: 0o700 });
+    const canonical = canonicalConversationId(conversationId);
+    writeBindingFile(path.join(sessionBindingDir, `${digest(canonical)}.json`), { conversationId: canonical });
+    if (peerId) writeBindingFile(path.join(sessionBindingDir, `peer-${digest(peerId)}.json`), { peerId });
+  } catch {
+    // A missing binding degrades to the old behaviour: every session wakes on the reply.
+  }
+};
+
 const clearSynchronousReplySuppression = (markerPath: string | null): void => {
   if (!markerPath) return;
   try {
@@ -164,6 +215,9 @@ const getWakeBroker = async (agentConfig: AgentConfig, now: () => number = Date.
   const broker = new NatsBroker({
     url: agentConfig.natsUrl,
     token: agentConfig.natsToken,
+    user: agentConfig.natsUser,
+    password: agentConfig.natsPassword,
+    tls: agentConfig.natsTls,
     jetstream: false,
     // The tap is optional. Daemon reconnect policy must not make this tool wait
     // forever before it can poll the durable local store.
@@ -420,6 +474,7 @@ const handleTool = async (name: string, args: Record<string, unknown>): Promise<
     // Enqueue to outbox — daemon will flush to NATS
     await outbox.enqueue(resolveMessageSubject(peer, routing.channelId), envelope);
     recordCodexTaskPeerBinding(conversationId, to);
+    recordClaudeSessionBinding(conversationId, to);
 
     // Store outbound copy in message store
     await store.append({
@@ -503,6 +558,7 @@ const handleTool = async (name: string, args: Record<string, unknown>): Promise<
     try {
       await outbox.enqueue(resolveMessageSubject(peer, routing.channelId), envelope);
       recordCodexTaskPeerBinding(conversationId, to);
+      recordClaudeSessionBinding(conversationId, to);
     } catch (error) {
       clearSynchronousReplySuppression(suppressionMarker);
       throw error;
@@ -824,8 +880,9 @@ rl.on("line", async (line) => {
     if (req.method === "initialize") {
       ok(req.id, {
         protocolVersion: "2024-11-05",
-        serverInfo: { name: "murmur-v2-mcp", version: "0.2.0" },
+        serverInfo: { name: "murmur-v2-mcp", version: "0.2.4" },
         capabilities: { tools: {} },
+        instructions: serverInstructions,
       });
       return;
     }

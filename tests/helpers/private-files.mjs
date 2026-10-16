@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { protectPrivateFile } from '../../packages/setup/dist/src/private-file.js';
+
+/** Create only new synthetic credential inputs with the platform's private policy. */
+export async function writePrivateFixture(file, text) {
+  const handle = await open(file, 'wx', 0o600);
+  try { await protectPrivateFile(file, handle); await handle.writeFile(text); }
+  finally { await handle.close(); }
+}
 
 const exec = promisify(execFile);
 async function powershell(file, script) {
@@ -23,16 +31,22 @@ $acl = Get-Acl -LiteralPath $env:MURMUR_TEST_ACL_FILE
 $entries = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object {
   @{ sid=$_.IdentityReference.Value; kind=$_.AccessControlType.ToString(); rights=[int]$_.FileSystemRights; inherited=$_.IsInherited }
 })
-@{ protected=$acl.AreAccessRulesProtected; user=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; entries=$entries } | ConvertTo-Json -Depth 4 -Compress
+@{ protected=$acl.AreAccessRulesProtected; owner=$acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; user=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; entries=$entries } | ConvertTo-Json -Depth 4 -Compress
 `));
   const expected = new Set([value.user, 'S-1-5-18']);
   assert.equal(value.protected, true, 'private output must not inherit public parent permissions');
+  assert.equal(value.owner, value.user, 'private output must belong to the creating user, including an elevated creator');
   assert.equal(value.entries.length, expected.size);
   for (const entry of value.entries) {
     assert.equal(expected.delete(entry.sid), true, 'only creator and SYSTEM may access the private output');
     assert.equal(entry.kind, 'Allow'); assert.equal(entry.rights, 0x1f01ff); assert.equal(entry.inherited, false);
   }
   assert.equal(expected.size, 0);
+}
+
+export async function fileOwner(file) {
+  assert.equal(process.platform, 'win32');
+  return powershell(file, `(Get-Acl -LiteralPath $env:MURMUR_TEST_ACL_FILE).GetOwner([System.Security.Principal.SecurityIdentifier]).Value`);
 }
 
 export async function fileAccessPolicy(file) {

@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" data-theme="dusk">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
-// Dusk is the default in the markup; a theme chosen on the home page carries over.
-try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 'mint' || t === 'dusk') document.documentElement.dataset.theme = t; } catch {}
+// Dark is the default in the markup; a theme chosen on the home page carries over.
+try { const t = localStorage.getItem('murmur-theme'); document.documentElement.dataset.theme = ['light', 'sand', 'mint'].includes(t) ? 'light' : 'dark'; } catch {}
 </script>
 <title>How to make Claude Code and Codex talk across two machines — Murmur Connect</title>
 <meta name="description" content="Connect Claude Code on one computer with Codex on another: pair once with an invitation, then messages travel signed and end-to-end encrypted through a server.">
@@ -14,7 +14,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="alternate" hreflang="en" href="https://murmurconnect.com/claude-code-codex/">
 <link rel="alternate" hreflang="ru" href="https://murmurconnect.com/ru/claude-code-codex/">
 <link rel="alternate" hreflang="x-default" href="https://murmurconnect.com/claude-code-codex/">
-<meta name="theme-color" content="#141824">
+<meta name="theme-color" content="#1A1A1A">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Murmur Connect">
 <meta property="og:url" content="https://murmurconnect.com/claude-code-codex/">
@@ -38,11 +38,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="icon" href="../favicon.svg?v=20260923-1" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png?v=20260923-1">
 <link rel="manifest" href="../site.webmanifest?v=20260923-1">
-<link rel="preload" href="../fonts/JetBrainsMono-400.woff2?v=20260925-1" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="../fonts.css?v=20260925-1" as="style">
-<link rel="stylesheet" href="../fonts.css?v=20260925-1" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="../fonts.css?v=20260925-1"></noscript>
-<link rel="stylesheet" href="../pages.css?v=20260929-1">
+<link rel="preload" href="../fonts.css?v=20261015-1" as="style">
+<link rel="stylesheet" href="../fonts.css?v=20261015-1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="../fonts.css?v=20261015-1"></noscript>
+<link rel="stylesheet" href="../pages.css?v=20261015-1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -167,10 +166,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 
 <section class="zone" id="answer">
   <div class="wrap">
-    <span class="tag">guide · Claude Code and Codex</span>
+    <span class="tag">guide — Claude Code and Codex</span>
     <h1>How to make Claude Code and Codex talk to each other across two machines</h1>
     <p class="lead">Install Murmur on both computers, pair them once with an invitation and a reply, and connect each assistant to its local Murmur MCP server. Claude Code on one machine then calls <code>murmur_request</code> to send Codex a question and wait for the answer; Codex on the other machine reads it with <code>murmur_inbox</code> and answers with <code>murmur_send</code>. Each message is signed and encrypted on the sender’s computer and decrypted only on the recipient’s; the server between them passes ciphertext. You need Node.js 22.13.0 or newer on both computers and a server both can reach.</p>
-    <p class="updated">Updated 29 September 2026 · Murmur 2.12.0</p>
+    <p class="updated">Updated 29 September 2026 — Murmur 2.12.0</p>
   </div>
 </section>
 
@@ -385,7 +384,7 @@ murmur clients configure --client codex-cli --data-dir /absolute/murmur-identity
       <a href="../compare/">compared<span>Murmur next to other ways to connect coding assistants</span></a>
       <a href="../#install">install<span>the app on Mac or Windows, step by step</span></a>
     </div>
-    <p class="more">In the repository: <a href="https://github.com/alexfrmn/murmur/blob/main/README.md#quick-start">README quick start</a> · <a href="https://github.com/alexfrmn/murmur/blob/main/docs/setup-onboarding.md"><code>setup-onboarding.md</code></a> · <a href="https://github.com/alexfrmn/murmur/blob/main/packages/setup/README.md">CLI guide</a> · <a href="https://github.com/alexfrmn/murmur/blob/main/docs/wake-native.md"><code>wake-native.md</code></a> · <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">release v2.12.0</a></p>
+    <p class="more">In the repository: <a href="https://github.com/alexfrmn/murmur/blob/main/README.md#quick-start">README quick start</a> — <a href="https://github.com/alexfrmn/murmur/blob/main/docs/setup-onboarding.md"><code>setup-onboarding.md</code></a> — <a href="https://github.com/alexfrmn/murmur/blob/main/packages/setup/README.md">CLI guide</a> — <a href="https://github.com/alexfrmn/murmur/blob/main/docs/wake-native.md"><code>wake-native.md</code></a> — <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">release v2.12.0</a></p>
   </div>
 </section>
 
@@ -394,7 +393,7 @@ murmur clients configure --client codex-cli --data-dir /absolute/murmur-identity
 
 <footer>
   <div class="wrap">
-    <span>murmur · open source under the MIT license: free to use, change, and share</span>
+    <span>murmur — open source under the MIT license: free to use, change, and share</span>
     <span><a href="https://github.com/alexfrmn/murmur">github.com/alexfrmn/murmur</a></span>
   </div>
 </footer>

@@ -42,7 +42,7 @@ enum AIMAvatarLoader {
 
 struct AIMPersonAvatar: View {
     let person: AIMCompanionSnapshot.Person
-    @State private var image: NSImage?
+    @MurmurViewState private var image: NSImage?
     private let fixtureImage: Bool
     private let imageReadEnabled: Bool
     private let config: AIMEditionConfig

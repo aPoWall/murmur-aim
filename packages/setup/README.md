@@ -1,5 +1,7 @@
 # Murmur Connect CLI
 
+
+> Development source: **2.12.1 (unreleased)**. The published stable installation below remains 2.12.0. See [release preparation](../../docs/releases/2.12.1.md) for the coordinated package set and upgrade checks.
 The command-line tool of Murmur Connect, known as Murmur for short. Set up your Identity, exchange an Invitation and a Reply, and connect your
 Assistant to Murmur. The executable is `murmur`.
 
@@ -19,7 +21,11 @@ The tarball includes the CLI, daemon, MCP entry, and prebuilt Windows x64 servic
 helper. It does not include a desktop application. On Windows PowerShell use
 `npm.cmd` and `murmur.cmd` if execution policy blocks the PowerShell shims.
 
-Use the same absolute profile path for every command below.
+Use an explicit absolute profile path for the commands below, or register one
+with `murmur installation select --data-dir /absolute/profile`. New `init` and
+`join` commands accept `--select` to register their profile. The CLI, daemon and
+MCP server then share that choice from every working directory. See
+[installation selection and legacy migration](../../docs/installation-profile.md).
 
 To create an Invitation, use `murmur invite --data-dir /absolute/profile`.
 It prints one `MURMUR:` line. Add `--out /private/invitation.txt` for a private
@@ -76,3 +82,27 @@ Service's profile before returning its existing readable folder under
 `murmur.logs/1` with `source: "native"`. Missing or unverified Services and folders
 are refused; the command does not create directories or change the Service.
 Pass the same `--service-name` used during installation when it was customized.
+
+## Dedicated Claude Code folder (2.12.1 candidate)
+
+Use `clients preview/configure --client claude-code --project-dir ABSOLUTE` to connect a dedicated existing folder. The writer preserves the selected identity, writes project MCP/hooks, shares one wake cursor across chats there, and refuses inherited wake hooks before mutation. See [desktop assistant setup](../../docs/desktop-assistants.md#one-dedicated-conversation-in-claudes-code-tab-2121-candidate). Status/doctor report live reader counts on macOS/Linux and explicit unknowns elsewhere. Homebrew Node paths use a verified stable executable; explicit runtime overrides remain unchanged.
+Private Identity and client configuration backups are kept until you explicitly
+clean them. `murmur backups preview --kind agent --data-dir /absolute/profile
+--json` shows the exact removal plan; `backups cleanup` requires its `--plan-id`.
+The policy keeps 30 days and at least five copies per source, plus named restore
+points. Client JSON/TOML files use `--kind client --config-file ABSOLUTE`.
+See [backup retention and recovery](../../docs/backup-retention.md) before deleting copies.
+
+## Optional broker TLS (2.12.1 candidate)
+
+`init` and `join` accept `--user-file` with `--password-file`, or `--token-file`,
+plus optional `--ca-file` and `--server-name`. Paths must be absolute; secrets are
+read from existing private files. Explicit `tls://` endpoints require verified TLS,
+while existing remote `nats://` profiles remain compatible. The recipient supplies
+their own user/password files; token-bearing Invitations retain their current format.
+
+`broker migrate --broker-url URL` previews a transport change. Add the intended
+credential/TLS files and `--apply` only after explicitly stopping the owned Service
+and closing clients. Apply requires independently verified unused files; unknown
+use refuses, with no force option. It backs up exact configuration bytes and never
+automatically restarts a Service. See [TLS setup and migration](../../docs/nats-transport-security.md).

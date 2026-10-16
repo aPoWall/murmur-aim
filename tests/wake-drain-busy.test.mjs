@@ -61,12 +61,14 @@ function fixture(t) {
     return result;
   };
   t.after(async () => {
+    const started = Date.now();
     for (const result of children) {
       if (!result.closed) result.child.kill();
       await bounded(result.done, 5000);
     }
     db.close();
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    t.diagnostic(`fixture cleanup: ${Date.now() - started}ms`);
   });
   const hold = () => {
     db.exec('BEGIN EXCLUSIVE');
@@ -137,9 +139,16 @@ test('polling deadline bounds a locked read and preserves the next invocation’
 });
 
 test('non-contention read errors exit once without falsely waking or advancing the cursor', { timeout: 5000 }, async t => {
+  const started = Date.now();
   const h = fixture(t);
   h.db.exec('DROP TABLE local_messages');
-  const result = await bounded(h.start().done, 3000);
+  t.diagnostic(`missing-table fixture ready: ${Date.now() - started}ms`);
+  const child = h.start();
+  let result;
+  try { result = await bounded(child.done, 3000); }
+  finally {
+    t.diagnostic(`missing-table child: ${Date.now() - started}ms, closed=${child.closed}, stderr=${JSON.stringify(child.stderr)}`);
+  }
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stderr, /no such table/);
   assert.doesNotMatch(result.stderr, /store busy; retrying/);

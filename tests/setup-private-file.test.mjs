@@ -4,8 +4,8 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { writePrivateJson } from '../scripts/secure-state.mjs';
-import { protectPrivateFile, preparePrivateReplacement } from '../packages/setup/dist/src/private-file.js';
-import { assertPrivateFile, fileAccessPolicy, addExplicitAccessFixture } from './helpers/private-files.mjs';
+import { protectPrivateFile, preparePrivateReplacement, verifyPrivateFileAccess } from '../packages/setup/dist/src/private-file.js';
+import { assertPrivateFile, fileAccessPolicy, fileOwner, addExplicitAccessFixture } from './helpers/private-files.mjs';
 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'murmur-private-setup-'));
@@ -24,6 +24,21 @@ test('permission preparation failure cannot write secrets or replace the old sta
   } }), /fixture-permission-denied/);
   assert.deepEqual(await fs.readFile(f.file), before);
   assert.deepEqual(await fs.readdir(f.root), ['state.json']);
+});
+
+test('a new empty private output passes the strict read-only owner and access check before writing', async t => {
+  const f = await fixture(t), file = path.join(f.root, 'new-private.json');
+  const handle = await fs.open(file, 'wx', 0o600);
+  const beforeOwner = process.platform === 'win32' ? await fileOwner(file) : null;
+  try {
+    await protectPrivateFile(file, handle);
+    await verifyPrivateFileAccess(file, await handle.stat({ bigint: true })).catch(async error => {
+      if (process.platform === 'win32') t.diagnostic(JSON.stringify({ beforeOwner, afterOwner: await fileOwner(file), acl: await fileAccessPolicy(file) }));
+      throw error;
+    });
+    assert.equal((await handle.stat()).size, 0, 'permissions are verified before any private contents are written');
+    await assertPrivateFile(file);
+  } finally { await handle.close(); }
 });
 
 test('Windows ACL tool failure is closed and does not fall back to POSIX mode', { skip: process.platform !== 'win32' }, async t => {
@@ -58,8 +73,12 @@ test('Windows private files ignore incompatible inherited PowerShell module path
 for (const explicit of [false, true]) test(`Windows replacement preserves ${explicit ? 'protected explicit readers and deny entries' : 'inherited access'} before writing`, { skip: process.platform !== 'win32' }, async t => {
   const f = await fixture(t), temporary = path.join(f.root, 'replacement.tmp');
   if (explicit) await addExplicitAccessFixture(f.file);
-  const before = await fileAccessPolicy(f.file), handle = await fs.open(temporary, 'wx', 0o600);
+  const before = await fileAccessPolicy(f.file), ownerBefore = await fileOwner(f.file);
+  const handle = await fs.open(temporary, 'wx', 0o600);
   try {
+    // Elevated Windows creates ordinary files with Administrators as owner;
+    // start with a creator-owned temporary file to prove replacement copies it.
+    await protectPrivateFile(temporary, handle);
     await preparePrivateReplacement(temporary, handle, f.file).catch(async error => {
       // These are only test-owned, empty/synthetic files, never a real profile.
       t.diagnostic(JSON.stringify({ sourceAcl: await fileAccessPolicy(f.file), temporaryAcl: await fileAccessPolicy(temporary) }));
@@ -67,6 +86,8 @@ for (const explicit of [false, true]) test(`Windows replacement preserves ${expl
     });
     assert.equal(await fileAccessPolicy(temporary), before);
     assert.equal(await fileAccessPolicy(f.file), before);
+    assert.equal(await fileOwner(temporary), ownerBefore);
+    assert.equal(await fileOwner(f.file), ownerBefore);
     assert.equal((await handle.stat()).size, 0);
   } finally { await handle.close(); }
 });

@@ -1,5 +1,24 @@
 import Foundation
 
+public enum ClientSetupError: Error, LocalizedError, Sendable {
+    case inheritedHook, inheritedMCP, projectFolder
+    static func from(code: String?) -> Self? {
+        switch code {
+        case "client.inherited-wake-hook-conflict": .inheritedHook
+        case "client.inherited-mcp-entry-conflict": .inheritedMCP
+        case "client.project-directory-required", "client.project-must-be-dedicated", "client.project-path-invalid": .projectFolder
+        default: nil
+        }
+    }
+    public var errorDescription: String? {
+        switch self {
+        case .inheritedHook: L10n.text("An older global or parent-folder Murmur connection already wakes chats. Ask your assistant to review that older hook before connecting this folder. No settings were changed.")
+        case .inheritedMCP: L10n.text("A global Claude connection already uses this folder's connection name. Ask your assistant to review it before connecting. No settings were changed.")
+        case .projectFolder: L10n.text("Choose a separate Murmur folder for your mail conversation. Do not select Claude's settings folder.")
+        }
+    }
+}
+
 public enum AIClientKind: String, Decodable, Sendable, CaseIterable {
     case claudeCode = "claude-code", claudeDesktop = "claude-desktop"
     case codexCLI = "codex-cli", codexDesktop = "codex-desktop"
@@ -9,6 +28,16 @@ public enum AIClientKind: String, Decodable, Sendable, CaseIterable {
         case .claudeDesktop: "Claude Desktop"
         case .codexCLI: "Codex CLI"
         case .codexDesktop: "Codex"
+        }
+    }
+    public var setupHint: String {
+        switch self {
+        case .claudeCode:
+            L10n.text("For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection.")
+        case .claudeDesktop:
+            L10n.text("For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically.")
+        case .codexCLI, .codexDesktop:
+            L10n.text("Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately.")
         }
     }
 }
@@ -24,6 +53,7 @@ public struct ClientConfigurationPlan: Decodable, Sendable, Identifiable {
     public let client: AIClientKind
     public let action: Action
     public let restartRequired: Bool, configExisted: Bool
+    public let serverName: String?
     public var id: String { planId }
     public static func decode(_ data: Data, profile: ProfileBinding, agentID: String, client: AIClientKind) throws -> Self {
         let plan = try JSONDecoder().decode(Self.self, from: data)
@@ -31,6 +61,7 @@ public struct ClientConfigurationPlan: Decodable, Sendable, Identifiable {
               plan.agentId == agentID, plan.dataDir == profile.dataDirectory,
               explicitAbsolutePath(plan.configPath), plan.restartRequired,
               plan.planId.range(of: "\\A[a-f0-9]{64}\\z", options: .regularExpression) != nil else { throw ProfileError.invalidResponse }
+        if let name = plan.serverName, name.range(of: "\\Amurmur(?:-[a-f0-9]{8})?\\z", options: .regularExpression) == nil { throw ProfileError.invalidResponse }
         return plan
     }
 }
@@ -39,11 +70,13 @@ public struct ClientConfigurationReceipt: Decodable, Sendable {
     public let client: AIClientKind
     public let changed: Bool, restartRequired: Bool
     public let backup: String?
+    public let serverName: String?
     public static func decode(_ data: Data, plan: ClientConfigurationPlan) throws -> Self {
         let value = try JSONDecoder().decode(Self.self, from: data)
         guard schemaKnown(value.schema, name: "murmur.client"), value.planId == plan.planId,
               value.client == plan.client, value.agentId == plan.agentId, value.dataDir == plan.dataDir,
               value.configPath == plan.configPath, value.restartRequired,
+              value.serverName == plan.serverName,
               value.changed == (plan.action != .unchanged) else { throw ProfileError.invalidResponse }
         if let backup = value.backup {
             guard value.changed, explicitAbsolutePath(backup), backup.hasPrefix(plan.configPath + ".murmur-backup-"),
@@ -72,7 +105,8 @@ public struct ReplyTestPlan: Decodable, Sendable {
     public var prompt: String {
         let arguments = ["to": peerId, "conversationId": conversationId, "text": requestText]
         let json = (try? JSONSerialization.data(withJSONObject: arguments, options: [.prettyPrinted, .sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        return L10n.text("Use the Murmur tool murmur_send with exactly these arguments. Send a real message; do not simulate the tool or its result.") + "\n\n" + json
+        return L10n.text("First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection.", agentId)
+            + "\n\n" + L10n.text("Use the Murmur tool murmur_send with exactly these arguments. Send a real message; do not simulate the tool or its result.") + "\n\n" + json
     }
 }
 public struct ReplyTestObservation: Decodable, Sendable {
@@ -116,16 +150,31 @@ public struct ClientSetupClient: Sendable {
               list.clients.allSatisfy({ $0.configPath.map(explicitAbsolutePath) ?? true }) else { throw ProfileError.invalidResponse }
         return list.clients
     }
-    public func preview(_ client: AIClientKind, expectedAgent: String) throws -> ClientConfigurationPlan {
-        try verify(expectedAgent)
-        return try ClientConfigurationPlan.decode(probe.invoke(["clients", "preview", "--client", client.rawValue]).data,
-                                                 profile: profile, agentID: expectedAgent, client: client)
+    private func projectArguments(_ directory: String?, client: AIClientKind) throws -> [String] {
+        guard let directory else { return [] }
+        guard client == .claudeCode, explicitAbsolutePath(directory) else { throw ClientSetupError.projectFolder }
+        return ["--project-dir", directory]
     }
-    public func configure(_ plan: ClientConfigurationPlan, expectedAgent: String) throws -> ClientConfigurationReceipt {
+    private func verifyProject(_ plan: ClientConfigurationPlan, directory: String?) throws {
+        if let directory, plan.configPath != URL(fileURLWithPath: directory).appendingPathComponent(".mcp.json").path {
+            throw ProfileError.invalidResponse
+        }
+    }
+    public func preview(_ client: AIClientKind, expectedAgent: String, projectDirectory: String? = nil) throws -> ClientConfigurationPlan {
+        let projectArgs = try projectArguments(projectDirectory, client: client)
+        try verify(expectedAgent)
+        let plan = try ClientConfigurationPlan.decode(probe.invoke(["clients", "preview", "--client", client.rawValue] + projectArgs).data,
+                                                 profile: profile, agentID: expectedAgent, client: client)
+        try verifyProject(plan, directory: projectDirectory)
+        return plan
+    }
+    public func configure(_ plan: ClientConfigurationPlan, expectedAgent: String, projectDirectory: String? = nil) throws -> ClientConfigurationReceipt {
         guard plan.agentId == expectedAgent, plan.dataDir == profile.dataDirectory else { throw ProfileError.identityChanged }
+        let projectArgs = try projectArguments(projectDirectory, client: plan.client)
+        try verifyProject(plan, directory: projectDirectory)
         try verify(expectedAgent)
         let argv = ["clients", "configure", "--client", plan.client.rawValue, "--plan-id", plan.planId]
-            + (plan.action == .replace ? ["--replace"] : [])
+            + (plan.action == .replace ? ["--replace"] : []) + projectArgs
         return try ClientConfigurationReceipt.decode(probe.invoke(argv).data, plan: plan)
     }
     public func prepareTest(peerID: String, expectedAgent: String) throws -> ReplyTestPlan {

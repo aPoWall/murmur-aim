@@ -26,6 +26,8 @@ struct MurmurClientSetupView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Button(L10n.text("Connect %@…", choice.id.title)) { model.connectAIClient(choice.id) }.help(L10n.text("Add Murmur to this application's settings after a confirmation; a backup is kept"))
                             .disabled(model.busy || !choice.canConfigure)
+                        Text(choice.id.setupHint)
+                            .font(AIMTheme.body).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
                         if !choice.canConfigure {
                             Text(L10n.text("This application uses a custom configuration location that Murmur cannot verify yet."))
                                 .font(AIMTheme.body).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
@@ -39,8 +41,17 @@ struct MurmurClientSetupView: View {
             if let receipt = model.aiReceipt {
                 Divider()
                 Text(L10n.text("Connection saved for %@", receipt.client.title)).font(AIMTheme.heading)
+                if let name = receipt.serverName {
+                    Text(L10n.text("In your assistant, choose connection %@ and verify Identity %@ before reading or sending.", name, receipt.agentId))
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
                 Text(L10n.text("Reload your AI application or start a new session so it can load Murmur. Your current conversation is not closed automatically."))
                     .fixedSize(horizontal: false, vertical: true)
+                if receipt.client == .claudeCode {
+                    Text(L10n.text("Open this folder in Claude Code and keep one mail conversation there: %@",
+                                   URL(fileURLWithPath: receipt.configPath).deletingLastPathComponent().path))
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
                 Text(L10n.text("Saved settings are only the first step. Test a returned reply below."))
                     .foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
                 MurmurDisclosure(title: L10n.text("Changed file and backup")) {

@@ -8,6 +8,8 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let agents: [String]
         public let last_at: String?
         public let nickname: String?
+        public let role: String?
+        public let contact_state: String?
         public let agent_labels: [String: String]?
         public let writable_agents: [String]?
         public let photo: String?
@@ -140,7 +142,10 @@ public struct AIMCompanionCursor: Sendable {
     public init(seen: Set<String>? = nil) { self.seen = seen }
     public mutating func observe(_ keys: Set<String>) -> Set<String> {
         let added = seen.map { keys.subtracting($0) } ?? []
-        seen = (seen ?? []).union(keys)
+        // Retain the whole current queue before older hashes. Persisting a sorted
+        // suffix could evict current items and alert again after every restart.
+        let older = (seen ?? []).subtracting(keys).sorted().suffix(max(0,8192-keys.count))
+        seen = keys.union(older)
         return added
     }
 }

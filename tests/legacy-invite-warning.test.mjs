@@ -55,9 +55,12 @@ test('site agent prompts use the canonical invite, join and add-peer file workfl
   ]) {
     assert.equal(site.split(command).length - 1, 2, `${command} must appear once per language`);
   }
-  const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+  // The checkout can prepare the next release while public downloads still serve the
+  // published version. Its guide must follow that download, not an unpublished tag.
+  const version = site.match(/"softwareVersion":\s*"([^"]+)"/)?.[1];
+  assert.ok(version, 'site must declare its published software version');
   assert.ok(site.includes(`blob/v${version}/docs/setup-onboarding.md`),
-    'the canonical onboarding link must match the product release');
+    'the canonical onboarding link must match the published download');
   assert.ok(!site.includes('claude mcp add murmur'), 'site must use the shared client-settings writer');
   // Each language has its own static page, so each prompt lives in that page's static
   // <pre id="prompt"> and crawlers without JavaScript see it: English in site/index.html,

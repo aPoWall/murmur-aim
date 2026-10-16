@@ -7,10 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { spawn, execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:net';
+import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
-import { connect, StringCodec } from 'nats';
-import { stableEnvelopePayload } from '../packages/core/dist/src/index.js';
+import { connect, StringCodec, ErrorCode } from 'nats';
+import { protectPrivateFile } from '../packages/setup/dist/src/private-file.js';
+import { buildNatsTransportOptions, stableEnvelopePayload } from '../packages/core/dist/src/index.js';
 import { signEnvelope } from '../packages/security/dist/src/index.js';
 import { probeRoundtrip } from '../packages/setup/dist/src/doctor.js';
 import { resolveContext } from '../packages/setup/dist/src/paths.js';
@@ -18,26 +20,45 @@ import { platformAdapter } from '../packages/setup/dist/src/cli.js';
 import { runDoctor } from '../packages/setup/dist/src/doctor.js';
 const exec=promisify(execFile), root=fileURLToPath(new URL('../',import.meta.url));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function freePort() { const listener=createServer();await new Promise(r=>listener.listen(0,'127.0.0.1',r));const port=listener.address().port;await new Promise(r=>listener.close(r));return port; }
 async function until(fn) { const end=Date.now()+12000; while(Date.now()<end){try{const v=await fn();if(v)return v;}catch{}await delay(50);}throw new Error('onboarding-live.timeout'); }
 async function stop(child) {
   if(child.exitCode!==null || child.signalCode!==null)return;
   const done=new Promise(resolve=>child.once('exit',resolve)); child.kill('SIGTERM');
   const timeout=setTimeout(()=>child.kill('SIGKILL'),3000); try{await done;}finally{clearTimeout(timeout);}
 }
-test('CLI invite handshake proves daemon roundtrip without an AI responder or wake', { timeout:30000 }, async t=>{
+for (const tls of [false, true]) test(`CLI ${tls ? 'TLS user/password' : 'legacy plaintext'} invite handshake proves signed encrypted daemon roundtrip`, { timeout:30000 }, async t=>{
   try{execFileSync('nats-server',['--version'],{stdio:'ignore'});}catch{t.skip('isolated nats-server unavailable');return;}
   const base=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'murmur-onboard-live-'))), children=[];
   let nc; t.after(async()=>{if(nc)await nc.close();for(const child of children.reverse())await stop(child);await fs.rm(base,{recursive:true,force:true});});
-  const listener=createServer();await new Promise(r=>listener.listen(0,'127.0.0.1',r));const port=listener.address().port;await new Promise(r=>listener.close(r));
-  const url=`nats://127.0.0.1:${port}`;
-  children.push(spawn('nats-server',['-a','127.0.0.1','-p',String(port)],{stdio:'ignore'}));
-  nc=await until(async()=>connect({servers:url,reconnect:false,timeout:100}));
+  const port=await freePort(), monitorPort=await freePort();
+  const url=`${tls ? 'tls' : 'nats'}://127.0.0.1:${port}`;
+  const ca=path.join(base,'server.crt');
+  const credentials = {};
+  if (tls) {
+    await exec('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-sha256','-days','1','-subj','/CN=localhost',
+      '-addext','subjectAltName=DNS:localhost','-keyout',path.join(base,'server.key'),'-out',ca]);
+    const conf=path.join(base,'nats.conf');
+    await fs.writeFile(conf,JSON.stringify({host:'127.0.0.1',port,http:`127.0.0.1:${monitorPort}`,tls:{cert_file:ca,key_file:path.join(base,'server.key')},
+      authorization:{users:[{user:'agent-a',password:'fixture-a'},{user:'agent-b',password:'fixture-b'}]}}),{mode:0o600});
+    children.push(spawn('nats-server',['-c',conf],{stdio:'ignore'}));
+    for (const id of ['agent-a','agent-b']) {
+      const user=path.join(base,id+'.user'),password=path.join(base,id+'.password');
+      for (const [file,text] of [[user,id],[password,'fixture-'+id.at(-1)]]) {
+        const handle=await fs.open(file,'wx',0o600);
+        try {await protectPrivateFile(file,handle);await handle.writeFile(text);}finally{await handle.close();}
+      }
+      credentials[id]=['--user-file',user,'--password-file',password,'--ca-file',ca,'--server-name','localhost'];
+    }
+  } else children.push(spawn('nats-server',['-a','127.0.0.1','-p',String(port),'-m',String(monitorPort)],{stdio:'ignore'}));
+  nc=await until(async()=>connect({...buildNatsTransportOptions({url,...(tls ? {user:'agent-a',password:'fixture-a',tls:{caFile:ca,serverName:'localhost'}} : {})}),reconnect:false,timeout:500}));
+  if (!tls) await assert.rejects(connect({ ...buildNatsTransportOptions({url:`tls://127.0.0.1:${port}`,tls:{serverName:'localhost'}}), reconnect:false, timeout:1000 }), error=>error.code===ErrorCode.ServerOptionNotAvailable && error.message==='tls');
   const env=id=>({PATH:process.env.PATH,HOME:base,DATA_DIR:path.join(base,id)});
   const cli=async(id,...args)=>JSON.parse((await exec(process.execPath,['packages/setup/bin/murmur.mjs',...args,'--data-dir',path.join(base,id),'--json'],{cwd:root,env:env(id)})).stdout);
-  await cli('agent-a','init','--agent-id','agent-a','--broker-url',url);
-  const publicUrl=`nats://server.example.com:${port}`;
+  await cli('agent-a','init','--agent-id','agent-a','--broker-url',url,...(credentials['agent-a']??[]));
+  const publicUrl=`${tls ? 'tls' : 'nats'}://server.example.com:${port}`;
   await cli('agent-a','invite','--broker',publicUrl,'--out',path.join(base,'invite'));
-  assert.equal((await cli('agent-b','join','--agent-id','agent-b','--invite-file',path.join(base,'invite'),'--reply-out',path.join(base,'reply'))).paired,null);
+  assert.equal((await cli('agent-b','join','--agent-id','agent-b','--invite-file',path.join(base,'invite'),'--reply-out',path.join(base,'reply'),...(credentials['agent-b']??[]))).paired,null);
   await cli('agent-a','add-peer','--reply-file',path.join(base,'reply'));
   // The Invitation carries a public name. Route only this disposable recipient
   // back to the isolated broker; this test performs no DNS or Internet access.
@@ -91,4 +112,17 @@ test('CLI invite handshake proves daemon roundtrip without an AI responder or wa
     assert.equal(report.stages.find(row => row.id === 'roundtrip').state, 'ok');
     assert.equal(report.stages.find(row => row.id === 'wake').reason, 'wake.no-responder');
   }
+  // Observe the MCP's real optional reply tap on this broker, separately from
+  // daemon delivery. A tool returning "awaiting_reply" alone cannot prove TLS.
+  const connections=async()=> (await (await fetch(`http://127.0.0.1:${monitorPort}/connz?subs=1`)).json()).connections;
+  const before=new Set((await connections()).map(row=>row.cid));
+  const mcp=spawn(process.execPath,['packages/mcp-server/dist/src/index.js'],{cwd:root,env:{...env('agent-a'),MURMUR_STORE_PATH:context.storePath},stdio:['pipe','pipe','ignore']});
+  children.push(mcp);
+  const lines=createInterface({input:mcp.stdout});
+  const result=(async()=>{for await (const line of lines){const row=JSON.parse(line);if(row.id===1)return row;}throw new Error('MCP exited without response');})();
+  mcp.stdin.write(JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'murmur_request',arguments:{to:'agent-b',text:'synthetic TLS transport probe',timeout_ms:1500,poll_interval_ms:100}}})+'\n');
+  const tap=await until(async()=> (await connections()).find(row=>!before.has(row.cid) && row.subscriptions_list?.includes('msg.agent-a')));
+  assert.equal(Boolean(tap.tls_version),tls,'MCP reply tap must retain the configured transport');
+  const response=await result;assert.equal(response.error,undefined);assert.equal(JSON.parse(response.result.content[0].text).status,'awaiting_reply');
+  lines.close();
 });

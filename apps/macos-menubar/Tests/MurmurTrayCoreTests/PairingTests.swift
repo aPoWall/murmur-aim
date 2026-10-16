@@ -204,7 +204,10 @@ func runPairingChecks(fixtures: URL) throws -> Int {
         }
     }
     for (code, expected) in [("onboarding.existing-profile-conflict", PairingError.differentServer), ("onboarding.invalid-blob", .damaged),
-                             ("onboarding.self-peer", .failed), ("onboarding.peer-key-conflict", .failed)] {
+                             ("onboarding.self-peer", .ownIdentity), ("onboarding.peer-key-conflict", .contactChanged),
+                             ("config.missing", .settingsMissing), ("config.file-invalid", .settingsInvalid),
+                             ("system.EACCES:open", .accessDenied), ("system.EPERM:mkdir", .accessDenied),
+                             ("system.EEXIST:open", .outputExists), ("database is locked", .storageBusy)] {
         try scenario("join error is actionable without exposing input: \(code)") { f in
             try (code + "\n").write(to: f.root.appendingPathComponent("join.error"), atomically: true, encoding: .utf8)
             do {
@@ -220,7 +223,7 @@ func runPairingChecks(fixtures: URL) throws -> Int {
             do {
                 _ = try f.client.addReply("MURMUR:reply-only", expectedAgent: "agent-misha")
                 throw CheckFailure(message: "Expected Reply refusal")
-            } catch let error as PairingError { try check(error == .wrongReply, "Reply-specific action") }
+            } catch let error as PairingError { try check(error == (code == "onboarding.self-peer" ? .ownIdentity : .contactChanged), "Identity-specific action") }
         }
     }
     try scenario("raw stderr cannot appear in the window") { f in
@@ -230,5 +233,9 @@ func runPairingChecks(fixtures: URL) throws -> Int {
             try check(error == .failed && !error.localizedDescription.contains("credential-do-not-display"), "Only human action, no raw input")
         }
     }
-    return count
+    try check(PairingError.message(for: ProbeError.timedOut) != PairingError.failed.localizedDescription,
+              "Timeout gives a recovery action without inviting a duplicate join")
+    try check(!PairingError.message(for: ProbeError.failedWithReason(1, "MURMUR:private")).contains("private"),
+              "Unknown process errors never expose raw input")
+    return count + 2
 }

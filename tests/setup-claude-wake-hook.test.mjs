@@ -6,6 +6,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { configureClient, previewClientConfiguration } from '../packages/setup/dist/src/clients.js';
 import { resolveContext } from '../packages/setup/dist/src/paths.js';
 import { main } from '../packages/setup/dist/src/cli.js';
@@ -56,6 +57,141 @@ test('other settings and hooks are kept, with a private backup of the original',
   assert.deepEqual(next.hooks.PreToolUse, original.hooks.PreToolUse);
   assert.deepEqual(next.hooks.Stop[0], original.hooks.Stop[0]);
   assert.equal((await f.ourHooks()).length, 1);
+});
+
+test('a dedicated Claude project gets project MCP/settings and one stable wake key', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  const context = { ...f.context, clientProjectDir: project };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const plan = await previewClientConfiguration(context, f.adapter, 'claude-code');
+  assert.equal(plan.configPath, path.join(project, '.mcp.json'));
+  assert.equal(plan.wakeHook.settingsPath, path.join(project, '.claude', 'settings.json'));
+  const result = await configureClient(context, f.adapter, 'claude-code', false, plan.planId);
+  const settings = JSON.parse(await fs.readFile(result.wakeHook.settingsPath, 'utf8'));
+  assert.match(settings.hooks.Stop[0].hooks[0].command, /--session-key [a-f0-9]{8}$/);
+  const lane = settings.hooks.Stop[0].hooks[0].command.match(/--session-key ([a-f0-9]{8})$/)[1];
+  const mcp = JSON.parse(await fs.readFile(path.join(project, '.mcp.json'), 'utf8'));
+  assert.equal(plan.serverName, `murmur-${lane}`);
+  assert.equal(mcp.mcpServers[plan.serverName].env.MURMUR_WAKE_SESSION_KEY, lane, 'reply bindings and the shared reader must name the same lane');
+  assert.equal((await configureClient(context, f.adapter, 'claude-code')).changed, false);
+  await assert.rejects(fs.stat(f.configPath), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(f.settingsPath), { code: 'ENOENT' });
+  await assert.rejects(configureClient({ ...context, clientProjectDir: path.join(f.home, 'absent') }, f.adapter, 'claude-code'), /client.project-directory-required/);
+});
+
+test('project MCP has its own name when Desktop and user scope already have Murmur', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  const context = { ...f.context, clientProjectDir: project };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const desktop = path.join(f.home, 'claude_desktop_config.json');
+  const before = '{"mcpServers":{"murmur":{"command":"keep-working-identity"}}}\n';
+  await fs.writeFile(f.configPath, before); await fs.writeFile(desktop, before);
+  const adapter = { detectClients: async () => [...await f.adapter.detectClients(), { id: 'claude-desktop', installed: true, configPath: desktop, format: 'json' }] };
+  const plan = await previewClientConfiguration(context, adapter, 'claude-code');
+  const result = await configureClient(context, adapter, 'claude-code', false, plan.planId);
+  assert.equal(result.serverName, plan.serverName);
+  const entries = JSON.parse(await fs.readFile(plan.configPath, 'utf8')).mcpServers;
+  assert.deepEqual(Object.keys(entries), [plan.serverName]);
+  assert.equal(entries[plan.serverName].env.DATA_DIR, context.dataDir);
+  assert.equal(await fs.readFile(f.configPath, 'utf8'), before);
+  assert.equal(await fs.readFile(desktop, 'utf8'), before);
+  for (const occupied of [f.configPath, desktop]) {
+    const shadow = JSON.stringify({ mcpServers: { [plan.serverName]: { command: 'foreign' } } });
+    await fs.writeFile(occupied, shadow);
+    const projectBefore = await fs.readFile(plan.configPath, 'utf8');
+    await assert.rejects(previewClientConfiguration(context, adapter, 'claude-code'), /client.inherited-mcp-entry-conflict/);
+    await assert.rejects(configureClient(context, adapter, 'claude-code', true), /client.inherited-mcp-entry-conflict/);
+    assert.equal(await fs.readFile(plan.configPath, 'utf8'), projectBefore);
+    assert.equal(await fs.readFile(occupied, 'utf8'), shadow);
+    await fs.writeFile(occupied, before);
+  }
+});
+
+for (const spelling of ['lexical', 'canonical']) test(`project configuration refuses a ${spelling} local-scope MCP collision without writes`, async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  let selectedProject = project;
+  if (spelling === 'canonical') {
+    selectedProject = path.join(f.home, 'Murmur-alias');
+    try { await fs.symlink(project, selectedProject, process.platform === 'win32' ? 'junction' : 'dir'); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) { t.skip('filesystem aliases unavailable'); return; }
+      throw error;
+    }
+  }
+  const context = { ...f.context, clientProjectDir: selectedProject };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const name = `murmur-${createHash('sha256').update(selectedProject).digest('hex').slice(0, 8)}`;
+  const localPath = spelling === 'canonical' ? await fs.realpath(selectedProject) : selectedProject;
+  const userBefore = JSON.stringify({ projects: { [localPath]: { mcpServers: { [name]: { command: 'different-identity' } } } } });
+  const projectBefore = '{"mcpServers":{"unrelated":{"command":"keep-me"}}}\n';
+  const settingsBefore = '{"statusLine":{"type":"command","command":"keep-status"}}\n';
+  await fs.writeFile(f.configPath, userBefore);
+  const target = path.join(project, '.mcp.json'), settings = path.join(project, '.claude', 'settings.json');
+  await fs.writeFile(target, projectBefore); await fs.mkdir(path.dirname(settings)); await fs.writeFile(settings, settingsBefore);
+  const filesBefore = (await fs.readdir(project)).sort(), settingsFilesBefore = (await fs.readdir(path.dirname(settings))).sort();
+  await assert.rejects(previewClientConfiguration(context, f.adapter, 'claude-code'), /client.inherited-mcp-entry-conflict/);
+  await assert.rejects(configureClient(context, f.adapter, 'claude-code', true), /client.inherited-mcp-entry-conflict/);
+  assert.equal(await fs.readFile(f.configPath, 'utf8'), userBefore);
+  assert.equal(await fs.readFile(target, 'utf8'), projectBefore);
+  assert.equal(await fs.readFile(settings, 'utf8'), settingsBefore);
+  assert.deepEqual((await fs.readdir(project)).sort(), filesBefore);
+  assert.deepEqual((await fs.readdir(path.dirname(settings))).sort(), settingsFilesBefore);
+  assert.equal(context.clientProjectDir, selectedProject, 'canonical inspection must not change the selected lane or service identity');
+  assert.equal(context.serviceName, f.context.serviceName);
+});
+
+test('reconnecting an older project migrates only its owned Murmur entry after confirmation', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  const context = { ...f.context, clientProjectDir: project };
+  await main(['init', '--agent-id', 'project-test', '--broker-url', 'nats://127.0.0.1:1', '--data-dir', context.dataDir], { manager: 'none' });
+  const target = path.join(project, '.mcp.json');
+  const foreign = { command: 'keep-unrelated-tool' };
+  const before = JSON.stringify({ mcpServers: { foreign, murmur: { command: process.execPath, args: [path.join(f.root, 'old-runtime', 'packages', 'mcp-server', 'dist', 'src', 'index.js')], env: { DATA_DIR: context.dataDir, MURMUR_STORE_PATH: context.storePath } } } });
+  await fs.writeFile(target, before);
+  const plan = await previewClientConfiguration(context, f.adapter, 'claude-code');
+  assert.equal(plan.action, 'replace');
+  await assert.rejects(configureClient(context, f.adapter, 'claude-code', false, plan.planId), /client.murmur-entry-conflict/);
+  assert.equal(await fs.readFile(target, 'utf8'), before);
+  const result = await configureClient(context, f.adapter, 'claude-code', true, plan.planId);
+  assert.equal(await fs.readFile(result.backup, 'utf8'), before);
+  const entries = JSON.parse(await fs.readFile(target, 'utf8')).mcpServers;
+  assert.equal(entries.murmur, undefined);
+  assert.deepEqual(entries.foreign, foreign);
+  assert.equal(entries[plan.serverName].env.DATA_DIR, context.dataDir);
+});
+
+test('project connection refuses an inherited wake hook without rewriting global or project files', async t => {
+  const f = await fixture(t);
+  const project = path.join(f.home, 'Murmur'); await fs.mkdir(project);
+  await configureClient(f.context, f.adapter, 'claude-code');
+  const before = await fs.readFile(f.settingsPath, 'utf8');
+  await assert.rejects(configureClient({ ...f.context, clientProjectDir: project }, f.adapter, 'claude-code', true), /client.inherited-wake-hook-conflict/);
+  assert.equal(await fs.readFile(f.settingsPath, 'utf8'), before);
+  await assert.rejects(fs.stat(path.join(project, '.mcp.json')), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(path.join(project, '.claude')), { code: 'ENOENT' });
+});
+
+for (const scope of ['project', 'parent', 'global']) test(`project connection refuses a ${scope} settings.local.json wake hook before any write`, async t => {
+  const f = await fixture(t);
+  const parent = path.join(f.home, 'work');
+  const project = path.join(parent, 'Murmur'); await fs.mkdir(project, { recursive: true });
+  const dir = scope === 'project' ? project : scope === 'parent' ? parent : f.home;
+  const local = path.join(dir, '.claude', 'settings.local.json');
+  await fs.mkdir(path.dirname(local), { recursive: true });
+  const before = '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"node /old/wake-drain-claude.mjs"}]}]},"model":"keep"}\n';
+  await fs.writeFile(local, before);
+  const context = { ...f.context, clientProjectDir: project };
+  await assert.rejects(previewClientConfiguration(context, f.adapter, 'claude-code'), /client.inherited-wake-hook-conflict/);
+  await assert.rejects(configureClient(context, f.adapter, 'claude-code', true), /client.inherited-wake-hook-conflict/);
+  assert.equal(await fs.readFile(local, 'utf8'), before);
+  for (const file of [f.configPath, f.settingsPath, path.join(project, '.mcp.json'), path.join(project, '.claude', 'settings.json')]) {
+    await assert.rejects(fs.stat(file), { code: 'ENOENT' });
+  }
+  assert.deepEqual(await fs.readdir(path.dirname(local)), ['settings.local.json']);
 });
 
 test('a different Murmur wake hook is replaced only on request, and the .sh variant goes', async t => {

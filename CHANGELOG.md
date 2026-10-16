@@ -8,10 +8,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Pending
-- **NATS transport security (TLS + per-peer auth)** — reviewed and CI-green in #103, held for a coordinated broker/peer credential cutover. It intentionally makes existing non-loopback `nats://` configurations fail closed, so it ships with a maintenance window, not as a routine merge. Two gaps to close first: the Kubernetes ACL example does not cover JetStream subjects (`$JS.API.*`, `$JS.ACK.*`, `_INBOX.*`), and the dashboard's NATS client supports a token only, no user/password or CA.
+- **Mandatory remote TLS and production credential cutover** remain a coordinated
+  operational change. The compatible client preparation below does not switch the
+  shared broker, enforce remote TLS on existing profiles, or revoke live credentials.
 - **Turning on `ackSecurity.requireSigned`** — a rollout step, not a code step. Until every peer runs 2.5.0+ and the flag is set, unsigned ACKs are still accepted.
 
+## [2.12.1] - Unreleased
+
+### Added
+- **One explicit installation profile** (#168): a private, identity-bound descriptor
+  shared by CLI, MCP and daemon. Explicit profile overrides remain available;
+  missing or conflicting selection fails before opening a store. Legacy `.data`
+  migration is an explicit `installation select`, never an automatic move.
+- **Explicit private backup cleanup** (#167): preview one Identity or client configuration's
+  copies, keep 30 days and at least five restore points, optionally retain named older copies,
+  then delete only the unchanged preview with its digest. No automatic pruning or migration.
+- **Optional NATS TLS and user/password authentication** (#153 compatible scope).
+  Explicit TLS endpoints require certificate/hostname validation without plaintext
+  fallback; existing remote `nats://` profiles keep working. Daemon, MCP reply tap,
+  doctor, bridges and dashboard share the connection policy. Restricted JetStream
+  roles can use pre-provisioned durables without administrative permissions.
+- **Guarded broker migration.** `broker migrate` previews changes, then requires
+  explicit `--apply`, a stopped service state and independently unused profile.
+  Credentials come from private files. Exact private backups, input rechecks and
+  rollback preserve identity and history; unknown usage refuses without changes.
+  See [transport setup and its operational limits](docs/nats-transport-security.md).
+- **Windows release installer in CI.** The native bundle job builds setup.exe,
+  verifies silent install/upgrade/uninstall and refusal while a registered service
+  references the installation, and preserves installer provenance with the ZIP.
+- **Personal inbox in the Mac app.** Show the latest 20 incoming messages as plain
+  text without marking them read or sending a reply. Opt-in notifications report
+  unread-count increases while the app is open, without message bodies.
+- **Connect the assistant you actually use** (#283). The website has a separate
+  English/Russian path and copyable prompt for an existing installation. It checks
+  tools and contacts in the person's usual conversation and requires a returned reply,
+  without creating another identity or a terminal-only helper.
+- **Dedicated Claude Code folder.** `clients preview/configure --project-dir`
+  installs project MCP settings and a shared wake key. The Mac connection button
+  selects this mode through a folder picker. Concurrent chats in that
+  folder cannot deliver one letter repeatedly. Inherited wake hooks are refused
+  before configuration changes. Status/doctor expose verified live reader counts
+  on macOS/Linux, with unknown results reported explicitly.
+- **MCP usage instructions at initialization.** The optional standard `instructions`
+  field explains peer messaging, local-only history, late replies and consent boundaries.
+  It does not contain private profile data and does not configure a missing connection.
+
 ### Changed
+- **Website lab themes.** Dark/light palettes, locally hosted Onest and Fira Code,
+  lighter mobile headings and reduced-motion support across both languages.
+- **Client selection explains Claude Chat versus Code.** The macOS connection screen
+  identifies the Chat tab, the Code tab and terminal sessions, and the shared Codex
+  configuration. Each connection still requires its own confirmation.
+- **Coordinated package set for 2.12.1.** The CLI follows product version 2.12.1;
+  all twelve public libraries receive patch versions and internal dependency floors
+  follow this set. MCP reports its package version 0.2.4. Direct third-party requirements and
+  the Node.js 22.13.0 minimum are unchanged. See [release preparation](docs/releases/2.12.1.md).
 - **«Murmur Connect» is the project's full name** on the site (`<title>`, `og:site_name`, structured
   data, header), in the README, the repository description, the npm package descriptions and
   `server.json`. The app, the `murmur` command and the package names are unchanged; Murmur is the
@@ -25,6 +76,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Russian guides next to the English ones.
 
 ### Fixed
+- **Claude.app keeps the selected project Identity.** Dedicated folders use a
+  distinct MCP connection name because Code forwards same-named Desktop/user MCP
+  entries ahead of project entries. Global settings stay intact; an older owned
+  project entry migrates only after confirmation. The Mac test prompt checks the
+  actual `agentId` before any message is sent.
+- **Project lane replies use the same binding key as their shared reader.** Replies
+  cannot be skipped as belonging to another session. Project connection also checks
+  `settings.local.json` in the selected folder, ancestors and global configuration
+  before writing either file.
+- **Mac pairing errors preserve actionable causes:** own Identity, changed Contact,
+  missing settings, permission problems, existing output and timeout are distinct.
+  Unknown command output stays private. Existing settings now have a direct first-screen entry.
+- **Security dependency:** the lockfile resolves `proxy-addr` 2.0.8, fixing
+  [GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h).
+  Direct dependency requirements remain unchanged.
+- **macOS SDK 27 builds:** all menu app screens use the existing SwiftUI property
+  wrapper alias, avoiding a macro plugin absent from standalone Command Line Tools.
+- **Cross-platform setup messages:** new project connection errors have actionable
+  English/Russian Windows messages; the Homebrew service fixture runs on POSIX hosts.
+- **Claude Code inside Claude.app is detected** without a separate terminal CLI.
+- **Homebrew Node paths survive upgrades.** New service/client settings persist a
+  verified stable Node path; an owned old Cellar-bound service can still be stopped
+  before reinstalling. Explicit executable overrides are preserved.
+- **Doctor traffic no longer fills the personal inbox/unread badge.** Reserved
+  diagnostic conversations stay in durable history; real letters are not marked read.
+- **Windows upgrade instructions keep service controls available** (#291). Remove
+  the selected service through the old tray before quitting it and running setup.
+  Main already carries the actionable installer refusal from #298; this release
+  includes it. No unattended service replacement or identity migration is added.
+- **Copy feedback reflects the clipboard result.** Both website prompts have independent
+  copy controls. A failed browser API and failed fallback no longer report success.
+- **Connection checks do not promise an AI reply.** The site distinguishes service
+  transport from the assistant's response, and says explicitly that opening Claude
+  Desktop Chat does not start a turn or read incoming messages automatically.
+- **A reply wakes the Claude Code session that asked, not every open one.** Each Claude Code
+  session runs its own Stop-hook drain over the profile's store with its own cursor, and nothing
+  told a drain which session a conversation belonged to, so every reply woke every session on the
+  machine — including sessions in another project, which then pulled the letter into their own
+  context. Codex already had a task binding; Claude Code had none. `murmur_send` and
+  `murmur_request` now record the sending session (`CLAUDE_CODE_SESSION_ID`) as the
+  conversation's owner in `<store dir>/.claude-session-bindings/`, and the drain of every other
+  session skips replies on that conversation with reason `bound-to-other-session` in the skipped
+  ledger. The binding holds while the owner's MCP process is alive and for
+  `MURMUR_WAKE_BIND_TTL_SECONDS` (default 8 hours, the installed wake window) after its last
+  send; a conversation nobody has sent on, a closed owner, or a drain that cannot name its own
+  session wakes everyone, as before. The cold-start `--session` drain applies the same rule.
+  A first letter from a peer is bound to nobody, so it still wakes every session; a project
+  that should not take such letters sets `MURMUR_WAKE_ONLY_BOUND=1` in its settings `env`, and
+  its sessions then wake only on replies in their own conversations
+  (`not-bound-to-this-session` in the ledger for the rest). The two sides of one DM
+  (`dm:a:b`, `dm:b:a`) are one conversation for the binding, and the sending session also owns
+  the peer: a new letter from a peer it wrote to within the window goes to that session alone,
+  in any conversation. A conversation binding outranks the peer binding.
+
 - **`doctor --peer` answers for that peer** (#282). The `peers` stage demanded a fresh
   two-way proof for every configured contact, so on a profile with many contacts it stayed
   `peers.unmeasured` even when the selected peer had just replied to the roundtrip. With
@@ -32,6 +137,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contacts have fresh proofs.
 
 ### Documentation
+- **Independently revocable enrollment design** (#169): an executable SQLite/NKey reference
+  and isolated Core NATS acceptance cover one-use expiry, peer-specific ACLs and revoking one
+  live participant without reconnecting another. Includes migration/rollback and explicit
+  JetStream/federation limits. Normal runtime authentication and invitations are unchanged.
 - **First opening on macOS 26** (#284): the working path is System Settings → Privacy &
   Security → Open Anyway; Finder's right-click → Open no longer offers to run the 2.12.0 app.
   Updated in README-Mac, `Read Me First.txt` inside the DMG and on the site.

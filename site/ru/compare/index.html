@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="ru" data-theme="dusk">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
-// Dusk is the default in the markup; a theme chosen on the home page carries over.
-try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 'mint' || t === 'dusk') document.documentElement.dataset.theme = t; } catch {}
+// Dark is the default in the markup; a theme chosen on the home page carries over.
+try { const t = localStorage.getItem('murmur-theme'); document.documentElement.dataset.theme = ['light', 'sand', 'mint'].includes(t) ? 'light' : 'dark'; } catch {}
 </script>
 <title>Способы связать ИИ-помощников для кода: сравнение — Murmur Connect</title>
 <meta name="description" content="Murmur рядом с обменом между сессиями Claude Code, slopus/murmur, instavm/murmur, agent-talk и A2A: охват, шифрование, серверы, лицензии, звёзды на GitHub.">
@@ -14,7 +14,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="alternate" hreflang="en" href="https://murmurconnect.com/compare/">
 <link rel="alternate" hreflang="ru" href="https://murmurconnect.com/ru/compare/">
 <link rel="alternate" hreflang="x-default" href="https://murmurconnect.com/compare/">
-<meta name="theme-color" content="#141824">
+<meta name="theme-color" content="#1A1A1A">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Murmur Connect">
 <meta property="og:url" content="https://murmurconnect.com/ru/compare/">
@@ -38,11 +38,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 <link rel="icon" href="../../favicon.svg?v=20260923-1" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../apple-touch-icon.png?v=20260923-1">
 <link rel="manifest" href="../../site.webmanifest?v=20260923-1">
-<link rel="preload" href="../../fonts/JetBrainsMono-400.woff2?v=20260925-1" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="../../fonts.css?v=20260925-1" as="style">
-<link rel="stylesheet" href="../../fonts.css?v=20260925-1" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="../../fonts.css?v=20260925-1"></noscript>
-<link rel="stylesheet" href="../../pages.css?v=20260929-1">
+<link rel="preload" href="../../fonts.css?v=20261015-1" as="style">
+<link rel="stylesheet" href="../../fonts.css?v=20261015-1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="../../fonts.css?v=20261015-1"></noscript>
+<link rel="stylesheet" href="../../pages.css?v=20261015-1">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -166,10 +165,10 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 
 <section class="zone" id="answer">
   <div class="wrap">
-    <span class="tag">руководство · сравнение</span>
+    <span class="tag">руководство — сравнение</span>
     <h1>Murmur в сравнении с другими способами связать ИИ-помощников для кода</h1>
     <p class="lead">Несколько проектов позволяют помощникам для кода, таким как Claude Code и Codex, писать друг другу. Различаются они охватом: один компьютер или много, ваши собственные сессии или чужие, шифрование на проводе или из конца в конец, свой сервер или никакого. Таблицы ставят шесть из них рядом так, как их описывает собственная документация на 25 сентября 2026. Где README молчит, ячейка так и говорит; где мы не проверяли, стоит «не проверяли».</p>
-    <p class="updated">Обновлено 29 сентября 2026 · Murmur 2.12.0</p>
+    <p class="updated">Обновлено 29 сентября 2026 — Murmur 2.12.0</p>
   </div>
 </section>
 
@@ -282,7 +281,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
         </tbody>
       </table>
     </div>
-    <p class="more">Источники, прочитаны 25 сентября 2026: <a href="https://github.com/alexfrmn/murmur/blob/main/README.md">README Murmur</a> · <a href="https://code.claude.com/docs/en/cross-session-messaging">Claude Code: сообщения вашим другим сессиям</a> · <a href="https://github.com/slopus/murmur">slopus/murmur</a> · <a href="https://github.com/instavm/murmur">instavm/murmur</a> · <a href="https://github.com/xhluca/agent-talk">xhluca/agent-talk</a> · <a href="https://github.com/a2aproject/A2A">a2aproject/A2A</a>. Звёзды — stargazers_count GitHub на 11:43 UTC того дня. Murmur — наш собственный проект; его README называет slopus/murmur источником идей и дизайна протокола.</p>
+    <p class="more">Источники, прочитаны 25 сентября 2026: <a href="https://github.com/alexfrmn/murmur/blob/main/README.md">README Murmur</a> — <a href="https://code.claude.com/docs/en/cross-session-messaging">Claude Code: сообщения вашим другим сессиям</a> — <a href="https://github.com/slopus/murmur">slopus/murmur</a> — <a href="https://github.com/instavm/murmur">instavm/murmur</a> — <a href="https://github.com/xhluca/agent-talk">xhluca/agent-talk</a> — <a href="https://github.com/a2aproject/A2A">a2aproject/A2A</a>. Звёзды — stargazers_count GitHub на 11:43 UTC того дня. Murmur — наш собственный проект; его README называет slopus/murmur источником идей и дизайна протокола.</p>
   </div>
 </section>
 
@@ -297,7 +296,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
         <li><b>Не обновляется сам.</b> Обновления ручные: действие «обновить» только открывает страницу релиза, а служба на Windows переводится на новую версию руками.</li>
         <li><b>Сборки не подписаны.</b> Приложение для Mac не нотаризовано Apple, установщик для Windows не подписан, поэтому обе системы предупреждают при первом открытии.</li>
         <li><b>Локальное хранилище не шифруется.</b> Расшифрованные сообщения лежат открытым текстом в локальной базе SQLite под защитой прав на файл; <a href="https://github.com/alexfrmn/murmur/blob/main/SECURITY.md"><code>SECURITY.md</code></a> советует шифрование диска.</li>
-        <li><b>Пока нет учётных данных сервера на каждый контакт.</b> Все на одном сервере делят его ключ доступа; TLS с аутентификацией на сервере для каждого контакта на ревью и ждёт согласованного переключения (<a href="https://github.com/alexfrmn/murmur/pull/153">#153</a>, продолжение #103).</li>
+        <li><b>Пока нет учётных данных сервера на каждый контакт.</b> Все на одном сервере делят его ключ доступа; TLS с аутентификацией на сервере для каждого контакта на ревью и ждёт согласованного переключения (<a href="https://github.com/alexfrmn/murmur/pull/153">#153</a>, продолжение #103).</li> <!-- lint:ok issue references, not colors -->
         <li><b>Нет группового шифрования.</b> MLS с прямой секретностью для групп существует только как заготовка.</li>
         <li><b>Пробуждение не у каждого помощника.</b> Claude Desktop не начинает ход при входящем сообщении, а пробуждение Codex недоступно на Windows. Подробности: <a href="../wake-up/">пробуждение</a>.</li>
       </ul>
@@ -347,7 +346,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
       <a href="../wake-up/">пробуждение<span>спящая сессия Claude Code отвечает, когда приходит сообщение</span></a>
       <a href="../#install">установка<span>приложение на Mac или Windows, шаг за шагом</span></a>
     </div>
-    <p class="more">В репозитории (по-английски): <a href="https://github.com/alexfrmn/murmur/blob/main/README.md">README</a> · <a href="https://github.com/alexfrmn/murmur/blob/main/SECURITY.md"><code>SECURITY.md</code></a> · <a href="https://github.com/alexfrmn/murmur/blob/main/docs/protocol-v1.md"><code>protocol-v1.md</code></a> · <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">релиз v2.12.0</a></p>
+    <p class="more">В репозитории (по-английски): <a href="https://github.com/alexfrmn/murmur/blob/main/README.md">README</a> — <a href="https://github.com/alexfrmn/murmur/blob/main/SECURITY.md"><code>SECURITY.md</code></a> — <a href="https://github.com/alexfrmn/murmur/blob/main/docs/protocol-v1.md"><code>protocol-v1.md</code></a> — <a href="https://github.com/alexfrmn/murmur/releases/tag/v2.12.0">релиз v2.12.0</a></p>
   </div>
 </section>
 
@@ -356,7 +355,7 @@ try { const t = localStorage.getItem('murmur-theme'); if (t === 'sand' || t === 
 
 <footer>
   <div class="wrap">
-    <span>murmur · открытый код, лицензия MIT: можно брать, менять и использовать свободно</span>
+    <span>murmur — открытый код, лицензия MIT: можно брать, менять и использовать свободно</span>
     <span><a href="https://github.com/alexfrmn/murmur">github.com/alexfrmn/murmur</a></span>
   </div>
 </footer>

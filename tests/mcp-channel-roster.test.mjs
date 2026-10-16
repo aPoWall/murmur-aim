@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -44,6 +44,7 @@ async function callTool(proc, id, name, args) {
 
 test("MCP channel roster tools create/list/evaluate addressing", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "murmur-mcp-channel-"));
+  await writeFile(path.join(dir, "agent-config.json"), JSON.stringify({ agentId: "channel-fixture", peers: {} }), { mode: 0o600 });
   const proc = spawn(process.execPath, ["packages/mcp-server/dist/src/index.js"], {
     cwd: process.cwd(),
     env: {

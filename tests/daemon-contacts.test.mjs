@@ -34,6 +34,8 @@ for (const [name, mutate] of [
   ['Identity', c => { c.agentId = 'another'; }],
   ['keys', c => { c.keys.signing.privateKey = Buffer.alloc(32, 8).toString('base64'); }],
   ['Server', c => { c.natsUrl = 'nats://different.invalid:4222'; }],
+  ['broker user', c => { c.natsUser = 'changed'; c.natsPassword = 'changed'; }],
+  ['TLS policy', c => { c.natsTls = { caFile: '/new/ca.pem' }; }],
   ['routing', c => { c.subject = 'msg.changed'; }],
 ]) test(`reload rejects changed ${name} while retaining the last valid Contacts`, t => {
   const f = fixture(t), next = structuredClone(f.config); mutate(next); f.save(next);

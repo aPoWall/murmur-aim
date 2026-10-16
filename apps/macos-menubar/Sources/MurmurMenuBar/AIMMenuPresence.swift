@@ -4,6 +4,19 @@ import AppKit
 @MainActor enum AIMMenuPresence {
     static let name = "Item-0"
     static let positionKey = "NSStatusItem Preferred Position " + name
+    /// AppKit coordinates: keep the panel below its own menu item on that display.
+    /// A hidden/unmeasurable item keeps the existing window entrance available.
+    static func panelFrame(size: NSSize, status: NSRect, visible: NSRect) -> NSRect? {
+        guard [size.width, size.height, status.minX, status.minY, status.width, status.height,
+               visible.minX, visible.minY, visible.width, visible.height].allSatisfy({ $0.isFinite }),
+              size.width > 0, size.height > 0, status.width > 0, status.height > 0,
+              visible.width > 0, visible.height > 0 else { return nil }
+        let width = min(size.width, visible.width)
+        let height = min(size.height, visible.height)
+        let x = min(max(status.midX - width / 2, visible.minX), visible.maxX - width)
+        let y = min(max(status.minY - 6 - height, visible.minY), visible.maxY - height)
+        return NSRect(x: x, y: y, width: width, height: height)
+    }
     static func invalidPosition(_ position: Double?, screenWidth: Double) -> Bool {
         guard let position else { return false }
         return !position.isFinite || position < 0 || position > screenWidth
@@ -27,6 +40,7 @@ import AppKit
             "templateMark": item.button?.image?.isTemplate == true,
             "mode": "mark", "panelPinned": AIMWindowState.shared.pinned,
             "panelVisible": windowVisible, "activationPolicy": NSApp.activationPolicy().rawValue,
+            "panelBelowMenu": panelFrame.map { abs(rect.minY - $0.maxY - 6) < 2 } ?? false,
             "observedAt": ISO8601DateFormatter().string(from: Date()),
             "limitation": "OS placement only; third-party menu managers and notch occlusion need visual verification"
         ]

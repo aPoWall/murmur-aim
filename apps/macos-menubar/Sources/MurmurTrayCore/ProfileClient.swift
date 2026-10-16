@@ -154,6 +154,13 @@ public struct ProfileClient: Sendable {
     public func readDoctor() throws -> DoctorSnapshot {
         try DoctorSnapshot.decode(probe(timeout: doctorTimeout).run("doctor").data)
     }
+    public func readInbox(expectedAgent: String) throws -> InboxSnapshot {
+        guard try verifiedAgent(in: readStatus()) == expectedAgent else { throw ProfileError.identityChanged }
+        let result = try InboxSnapshot.decode(probe(timeout: statusTimeout).invoke(["inbox", "read", "--limit", "20"]).data,
+                                              expectedAgent: expectedAgent)
+        guard try verifiedAgent(in: readStatus()) == expectedAgent else { throw ProfileError.identityChanged }
+        return result
+    }
     public func verifiedAgent(in snapshot: StatusSnapshot, now: Date = Date()) throws -> String {
         guard let id = snapshot.agentId,
               id.range(of: "\\A[A-Za-z0-9][A-Za-z0-9_-]{0,127}\\z", options: .regularExpression) != nil else {

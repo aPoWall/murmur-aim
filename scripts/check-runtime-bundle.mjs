@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createInterface } from 'node:readline';
 
@@ -31,7 +31,8 @@ let child, childClosed, report, probeError;
 try {
   const profile = path.join(temp, 'profile');
   const env = { ...process.env, NODE_OPTIONS: '', NODE_PATH: '', DATA_DIR: profile,
-    MURMUR_DATA_DIR: profile, MURMUR_STORE_PATH: '', MURMUR_UPDATE_CHECK: '0' };
+    MURMUR_DATA_DIR: profile, MURMUR_STORE_PATH: path.join(profile, 'murmur.db'),
+    MURMUR_CHANNEL_ROSTER_PATH: path.join(profile, 'channel-roster.db'), MURMUR_UPDATE_CHECK: '0' };
   // Windows init applies private ACLs through PowerShell. Allow its cold startup
   // on shared runners without making a failed command indistinguishable from MCP.
   const cliTimeoutMs = process.platform === 'win32' ? 60_000 : 10_000;
@@ -47,7 +48,21 @@ try {
   assert.equal(cli(['version']).version, manifest.declaredVersion);
   assert.equal(cli(['init', '--data-dir', profile, '--agent-id', 'runtime-probe', '--broker-url', 'nats://127.0.0.1:4222']).agentId, 'runtime-probe');
   assert.equal(cli(['status', '--data-dir', profile]).agentId, 'runtime-probe');
-  child = spawn(process.execPath, [path.join(runtime, 'packages/mcp-server/dist/src/index.js')], { cwd: temp, env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const mcpEntry = path.join(runtime, 'packages/mcp-server/dist/src/index.js');
+  const refused = (overrides, code) => {
+    const result = spawnSync(process.execPath, [mcpEntry], { cwd: temp, env: { ...env, ...overrides },
+      input: '', encoding: 'utf8', timeout: 10000 });
+    assert.ifError(result.error); assert.equal(result.signal, null); assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes(code), `Expected ${code} refusal`);
+  };
+  // Explicit empty overrides are errors, not requests to discover another store.
+  refused({ MURMUR_STORE_PATH: '' }, 'installation.store-conflict');
+  const missing = path.join(temp, 'missing-profile');
+  refused({ DATA_DIR: missing, MURMUR_DATA_DIR: missing, MURMUR_STORE_PATH: path.join(missing, 'murmur.db'),
+    MURMUR_CHANNEL_ROSTER_PATH: path.join(missing, 'channel-roster.db') }, 'installation.profile-missing');
+  await assert.rejects(fs.stat(missing), { code: 'ENOENT' });
+  await assert.rejects(fs.stat(path.join(temp, '.data')), { code: 'ENOENT' });
+  child = spawn(process.execPath, [mcpEntry], { cwd: temp, env, stdio: ['pipe', 'pipe', 'pipe'] });
   // Register immediately: exit may precede pipe closure and Windows releasing
   // the child's working directory. Cleanup must wait for close even after exit.
   childClosed = new Promise(resolve => child.once('close', resolve));
@@ -71,10 +86,13 @@ try {
   child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   const listed = await request(2, 'tools/list', {});
   assert.ok(listed.tools.some(tool => tool.name === 'murmur_request'));
-  await request(3, 'tools/call', { name: 'murmur_peers', arguments: {} });
+  const peers = await request(3, 'tools/call', { name: 'murmur_peers', arguments: {} });
+  assert.deepEqual(JSON.parse(peers.content[0].text), { agentId: 'runtime-probe', peers: [] });
   reader.close();
   report = { ok: true, sourceCommit: manifest.sourceCommit, version: manifest.declaredVersion,
-    files: Object.keys(manifest.files).length, cli: ['version', 'init', 'status'], mcp: ['initialize', 'tools/list', 'murmur_peers'], roundtrip: 'not-tested' };
+    files: Object.keys(manifest.files).length, cli: ['version', 'init', 'status'],
+    profileChecks: ['empty-store-override-refused', 'missing-profile-refused-without-store'],
+    mcp: ['initialize', 'tools/list', 'murmur_peers'], roundtrip: 'not-tested' };
 } catch (error) {
   probeError = error;
 } finally {

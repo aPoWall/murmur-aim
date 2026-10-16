@@ -1,6 +1,6 @@
 import * as TOML from '@iarna/toml';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, rename, rmdir, stat, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, realpath, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -12,9 +12,51 @@ export { sameClientFileIdentity } from './file-identity.js';
 const object = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 
 async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clientId: string) {
-  const client = (await adapter.detectClients(c)).find(item => item.id === clientId);
+  const clients = await adapter.detectClients(c);
+  const client = clients.find(item => item.id === clientId);
   if (!client || !client.installed) throw new Error('client.not-detected');
   if (!client.configPath || !path.isAbsolute(client.configPath)) throw new Error('client.config-path-unverified');
+  if (c.clientProjectDir) {
+    if (clientId !== 'claude-code') throw new Error('client.project-only-for-claude-code');
+    if (!path.isAbsolute(c.clientProjectDir) || !(await stat(c.clientProjectDir).catch(() => null))?.isDirectory()) throw new Error('client.project-directory-required');
+    // An inherited global/ancestor hook would still wake other chats. Refuse before
+    // writing anything; never silently remove a person's existing integration.
+    const parents = new Set([path.dirname(client.configPath)]);
+    let parent = path.dirname(c.clientProjectDir);
+    while (true) { parents.add(parent); const next = path.dirname(parent); if (next === parent) break; parent = next; }
+    // Local settings merge their hooks with project settings. They must not leave
+    // a second reader behind even in the selected project itself.
+    const local = await readClientFile(path.join(c.clientProjectDir, '.claude', 'settings.local.json'));
+    if (local.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
+    for (const dir of parents) {
+      if (dir === c.clientProjectDir) throw new Error('client.project-must-be-dedicated');
+      for (const name of ['settings.json', 'settings.local.json']) {
+        const file = await readClientFile(path.join(dir, '.claude', name));
+        if (file.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
+      }
+    }
+    // Desktop forwards Chat/user MCP registrations ahead of project entries.
+    // Refuse an occupied dedicated name instead of selecting a global identity.
+    // Code's local scope lives under projects[path] in the same user file and
+    // outranks .mcp.json too. Inspect both path spellings without changing the
+    // selected path used for service identity, folder name or wake lane.
+    const projectPaths = new Set([c.clientProjectDir, await realpath(c.clientProjectDir)]);
+    for (const global of clients.filter(item => ['claude-code', 'claude-desktop'].includes(item.id))) {
+      if (!global.configPath || !path.isAbsolute(global.configPath)) continue;
+      const file = await readClientFile(global.configPath);
+      const { original, key } = clientDocument(global, file.text);
+      if (original[key]?.[mcpEntryName(c)] !== undefined) throw new Error('client.inherited-mcp-entry-conflict');
+      if (global.id === 'claude-code' && object(original.projects)) {
+        for (const projectPath of projectPaths) {
+          const local = original.projects[projectPath];
+          if (local === undefined) continue;
+          if (!object(local) || local.mcpServers !== undefined && !object(local.mcpServers)) throw new Error('client.mcp-table-invalid');
+          if (local.mcpServers?.[mcpEntryName(c)] !== undefined) throw new Error('client.inherited-mcp-entry-conflict');
+        }
+      }
+    }
+    return { ...client, configPath: path.join(c.clientProjectDir, '.mcp.json') };
+  }
   return { ...client, configPath: client.configPath };
 }
 async function readClientFile(file: string) {
@@ -55,12 +97,16 @@ const hookPath = (value: string) => `"${value.replaceAll('\\', '/')}"`;
 // Eight hours after each turn instead of the drain's 20-minute default: a message that arrives
 // during a working day still wakes the session (docs/wake-native.md, known limitation).
 const WAKE_WINDOW_SECONDS = 28800;
+const projectLane = (c: ServiceContext) => c.clientProjectDir
+  ? createHash('sha256').update(c.clientProjectDir).digest('hex').slice(0, 8) : null;
+const mcpEntryName = (c: ServiceContext) => c.clientProjectDir ? `murmur-${projectLane(c)}` : 'murmur';
 /** The node wake drain (docs/wake-native.md): polls the store after each turn and wakes the session. */
 function desiredWakeHook(c: ServiceContext) {
   // Claude Code ends a hook without its own `timeout` after 600 s (hooks reference, asyncRewake);
   // the entry carries the same window the drain script is asked for, or the script never gets it.
+  const lane = projectLane(c);
   return { type: 'command', asyncRewake: true, timeout: WAKE_WINDOW_SECONDS,
-    command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}` };
+    command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}${lane ? ` --session-key ${lane}` : ''}` };
 }
 const isMurmurWakeHook = (hook: unknown): hook is Record<string, any> & { command: string } =>
   object(hook) && typeof hook.command === 'string' && hook.command.includes('wake-drain-claude');
@@ -130,14 +176,30 @@ async function configureWakeHook(c: ServiceContext, file: string, before: Awaite
   } finally { await rmdir(lock); }
 }
 function desiredEntry(c: ServiceContext) {
+  const lane = projectLane(c);
   return { command: c.nodePath, args: [path.join(c.repoRoot, 'packages', 'mcp-server', 'dist', 'src', 'index.js')],
-    env: { DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath } };
+    env: { DATA_DIR: c.dataDir, MURMUR_DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath,
+      MURMUR_CHANNEL_ROSTER_PATH: path.join(c.dataDir, 'channel-roster.db'),
+      ...(lane ? { MURMUR_WAKE_SESSION_KEY: lane } : {}) } };
 }
 type ClientFile = Awaited<ReturnType<typeof readClientFile>>;
+function mcpChange(c: ServiceContext, original: Record<string, any>, key: string) {
+  const entry = desiredEntry(c), name = mcpEntryName(c), previous = original[key]?.[name];
+  const servers = { ...original[key] }, legacy = servers.murmur;
+  // Only migrate the old project registration for this exact profile. Other
+  // servers and identities remain intact, and replacement keeps a raw backup.
+  const legacyOwned = !!c.clientProjectDir && object(legacy) && object(legacy.env)
+    && legacy.env.DATA_DIR === c.dataDir && legacy.env.MURMUR_STORE_PATH === c.storePath
+    && typeof legacy.command === 'string' && Array.isArray(legacy.args) && legacy.args.length === 1
+    && typeof legacy.args[0] === 'string' && /[/\\]packages[/\\]mcp-server[/\\]dist[/\\]src[/\\]index\.js$/.test(legacy.args[0]);
+  if (legacyOwned) delete servers.murmur;
+  servers[name] = entry;
+  const action = legacyOwned ? 'replace' : isDeepStrictEqual(previous, entry) ? 'unchanged' : previous === undefined ? 'add' : 'replace';
+  return { entry, name, action, next: { ...original, [key]: servers } };
+}
 async function planFor(c: ServiceContext, client: ClientDetection & { configPath: string }, current: ClientFile, settings?: ClientFile) {
   const config = await loadConfig(c), { original, key } = clientDocument(client, current.text);
-  const entry = desiredEntry(c), previous = original[key]?.murmur;
-  const entryAction = isDeepStrictEqual(previous, entry) ? 'unchanged' : previous === undefined ? 'add' : 'replace';
+  const { entry, name, action: entryAction } = mcpChange(c, original, key);
   const plannedHook = settings && planWakeHook(c, settings.text);
   // The preview names the hand-written events it would repoint, so the person reads them before
   // confirming rather than finding a changed command afterwards (#294).
@@ -150,9 +212,9 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
   // Bind confirmation to the target, exact bytes and selected identity/runtime.
   // No existing commands, environment values, auth or config contents leave the engine.
   const planId = createHash('sha256').update(JSON.stringify([client.id, client.configPath, current,
-    config.agentId, config.keys.signing.publicKey, config.keys.encryption.publicKey, entry, settings ?? null])).digest('hex');
+    config.agentId, config.keys.signing.publicKey, config.keys.encryption.publicKey, name, entry, settings ?? null])).digest('hex');
   return { schema: 'murmur.client-plan/1', client: client.id, configPath: client.configPath,
-    agentId: config.agentId, dataDir: c.dataDir, action, planId, configExisted: current.existed, restartRequired: true, ...(wakeHook ? { wakeHook } : {}) };
+    agentId: config.agentId, dataDir: c.dataDir, serverName: name, action, planId, configExisted: current.existed, restartRequired: true, ...(wakeHook ? { wakeHook } : {}) };
 }
 
 /**
@@ -161,8 +223,7 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
  * nothing about a live session having been woken, which is a separate proof.
  */
 export async function claudeWakeHookState(c: ServiceContext, adapter: PlatformAdapter): Promise<'current' | 'outdated' | 'absent'> {
-  const client = (await adapter.detectClients(c).catch(() => []))
-    .find(item => item.id === 'claude-code' && item.installed && item.configPath && path.isAbsolute(item.configPath));
+  const client = await selectedClient(c, adapter, 'claude-code').catch(() => null);
   if (!client?.configPath) return 'absent';
   const settings = await readClientFile(claudeSettingsPath(client.configPath)).catch(() => null);
   if (!settings?.existed) return 'absent';
@@ -211,12 +272,11 @@ async function configureMcpEntry(c: ServiceContext, client: ClientDetection & { 
     const current = await readClientFile(file), { text, existed } = current;
     const plan = expectedPlan === undefined ? undefined : await planFor(c, client, current, settings);
     if (plan && plan.planId !== expectedPlan) throw new Error('client.plan-stale');
-    const { original, key, parse } = clientDocument(client, text), entry = desiredEntry(c);
-    const confirmed = plan ? { planId: plan.planId, agentId: plan.agentId, dataDir: plan.dataDir } : {};
-    const previous = original[key]?.murmur;
-    if (isDeepStrictEqual(previous, entry)) return { schema: 'murmur.client/1', client: clientId, configPath: file, changed: false, backup: null, restartRequired: true, ...confirmed };
-    if (previous !== undefined && !replace) throw new Error('client.murmur-entry-conflict');
-    const next = { ...original, [key]: { ...original[key], murmur: entry } };
+    const { original, key, parse } = clientDocument(client, text);
+    const { name, action, next } = mcpChange(c, original, key);
+    const confirmed = { ...(plan ? { planId: plan.planId, agentId: plan.agentId, dataDir: plan.dataDir } : {}), serverName: name };
+    if (action === 'unchanged') return { schema: 'murmur.client/1', client: clientId, configPath: file, changed: false, backup: null, restartRequired: true, ...confirmed };
+    if (action === 'replace' && !replace) throw new Error('client.murmur-entry-conflict');
     const serialized = client.format === 'json' ? JSON.stringify(next, null, 2) + '\n' : TOML.stringify(next);
     if (!isDeepStrictEqual(parse(serialized), next)) throw new Error('client.config-roundtrip-failed');
     const backup = existed ? `${file}.murmur-backup-${randomUUID()}` : null;

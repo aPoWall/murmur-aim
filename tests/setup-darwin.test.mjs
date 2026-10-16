@@ -172,6 +172,28 @@ test('classic ChatGPT application is not mistaken for Codex', async t => {
   assert.equal(result[3].installed, false); assert.equal(result[3].configPath, null);
 });
 
+test('Claude desktop Code is detected without a separate CLI, only with an executable bundled agent', { skip: skipPosixServiceHost }, async t => {
+  const f = await fixture(t);
+  const apps = path.join(f.home, 'Applications');
+  await fs.mkdir(path.join(apps, 'Claude.app', 'Contents'), { recursive: true });
+  await fs.writeFile(path.join(apps, 'Claude.app', 'Contents', 'Info.plist'), 'fixture');
+  const adapter = createDarwinAdapter({ homeDir: f.home, uid: 501, executableDirs: [], applicationDirs: [apps],
+    run: async () => ok('com.anthropic.claudefordesktop\n') });
+  assert.equal((await adapter.detectClients(f.ctx))[0].installed, false, 'Chat alone does not prove Code installed');
+  const binary = path.join(f.home, 'Library', 'Application Support', 'Claude', 'claude-code', '2.1.299', 'build-id', 'claude.app', 'Contents', 'MacOS', 'claude');
+  await fs.mkdir(path.dirname(binary), { recursive: true });
+  await fs.writeFile(binary, '#!/bin/sh\nexit 1\n', { mode: 0o600 });
+  assert.equal((await adapter.detectClients(f.ctx))[0].installed, false);
+  await fs.chmod(binary, 0o700);
+  const code = (await adapter.detectClients(f.ctx))[0];
+  assert.equal(code.installed, true);
+  assert.equal(code.configPath, path.join(f.home, '.claude.json'));
+  assert.match(code.detail, /desktop/);
+  await assert.rejects(fs.stat(code.configPath), { code: 'ENOENT' });
+  await fs.rm(path.join(apps, 'Claude.app'), { recursive: true });
+  assert.equal((await adapter.detectClients(f.ctx))[0].installed, false, 'orphaned data is not an installed desktop client');
+});
+
 test('custom Claude profile remains explicit unknown, and an executable directory is not a CLI', async t => {
   const f = await fixture(t);
   const bin = path.join(f.home, 'bin');
@@ -191,5 +213,24 @@ test('stop refuses another profile reusing the same serviceName without any boot
   const dataDir = path.join(f.home, 'unrelated-profile');
   const other = { ...f.ctx, dataDir, configPath: path.join(dataDir, 'agent-config.json'), storePath: path.join(dataDir, 'murmur.db'), logDir: path.join(dataDir, 'logs') };
   await assert.rejects(f.adapter.stop(other), /stop-profile-mismatch/);
+  assert.ok(f.calls.every(([, args]) => args[0] !== 'bootout'));
+});
+
+test('a Homebrew upgrade can stop the owned Cellar-bound service before reinstalling with a stable Node path', { skip: skipPosixServiceHost }, async t => {
+  let loaded = false;
+  const f = await fixture(t, (file, args, ctx, home) => args[0] === 'bootout' ? ok() : loaded
+    ? ok(`path = ${path.join(home, 'Library', 'LaunchAgents', ctx.serviceName + '.plist')}\n state = running\n pid = 123\n`)
+    : missing);
+  await f.adapter.install(f.ctx);
+  const original = await fs.readFile(f.plist, 'utf8');
+  await fs.writeFile(f.plist, original.replace(`<array><string>${f.ctx.nodePath}</string>`, '<array><string>/opt/homebrew/Cellar/node/25.9.0_3/bin/node</string>')
+    .replace(`<string>${path.dirname(f.ctx.nodePath)}:/opt/homebrew/bin`, '<string>/opt/homebrew/Cellar/node/25.9.0_3/bin:/opt/homebrew/bin'));
+  // PATH is also derived from the old executable; preserve it when emulating an old install.
+  const desired = { ...f.ctx, nodePath: '/opt/homebrew/bin/node' };
+  loaded = true;
+  await f.adapter.stop(desired);
+  assert.ok(f.calls.some(([, args]) => args[0] === 'bootout'));
+  f.calls.length = 0;
+  await assert.rejects(f.adapter.stop({ ...desired, nodePath: '/usr/local/bin/node' }), /stop-profile-mismatch/);
   assert.ok(f.calls.every(([, args]) => args[0] !== 'bootout'));
 });

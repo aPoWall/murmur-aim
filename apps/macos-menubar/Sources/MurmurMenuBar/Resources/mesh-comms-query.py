@@ -30,7 +30,9 @@ ROOT = Path.home() / _setting('MURMUR_COMPANION_ROOT', r'[A-Za-z0-9_.][A-Za-z0-9
 DATABASE = _setting('MURMUR_COMPANION_DB', r'[A-Za-z0-9_.][A-Za-z0-9._-]*(/[A-Za-z0-9_.][A-Za-z0-9._-]*)*')
 OWNER = _setting('MURMUR_COMPANION_OWNER', r'[a-z0-9_]{1,40}', 'owner')
 AVATAR_IDS = _setting_list('MURMUR_COMPANION_AVATARS', r'[a-z0-9_]{1,40}')
-PRIVATE_PEERS = _setting_list('MURMUR_COMPANION_PRIVATE', r'[a-z0-9][a-z0-9._-]{0,62}')
+# Portable mirror of mesh_comms_policy.PRIVATE_PEERS. Contract tests require parity;
+# the in-memory SSH reader must also deny these when an old edition omits settings.
+PRIVATE_PEERS = {'agent-viola-alex','shaper-viola'} | _setting_list('MURMUR_COMPANION_PRIVATE', r'[a-z0-9][a-z0-9._-]{0,62}')
 
 
 def _owner_file(name):
@@ -106,6 +108,55 @@ def augment(data, monitor, share):
 
 
 
+def add_roster(data, people, share):
+    """Current registry contacts remain visible without granting a send route."""
+    if people.get('privacy') != 'operator_metadata_only_tailnet' or share.get('privacy') != 'metadata-only' or data.get('privacy') != 'owner-metadata':
+        raise ValueError('safe_roster_unavailable')
+    seen = {p.get('id') for p in data.get('people', [])}
+    private = set(PRIVATE_PEERS)
+    for contour in share.get('private_contours', []):
+        private.update((contour.get('local_identity'), contour.get('peer_identity')))
+    private_people = {b.get('person') for b in people.get('bindings', []) if b.get('agent') in private}
+    for person in people.get('people', []):
+        pid = person.get('id')
+        if (not isinstance(pid, str) or not pid.startswith('person:') or
+                pid in seen or pid in private_people or person.get('history') or person.get('privacy') in {'private', 'status-only'}):
+            continue
+        agents = sorted({b['agent'] for b in people.get('bindings', []) if b.get('person') == pid and b.get('agent') not in private})
+        data['people'].append({'id': pid, 'name': person.get('name') or pid,
+                              'nickname': person.get('nickname'), 'role': person.get('role'),
+                              'agents': agents, 'agent_labels': {a: AGENT_LABELS.get(a, a) for a in agents}, 'writable_agents': [], 'last_at': None,
+                              'contact_state': 'unlinked'})
+        seen.add(pid)
+    for person in data.get('people', []):
+        person['contact_state'] = person.get('contact_state') or ('status_only' if person.get('privacy') == 'status-only' else 'configured')
+    data['roster_at'] = people.get('observed_at')
+    return data
+
+
+def contact_history(peer, root, stores):
+    """Bounded metadata-only contact journal; bodies still require exact on-demand read."""
+    if not isinstance(peer, str) or not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,62}', peer):
+        raise ValueError('invalid_peer')
+    share = json.loads((root / 'share-data.json').read_text())
+    if share.get('privacy') != 'metadata-only':
+        raise ValueError('safe_snapshot_unavailable')
+    private = set(PRIVATE_PEERS)
+    for contour in share.get('private_contours', []):
+        private.update((contour.get('local_identity'), contour.get('peer_identity')))
+    if peer in private:
+        raise ValueError('private_history_unavailable')
+    rows = [m for m in share.get('messages', []) if m.get('store') in stores and m.get('id')
+            and m.get('peer_identity') == peer and m.get('local_identity') not in private]
+    rows = list({(m['store'], m['id']): m for m in rows}.values())
+    rows.sort(key=lambda m: m.get('date') or '', reverse=True)
+    return {'privacy': 'owner-only-search', 'matches': [
+        {**{k: m.get(k) for k in ('id', 'store', 'date', 'peer_identity', 'local_identity', 'direction', 'conversation_id')},
+         'excerpt': 'Incoming message' if m.get('direction') == 'inbound' else 'Outgoing message'} for m in rows[:40]],
+        'total': len(rows), 'truncated': len(rows) > 40, 'searched': len(rows),
+        'unavailable': [], 'source_at': share.get('ts'), 'scope': 'Contact history; metadata only until a message is opened.'}
+
+
 def add_avatars(data, people, share):
     """Only current ordinary people with existing operator-approved exact assets."""
     private = set(PRIVATE_PEERS)
@@ -167,7 +218,9 @@ def dispatch(request, root=ROOT):
             companion.main()
         share = json.loads((root/'share-data.json').read_text())
         data = augment(json.loads(output.getvalue()), json.loads((root/'monitor.json').read_text()), share)
-        data = add_avatars(data, json.loads((root/'people-data.json').read_text()), share)
+        people = json.loads((root/'people-data.json').read_text())
+        data = add_roster(data, people, share)
+        data = add_avatars(data, people, share)
         # Expose fixed diagnostic codes only. Raw runner errors and session paths
         # stay on the server. A failed wake is separate from transport delivery.
         db_path = Path.home()/DATABASE if DATABASE else None
@@ -189,9 +242,13 @@ def dispatch(request, root=ROOT):
         if set(request) != {'action', 'person'} or not isinstance(request.get('person'), str):
             raise ValueError('invalid_avatar_request')
         return read_avatar(request['person'], root)
-    if action not in {'search', 'read'}:
+    if action not in {'search', 'read', 'history'}:
         raise ValueError('unsupported_action')
     reader = load('murmur_message_reader', 'serve.py', root)
+    if action == 'history':
+        if set(request) != {'action', 'peer'}:
+            raise ValueError('invalid_history_request')
+        return contact_history(request.get('peer'), root, reader.MESSAGE_STORES)
     if action == 'search':
         query = request.get('query')
         if not isinstance(query, str) or not 2 <= len(query.strip()) <= 160:

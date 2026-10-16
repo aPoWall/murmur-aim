@@ -14,6 +14,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -24,6 +26,10 @@ jobs:
         run: brew install nats-server
       - name: Build engine and check portable setup behavior
         run: npm ci && npm run build && node --test tests/setup-*.test.mjs
+      - name: Verify participant revocation against an isolated real broker
+        run: MURMUR_REQUIRE_ENROLLMENT_BROKER=1 node --test tests/participant-enrollment.test.mjs
+      - name: Verify opt-in TLS, restricted JetStream and dashboard ACLs
+        run: MURMUR_REQUIRE_TLS_BROKER=1 bash packages/broker-nats/integration/run-secure-transport-live.sh
       - name: First Contact recovery with isolated Servers and real retry timing
         run: node --test tests/pairing-first-contact.integration.mjs tests/pairing-before-reply.integration.mjs
       - uses: actions/setup-go@v5

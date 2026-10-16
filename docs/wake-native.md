@@ -202,14 +202,34 @@ Env:
 - `MURMUR_WAKE_CURSOR`: cursor file. Defaults to one file **per session**,
   `~/.murmur-wake-cursor-<session>`.
 - `MURMUR_WAKE_SESSION_KEY`: overrides the session key (first 8 chars of
-  `CLAUDE_CODE_SESSION_ID` otherwise).
+  `CLAUDE_CODE_SESSION_ID` otherwise). A manually configured shared lane must set
+  this same key in both the MCP entry environment and the Stop hook. Project
+  configuration writes both sides together.
 
 Drain semantics:
 
 - Only `local_messages.direction='inbound'` rows are surfaced.
-- One cursor per session, so a message wakes **every** live session rather than only
-  whichever one reached the hook first. Within a session the hook and the cold-idle
-  watcher share the key, so it still wakes exactly once.
+- Outside project mode, each session has its own cursor; an unbound message may
+  wake every eligible session. Within a session the hook and cold-idle watcher
+  share a key. Dedicated project mode shares one cursor/lock across its sessions
+  and binds outgoing conversations to that lane, so one reader takes a reply once.
+- Session binding (node drain, `wake-drain-claude.mjs`). When a Claude Code session sends
+  on a conversation through `murmur_send` or `murmur_request`, the MCP server records it as
+  the conversation's owner in `<store dir>/.claude-session-bindings/`. A reply on that
+  conversation then wakes only the owner; every other session records it in the skipped
+  ledger as `bound-to-other-session` and steps over it. The binding holds while the
+  owner's MCP process is alive and for `MURMUR_WAKE_BIND_TTL_SECONDS` (default 28800)
+  after its last send. Unbound conversations, a closed owner, and a drain without a
+  session key wake every session as above. `MURMUR_WAKE_BINDINGS_DIR` moves the directory;
+  set the same absolute path for the MCP process (writer) and Stop hook (reader).
+  `dm:a:b` and `dm:b:a` bind as one conversation. Each send also binds the peer
+  (`peer-<sha256(peer)>.json`): when a row's conversation is not bound, its sender is looked up,
+  so a new letter from a peer this session wrote to goes to this session alone.
+- Projects that should not take letters nobody asked them for set `MURMUR_WAKE_ONLY_BOUND=1`
+  in their own `.claude/settings.json` `env`. A session there wakes only on replies in
+  conversations bound to itself; a first letter from a peer, or a reply bound elsewhere, is
+  skipped as `not-bound-to-this-session` / `bound-to-other-session` and woken in the sessions
+  without the flag. Without a session key such a drain wakes on nothing.
 - The first run in a new session seeds the cursor to the current tip and stays silent:
   without that, a fresh session would replay the whole inbound history as "new".
 - The cursor advances to the last **reported** `rowid`, never to the table's tip: a row

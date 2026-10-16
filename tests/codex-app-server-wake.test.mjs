@@ -18,6 +18,7 @@ import {
   createCodexAppServerInjector,
   deriveRelayReplyMsgId,
   readFinalAnswerFromSessionLog,
+  NO_REPLY_REQUIRED,
 } from "../scripts/codex-app-server-wake.mjs";
 import { SQLiteDedupeOutboxStore } from "../packages/core/dist/src/index.js";
 
@@ -550,6 +551,40 @@ test("Codex app-server injector refuses to report an empty final answer as relay
   );
   assert.equal(relays.length, 0);
   assert.ok(!logs.some((entry) => entry.message === "Codex app-server wake final relayed"));
+});
+
+test('explicit completed no-reply decision never sends a placeholder or reports an empty failure', async () => {
+  let sends=0;
+  class FakeClient {
+    async request() { return {}; }
+    async startTurnAndWaitForFinal() { return { finalText:NO_REPLY_REQUIRED, status:'completed', turnId:'turn-no-reply' }; }
+  }
+  const injector=createCodexAppServerInjector({Client:FakeClient,relayAlreadyQueued:async()=>false,relay:async()=>{sends++;}});
+  const result=await injector({...payload,text:'No reply needed.'},relayPeer('/work/.data/murmur.db'));
+  assert.equal(result.outcome,'no_reply_required');assert.equal(result.replyMsgId,null);assert.equal(sends,0);
+  assert.ok(buildCodexTurnText(payload,relayPeer('/work/.data/murmur.db')).includes(NO_REPLY_REQUIRED));
+});
+
+test('no-reply sentinel in an interrupted turn remains a failure', async () => {
+  class FakeClient {
+    async request() { return {}; }
+    async startTurnAndWaitForFinal() { return {finalText:NO_REPLY_REQUIRED,status:'interrupted',turnId:'turn-stopped'}; }
+  }
+  const injector=createCodexAppServerInjector({Client:FakeClient,relayAlreadyQueued:async()=>false,relay:async()=>{throw Error('must not relay');}});
+  await assert.rejects(injector(payload,relayPeer('/work/.data/murmur.db')),/turn-interrupted/);
+});
+
+test('no-reply decision needs verified completion and is durable for an accepted turn', async () => {
+  let record={msgId:payload.msgId,peerId:payload.from,conversationId:payload.conversationId,socketPath:'/tmp/codex.sock',threadId:'thread-1',turnId:'turn-1'};
+  let status=null;
+  class FakeClient {
+    async request() {return {};}
+    async startTurnAndWaitForFinal() {return {finalText:NO_REPLY_REQUIRED,status,turnId:'turn-1'};}
+  }
+  const injector=createCodexAppServerInjector({Client:FakeClient,relayAlreadyQueued:async()=>false,threadStore:{getWakeTurn:async()=>record,setWakeTurn:async v=>{record=v;}},relay:async()=>{throw Error('must not relay');}});
+  await assert.rejects(injector(payload,relayPeer('/work/.data/murmur.db')),/completion-unverified/);
+  status='completed';await injector(payload,relayPeer('/work/.data/murmur.db'));
+  assert.equal(record.outcome,'no_reply_required');
 });
 
 test("Codex app-server injector does not restart a turn whose reply is already queued", async () => {

@@ -28,6 +28,14 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
         "agentId": "agent-misha", "dataDir": profile.dataDirectory, "planId": planID, "changed": true, "restartRequired": true,
         "backup": target + ".murmur-backup-" + UUID().uuidString]
     _ = try ClientConfigurationReceipt.decode(data(receipt), plan: plan); count += 1
+    var namedPlanObject = planObject; namedPlanObject["serverName"] = "murmur-1234abcd"
+    let namedPlan = try ClientConfigurationPlan.decode(data(namedPlanObject), profile: profile, agentID: "agent-misha", client: .codexCLI)
+    var namedReceipt = receipt; namedReceipt["serverName"] = "murmur-1234abcd"
+    try check(try ClientConfigurationReceipt.decode(data(namedReceipt), plan: namedPlan).serverName == "murmur-1234abcd", "The receipt retains the exact selected connection name"); count += 1
+    namedReceipt["serverName"] = "murmur"
+    try refuse("A different loaded connection name is not the confirmed plan") { _ = try ClientConfigurationReceipt.decode(data(namedReceipt), plan: namedPlan) }
+    namedPlanObject["serverName"] = "foreign-server"
+    try refuse("Unrecognized connection name") { _ = try ClientConfigurationPlan.decode(data(namedPlanObject), profile: profile, agentID: "agent-misha", client: .codexCLI) }
     for (key, value): (String, Any) in [("configPath", "/different"), ("planId", String(repeating: "b", count: 64)), ("backup", "/unrelated/file"), ("backup", NSNull()), ("changed", false)] {
         var bad = receipt; bad[key] = value
         try refuse("Invalid client receipt: \(key)") { _ = try ClientConfigurationReceipt.decode(data(bad), plan: plan) }
@@ -39,6 +47,7 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
         "expectedReply": "MURMUR-SETUP-REPLY " + nonce]
     let testPlan = try ReplyTestPlan.decode(data(testObject), agentID: "agent-misha", peerID: "peer-one", now: now)
     try check(testPlan.prompt.contains("murmur_send") && testPlan.prompt.contains("conversationId"), "Prompt must ask the selected AI client to send the real correlated request"); count += 1
+    try check(testPlan.prompt.contains("murmur_peers") && testPlan.prompt.contains("agent-misha"), "The prompt checks the actual identity before sending through a possibly different connector"); count += 1
     let observation: [String: Any] = ["schema": "murmur.reply-test/1", "agentId": "agent-misha", "peerId": "peer-one",
         "conversationId": testPlan.conversationId, "generatedAt": date.string(from: now), "state": "replied",
         "requestMsgId": "outbound-test", "replyMsgId": "inbound-test", "receivedAt": date.string(from: now)]
@@ -65,6 +74,8 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
     with (root/'calls.jsonl').open('a') as out:
      out.write(json.dumps({'args':args,'env':{k:os.environ.get(k) for k in ['CODEX_HOME','CLAUDE_CONFIG_DIR','NODE_OPTIONS','OPENAI_API_KEY','DATA_DIR']}})+'\\n')
     key=args[0] if args[0]=='status' else args[0]+'-'+args[1]
+    if (root/(key+'.error')).exists():
+     sys.stderr.write((root/(key+'.error')).read_text()); sys.exit(1)
     result=json.loads((root/(key+'.json')).read_text())
     if key=='status': result['generatedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
     print(json.dumps(result))
@@ -103,6 +114,39 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
         } else { try check(env["CODEX_HOME"] is NSNull && env["CLAUDE_CONFIG_DIR"] is NSNull, "Client overrides stay scoped to client commands") }
     }
     count += 2
+    let project = directory.appendingPathComponent("Murmur mail ' folder").path
+    let projectTarget = URL(fileURLWithPath: project).appendingPathComponent(".mcp.json").path
+    var folderPlan = planObject; folderPlan["client"] = "claude-code"; folderPlan["configPath"] = projectTarget
+    var folderReceipt = receipt; folderReceipt["client"] = "claude-code"; folderReceipt["configPath"] = projectTarget
+    folderReceipt["backup"] = projectTarget + ".murmur-backup-" + UUID().uuidString
+    try write("clients-preview", folderPlan); try write("clients-configure", folderReceipt)
+    let folderPreview = try helper.preview(.claudeCode, expectedAgent: "agent-misha", projectDirectory: project)
+    _ = try helper.configure(folderPreview, expectedAgent: "agent-misha", projectDirectory: project)
+    let folderCalls = try String(contentsOf: callsFile, encoding: .utf8).split(separator: "\n").suffix(4).map {
+        (try JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any])["args"] as! [String]
+    }
+    for args in folderCalls where args.first == "clients" {
+        let index = args.firstIndex(of: "--project-dir")
+        try check(index != nil && args[index! + 1] == project, "Same literal project in preview and configure")
+        count += 1
+    }
+    let beforeMismatch = try Data(contentsOf: callsFile)
+    try refuse("Project differs from confirmed target") { _ = try helper.configure(folderPreview, expectedAgent: "agent-misha", projectDirectory: "/other-project") }
+    try check(try Data(contentsOf: callsFile) == beforeMismatch, "Mismatched folder does not invoke writer")
+    try refuse("Project must not apply to Chat") { _ = try helper.preview(.claudeDesktop, expectedAgent: "agent-misha", projectDirectory: project) }
+    try refuse("Relative project refused") { _ = try helper.preview(.claudeCode, expectedAgent: "agent-misha", projectDirectory: "relative") }
+    folderPlan["configPath"] = "/wrong/.mcp.json"; try write("clients-preview", folderPlan)
+    try refuse("Preview must match selected project") { _ = try helper.preview(.claudeCode, expectedAgent: "agent-misha", projectDirectory: project) }
+    let errorFile = directory.appendingPathComponent("clients-preview.error")
+    try "private-do-not-display\nclient.inherited-wake-hook-conflict\n".write(to: errorFile, atomically: true, encoding: .utf8)
+    do {
+        _ = try helper.preview(.claudeCode, expectedAgent: "agent-misha", projectDirectory: project)
+        throw CheckFailure(message: "Expected inherited-hook refusal")
+    } catch let error as ClientSetupError {
+        try check(error.localizedDescription.contains("older") && !error.localizedDescription.contains("private-do-not-display"), "Actionable inherited-hook error without raw stderr")
+        count += 1
+    }
+    try fm.removeItem(at: errorFile)
     let before = try Data(contentsOf: callsFile)
     status["agentId"] = "other"; try write("status", status)
     try refuse("Changed profile identity before configure") { _ = try helper.configure(preview, expectedAgent: "agent-misha") }

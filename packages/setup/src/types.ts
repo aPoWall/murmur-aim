@@ -7,6 +7,8 @@ export interface ServiceContext {
   nodePath: string;
   logDir: string;
   serviceName: string;
+  /** Explicit project-scoped Claude Code connection; never inferred from cwd. */
+  clientProjectDir?: string;
 }
 
 export type ServiceManager = "windows-service" | "scheduled-task" | "launchd" | "systemd" | "none";
@@ -33,6 +35,13 @@ export interface ClientDetection {
   detail?: string;
 }
 
+/** Point-in-time, read-only evidence about use of one resolved profile. */
+export interface ProfileUsageSnapshot {
+  state: "free" | "in-use" | "unknown";
+  /** Stable, non-secret reason code. Callers must not treat it as proof beyond this observation. */
+  reason: string;
+}
+
 export interface PlatformAdapter {
   manager: ServiceManager;
   status(context: ServiceContext): Promise<ServiceSnapshot>;
@@ -51,4 +60,6 @@ export interface PlatformAdapter {
   detectClients(context: ServiceContext): Promise<ClientDetection[]>;
   /** Native log location, after verifying the selected service owns this profile. */
   logDirectory?(context: ServiceContext): Promise<string>;
+  /** Optional until a platform has an independently reviewed native profile-usage probe. */
+  profileUsage?(context: ServiceContext): Promise<ProfileUsageSnapshot>;
 }

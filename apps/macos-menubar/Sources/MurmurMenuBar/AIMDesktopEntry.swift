@@ -32,7 +32,7 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Rule 47: the menu bar item is the entrance, the Dock carries no icon (LSUIElement, accessory policy).
         // Rule 53: the theme is applied before the first window is built.
-        AIMThemePolicy.apply(AIMWindowState.shared.theme)
+        if !AIMWindowState.shared.followsSystem { AIMThemePolicy.apply(AIMWindowState.shared.theme) }
         NSApp.applicationIconImage = AIMTheme.appIcon()
         let appMenu = NSMenu()
         appMenu.addItem(CommandMenuItem(L10n.text("Open Murmur")) { [weak self] in self?.showWindow() })
@@ -77,6 +77,8 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         AIMWindowState.shared.onHotkeyChange = { [weak self] combo in self?.registerShortcut(combo) }
         registerShortcut(AIMWindowState.hotkeyStore.current)
         refreshStatusItem()
+        NotificationCenter.default.addObserver(self, selector: #selector(screenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification, object: nil)
         // A real window is an independent entrance when macOS hides the status item.
         if !ProcessInfo.processInfo.arguments.contains("--background") { showWindow() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
@@ -95,6 +97,7 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     func applicationWillTerminate(_ notification: Notification) {
         shortcut.unregister()
         observation?.cancel()
+        NotificationCenter.default.removeObserver(self)
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
@@ -158,9 +161,24 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
             AIMWindowState.shared.surface?.onShow = { [weak self] in self?.recordPanel("show") }
             AIMWindowState.shared.surface?.onClose = { [weak self] reason in self?.recordPanel(reason.rawValue) }
         }
+        anchorWindowToMenu()
         NSApp.activate(ignoringOtherApps: true)
         AIMWindowState.shared.surface?.show()
         window?.makeKey()
+    }
+
+    private func anchorWindowToMenu() {
+        guard let window, let statusFrame = item?.button?.window?.frame,
+              let screen = NSScreen.screens.first(where: { $0.frame.intersects(statusFrame) }),
+              let frame = AIMMenuPresence.panelFrame(size: window.frame.size, status: statusFrame, visible: screen.visibleFrame)
+        else { return }
+        window.setFrame(frame, display: window.isVisible)
+    }
+
+    @objc private func screenParametersChanged() {
+        guard window?.isVisible == true else { return }
+        anchorWindowToMenu()
+        recordPanel("display-change")
     }
 
     private func recordPanel(_ event: String) {

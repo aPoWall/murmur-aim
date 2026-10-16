@@ -1,9 +1,10 @@
 # Onboarding CLI
 
-The publishable `@murmurv2/cli` package exposes the same commands as `murmur`.
-During rehearsal, install only from the coordinator's explicit registry:
-`npm install --global @murmurv2/cli --registry <approved-registry-url>`.
-The public npm hold remains until a reviewed release is actually published.
+The `@murmurv2/cli` package exposes the same commands as `murmur`.
+Version 2.12.0 is published on npm; this source branch prepares 2.12.1 and must be
+built locally or installed from its reviewed candidate artifacts until publication.
+See [release preparation](releases/2.12.1.md). Rehearsals use only the selected
+registry or local tarballs; they do not publish a release.
 The package contains compiled runtime files and a Windows x64 service helper;
 it needs Node.js >=22.13.0 but no consumer-side compiler or install hooks.
 See the [CLI package guide](../packages/setup/README.md).
@@ -14,6 +15,13 @@ No environment assignment syntax is required. Every profile-specific command
 accepts `--data-dir ABSOLUTE_PATH`; the service, daemon and MCP entry use this one
 profile. In an npm installation replace the source entry with `murmur`.
 
+`init`/`join --select` also register the profile for commands without an explicit
+path. `installation select --data-dir ABSOLUTE` registers an existing profile
+without moving it or changing keys. CLI, MCP and daemon share the same resolver;
+missing selection does not fall back to a working-directory `.data` store.
+See [installation profile](installation-profile.md) for precedence, service-account
+behavior, explicit multi-profile overrides and legacy migration.
+
 On Windows, setup protects new identity state, invitations, client configuration
 and backups with a non-inheriting file ACL before writing secrets.
 Only the creating account and SYSTEM (used by the native service) receive access.
@@ -23,6 +31,11 @@ the write fails. Replacing an existing state or client configuration file preser
 its Windows access policy, including intentional service or sandbox readers; it
 does not audit or tighten that existing policy. Its new backup is private. Preview
 and unchanged client entries do not change permissions.
+
+Private backups are never pruned automatically. The explicit `backups preview`
+and `backups cleanup --plan-id` commands preserve a 30-day recovery window and at
+least five copies for each selected source. See [backup retention](backup-retention.md)
+for agent/client scopes, additional restore points, refusal rules and migration.
 
 When `init` or `join` creates the profile directory, it first applies the same
 owner-and-SYSTEM policy with the system `icacls.exe`. An existing profile directory
@@ -177,3 +190,54 @@ faults cannot be dismissed with this command. See [accepted-turn observation](wa
 Without `--json`, errors are actionable English sentences using the shared
 vocabulary; unrecognized codes receive a safe diagnostic action. `--json` keeps
 stable error codes on stderr, never echoing Invitation content or private paths.
+
+## Migrating an existing broker
+
+The 2.12.1 candidate supports optional [TLS and per-user broker authentication](nats-transport-security.md).
+An upgrade leaves existing remote `nats://` profiles usable. `broker migrate`
+previews a target URL and credentials; only `--apply` can replace configuration.
+No service is stopped or restarted automatically. Supply target credentials
+explicitly; omitting them selects no authentication.
+
+Apply requires the selected service to report stopped and a native usage probe
+to establish that no process holds the profile. A tray window closing is not such
+proof: daemon and MCP clients can keep files open. Unknown process visibility,
+an unverifiable daemon observation or unsupported file layout refuses the change.
+There is no force option. Do not delete observations or recreate an identity to
+evade checks. Native probes differ by platform; fixture tests of safe refusal
+are not evidence that apply will succeed on a particular user's machine.
+
+Successful replacement keeps a private byte-exact backup and returns
+`restartRequired: true`. Start the owned service explicitly and restart clients,
+then check the intended contact with doctor and obtain the assistant's reply.
+The command does not test the proposed broker during preview or apply.
+
+### Profile path aliases
+
+On Unix, migration refuses a selected path containing an alias before writing.
+Read its physical path without changing files:
+
+```sh
+node -e 'console.log(require("node:fs").realpathSync(process.argv[1]))' /absolute/selected/profile
+```
+
+Inspect the existing service registration before retrying with that physical path.
+If the service was registered from the alias, preserve its explicit `--service-name`;
+the default name depends on the selected path. Never create a second identity or
+silently change service ownership to resolve this error.
+
+### Files with more than one name
+
+A hardlink is another name for the same file; renaming it does not separate its
+contents. On macOS/Linux this read-only command lists files with multiple links:
+
+```sh
+find /absolute/profile -type f -links +1 -print
+```
+
+For each result, inspect its inode and other names on the same volume before
+changing anything. On Windows, `fsutil hardlink list C:\absolute\profile\FILE`
+lists a selected file's hardlink names. Remove a link only after identifying its
+owner and purpose. Do not delete the profile or database. If use or ownership
+remains uncertain, keep the existing configuration and investigate the reported
+usage reason; the migration command provides no bypass.

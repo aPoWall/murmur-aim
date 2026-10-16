@@ -52,27 +52,37 @@ enum AIMOwnerRead {
 struct AIMMessageSearchView: View {
     let enabled: Bool
     let people: [AIMCompanionSnapshot.Person]
+    var historyPeer: String? = nil
     @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
-    @State private var result: AIMMessageSearchResult?
-    @State private var busy = false
-    @State private var failed = false
-    @State private var selected: AIMMessageSearchResult.Match?
+    @MurmurViewState private var query = ""
+    @MurmurViewState private var result: AIMMessageSearchResult?
+    @MurmurViewState private var busy = false
+    @MurmurViewState private var failed = false
+    @MurmurViewState private var selected: AIMMessageSearchResult.Match?
+    @MurmurViewState private var selectedHistoryPeer = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(L10n.text("Search messages")).font(AIMTheme.title)
+                Text(L10n.text(historyPeer == nil ? "Search messages" : "History")).font(AIMTheme.title)
                 Spacer()
                 Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             Text(L10n.text("Searches accessible server messages. Private conversations are excluded.")).font(AIMTheme.meta)
-            HStack {
+            if historyPeer == nil { HStack {
                 TextField(L10n.text("Words in a message"), text: $query)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(search)
                 Button(L10n.text("Search"), action: search)
                     .disabled(!enabled || busy || !(2...160).contains(query.trimmingCharacters(in: .whitespacesAndNewlines).count))
+            }
+            } else {
+                Picker(L10n.text("Recipient agent"), selection: $selectedHistoryPeer) {
+                    ForEach(people.first(where: { $0.agents.contains(historyPeer ?? "") })?.agents ?? [], id: \.self) { peer in
+                        Text(participant(peer)).tag(peer)
+                    }
+                }
+                Text(L10n.text("Recent messages · open a row to read its text. No read receipts are sent.")).font(AIMTheme.meta)
             }
             if busy { ProgressView(L10n.text("Searching server…")) }
             if failed { Text(L10n.text("Message search unavailable. No results were confirmed.")).foregroundStyle(AIMTheme.signal) }
@@ -86,7 +96,7 @@ struct AIMMessageSearchView: View {
                         ForEach(result.matches, id: \.stableID) { match in
                             Button { selected = match } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(match.excerpt).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(historyPeer == nil ? match.excerpt : L10n.text(match.excerpt)).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
                                     Text([participant(match.peer_identity), match.direction.map { L10n.text($0) }, AIMCompanionModel.stamp(match.date)].compactMap { $0 }.joined(separator: " · ")).font(AIMTheme.meta)
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                             }.buttonStyle(.plain).help(L10n.text("Read the selected message"))
@@ -99,12 +109,29 @@ struct AIMMessageSearchView: View {
         }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).aimQuietButtonStyle()
             .onExitCommand { if selected != nil { selected = nil } else { dismiss() } }
             .sheet(item: $selected) { match in AIMMessageDetailView(match: match, participant: participant(match.peer_identity)) }
+            .task { selectedHistoryPeer = historyPeer ?? "" }
+            .task(id: selectedHistoryPeer) { if !selectedHistoryPeer.isEmpty { loadHistory() } }
     }
 
     private func participant(_ peer: String?) -> String {
         guard let peer else { return "" }
         guard let person = people.first(where: { $0.agents.contains(peer) }) else { return peer }
         return person.name + " · " + (person.agent_labels?[peer] ?? peer)
+    }
+
+    private func loadHistory() {
+        guard enabled, !busy, !selectedHistoryPeer.isEmpty else { return }
+        let historyPeer = selectedHistoryPeer
+        busy = true; failed = false
+        Task {
+            let response = await Task.detached { Result { try AIMMessageSearchResult.decode(AIMOwnerRead.exchange(["action": "history", "peer": historyPeer])) } }.value
+            busy = false
+            guard historyPeer == selectedHistoryPeer else { loadHistory(); return }
+            switch response {
+            case .success(let value): result = value
+            case .failure: failed = true
+            }
+        }
     }
 
     private func search() {
@@ -126,8 +153,8 @@ struct AIMMessageDetailView: View {
     let match: AIMMessageSearchResult.Match
     let participant: String
     @Environment(\.dismiss) private var dismiss
-    @State private var message: AIMMessageReadResult?
-    @State private var failed = false
+    @MurmurViewState private var message: AIMMessageReadResult?
+    @MurmurViewState private var failed = false
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

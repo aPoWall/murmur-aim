@@ -2,6 +2,7 @@ import Foundation
 
 public enum PairingError: Error, LocalizedError, Sendable, Equatable {
     case damaged, tooLarge, publicServerRequired, invalidServer, differentServer, wrongReply, confirmationRequired, unconfirmed, failed
+    case ownIdentity, contactChanged, settingsMissing, settingsInvalid, accessDenied, outputExists, storageBusy
 
     static func from(code: String?, command: String?) -> Self {
         switch code {
@@ -10,8 +11,18 @@ public enum PairingError: Error, LocalizedError, Sendable, Equatable {
         case "onboarding.invite-server-address-invalid": .invalidServer
         case "onboarding.existing-profile-conflict": .differentServer
         case "onboarding.invalid-blob", "onboarding.invalid-peer", "onboarding.invalid-peer-key", "onboarding.invalid-broker": .damaged
-        case "onboarding.self-peer", "onboarding.peer-key-conflict": command == "add-peer" ? .wrongReply : .failed
-        default: .failed
+        case "onboarding.self-peer": .ownIdentity
+        case "onboarding.peer-key-conflict": .contactChanged
+        case "config.missing": .settingsMissing
+        case "config.identity-invalid", "config.file-invalid", "config.peers-invalid", "config.peer-invalid": .settingsInvalid
+        case "config.owner-mismatch", "onboarding.private-acl-failed": .accessDenied
+        case "database is locked": .storageBusy
+        default:
+            switch code?.split(separator: ":").first {
+            case "system.EACCES", "system.EPERM": .accessDenied
+            case "system.EEXIST": .outputExists
+            default: .failed
+            }
         }
     }
     public var errorDescription: String? {
@@ -24,12 +35,27 @@ public enum PairingError: Error, LocalizedError, Sendable, Equatable {
         case .wrongReply: L10n.text("This Reply does not match the Contact. Ask your colleague for a new Reply.")
         case .confirmationRequired: L10n.text("Confirm that you will send this Invitation personally before copying it.")
         case .unconfirmed: L10n.text("The Contact could not be confirmed. Refresh the status before trying again.")
+        case .ownIdentity: L10n.text("This is your own Identity. Ask your colleague for their Invitation or Reply.")
+        case .contactChanged: L10n.text("This Contact has different Identity details. Confirm the change with your colleague before replacing the Contact.")
+        case .settingsMissing: L10n.text("The selected folder has no Murmur settings. Open the existing connection folder or start a new connection.")
+        case .settingsInvalid: L10n.text("The saved Murmur settings could not be read. Open the original connection folder; do not create a replacement Identity yet.")
+        case .accessDenied: L10n.text("Murmur cannot access this settings or Reply folder. Choose a private folder your account can read and write.")
+        case .outputExists: L10n.text("A Reply or setup file already exists. Check the saved connection and recover its Reply before trying again.")
+        case .storageBusy: L10n.text("Another action is using the message history. Wait for it to finish, then check the connection.")
         case .failed: L10n.text("Murmur could not finish pairing. Check the saved Identity and ask your colleague for a new line.")
         }
     }
     public static func message(for error: Error) -> String {
         if let known = error as? Self { return known.localizedDescription }
         if let known = error as? OnboardingError { return known.localizedDescription }
+        if let known = error as? ProfileError { return known.localizedDescription }
+        if let known = error as? ProbeError {
+            switch known {
+            case .timedOut: return L10n.text("Pairing did not finish in time. Check the saved connection before trying again; it may already contain the Contact or Reply.")
+            case .missingCLI, .invalidJSON, .outputLimit, .unsupportedSchema: return known.localizedDescription
+            case .failed, .failedWithReason: break // Do not expose command output or invitation text.
+            }
+        }
         return Self.failed.localizedDescription
     }
 }

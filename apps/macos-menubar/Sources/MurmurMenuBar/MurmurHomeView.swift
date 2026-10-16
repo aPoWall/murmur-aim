@@ -123,7 +123,9 @@ struct MurmurHomeView: View {
                             .help(model.invitationBlockReason ?? L10n.text("Invite a colleague"))
                         Divider()
                         navigationRow("I do not have an invitation yet", detail: "How to get one or connect to your own server") { entry = "no-invitation" }
-                        navigationRow("I have used Murmur before", detail: "Open settings already saved on this Mac") { entry = "restore" }
+                        navigationRow("Open an existing connection", detail: "Choose the Murmur settings folder created by your assistant or Terminal") { model.chooseProfile() }
+                        Text(L10n.text("If your assistant already set up Murmur, open that same settings folder to keep your Identity and Contacts."))
+                            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if let error = model.creationError { Text(error).foregroundStyle(.red).textSelection(.enabled) }
@@ -220,7 +222,7 @@ struct MurmurHomeView: View {
             if model.status != nil && !model.isDemo { MurmurClientSetupView(model: model) }
             if let mismatch = model.status?.modeMismatch { Text(mismatch) }
             operationFeedback
-            if let count = model.status?.inbox.unread { Text(L10n.text("Unread: %@", String(count))) }
+            MurmurInboxView(model: model)
             if let count = model.status?.wake.delivery.pendingUndelivered {
                 Text(L10n.text("Waiting for agent delivery: %@", String(count)))
             }

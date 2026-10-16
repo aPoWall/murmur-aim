@@ -4,7 +4,7 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { NatsBroker } from "../packages/broker-nats/dist/src/index.js";
-import { SQLiteDedupeOutboxStore, ChannelRosterStore, channelSubjectRoutes, stableEnvelopePayload } from "../packages/core/dist/src/index.js";
+import { SQLiteDedupeOutboxStore, ChannelRosterStore, channelSubjectRoutes, stableEnvelopePayload, resolveInstallation, installationStorePath } from "../packages/core/dist/src/index.js";
 import {
   decryptPayload,
   verifyEnvelopeSignature,
@@ -47,18 +47,26 @@ const envFlag = (name, defaultValue) => {
   return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
 };
 
-const dataDir = process.env.DATA_DIR || ".data";
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
 const configPath = path.join(dataDir, "agent-config.json");
 const config = await readPrivateJson(configPath);
-const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
+// Resolve the effective roster path before opening the shared outbox store.
+const rosterPath = config.channelRoster?.enabled
+  ? config.channelRoster.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH) : null;
 const consumerId = process.env.MURMUR_MCP_CONSUMER_ID || `${config.agentId}-mcp-channel-${process.pid}`;
 const emitToSession = envFlag("MURMUR_MCP_TO_SESSION", true);
 const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
 
-const broker = new NatsBroker({ url: config.natsUrl, token: config.natsToken });
+const broker = new NatsBroker({
+  url: config.natsUrl,
+  token: config.natsToken,
+  user: config.natsUser,
+  password: config.natsPassword,
+  tls: config.natsTls,
+});
 const dedupe = new SQLiteDedupeOutboxStore(dbPath);
-const roster = config.channelRoster?.enabled
-  ? new ChannelRosterStore(config.channelRoster.path || process.env.MURMUR_CHANNEL_ROSTER_PATH || path.join(dataDir, "channel-roster.db")) : null;
+const roster = rosterPath === null ? null : new ChannelRosterStore(rosterPath);
 const subjectRoutes = channelSubjectRoutes(config.subject, consumerId, config.subjectScoping);
 if (subjectRoutes.length > 1 && !roster) throw new Error("subject-scoping-requires-roster");
 

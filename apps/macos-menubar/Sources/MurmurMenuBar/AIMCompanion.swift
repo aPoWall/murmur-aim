@@ -11,6 +11,7 @@ import MurmurTrayCore
     @Published var notifications = UserDefaults.standard.bool(forKey: "aimCompanionNotifications")
     @Published var notificationDenied = false
     @Published var requestingNotifications = false
+    @Published var notificationAuthorization: UNAuthorizationStatus = .notDetermined
     @Published var previewConnected = false
     private var timer: Timer?
     private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
@@ -34,10 +35,20 @@ import MurmurTrayCore
         return count > 0 ? " \(count)" : ""
     }
     func start() {
+        refreshNotificationAuthorization()
         guard enabled, timer == nil else { return }
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
+        }
+    }
+    /// Read the OS decision without activating the app or requesting permission.
+    func refreshNotificationAuthorization() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            Task { @MainActor in
+                self.notificationAuthorization = settings.authorizationStatus
+                self.notificationDenied = self.notifications && settings.authorizationStatus == .denied
+            }
         }
     }
     func connect() { UserDefaults.standard.set(true, forKey: "aimServerEnabled"); start() }
@@ -60,9 +71,10 @@ import MurmurTrayCore
                 let keys = Set(data.attentionKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
                 let added = cursor.observe(keys)
                 // Only hashes are retained. Queue text and people are held in memory.
-                let retained = Array(cursor.seen ?? []).sorted().suffix(8192)
+                let retained = Array(cursor.seen ?? []).sorted()
                 UserDefaults.standard.set(Array(retained), forKey: "aimCompanionSeen")
                 if notifications && !added.isEmpty {
+                    refreshNotificationAuthorization()
                     let senders = data.incoming.filter { row in row.ids.contains { id in
                         let key = "message:\(row.peer):\(id)"
                         let hash = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -86,6 +98,7 @@ import MurmurTrayCore
             Task { @MainActor in
                 self.requestingNotifications = false
                 self.notifications = granted; self.notificationDenied = !granted
+                self.refreshNotificationAuthorization()
                 UserDefaults.standard.set(granted, forKey: "aimCompanionNotifications")
             }
         }
@@ -123,10 +136,10 @@ import MurmurTrayCore
 
 struct AIMCompanionView: View {
     @ObservedObject var model: AIMCompanionModel
-    @State private var query = ""
-    @State private var showAllQuestions = false
-    @State private var showSearch = false
-    @State private var queue = "owner"
+    @MurmurViewState private var query = ""
+    @MurmurViewState private var showAllQuestions = false
+    @MurmurViewState private var showSearch = false
+    @MurmurViewState private var queue = "owner"
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
