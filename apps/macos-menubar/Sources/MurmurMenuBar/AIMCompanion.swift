@@ -173,6 +173,7 @@ struct AIMCompanionView: View {
                     Text(L10n.text("Server overview unavailable. Check the network and the SSH alias. Retained observations are stale.")).foregroundStyle(AIMTheme.signal)
                 }
                 if let data = model.snapshot {
+                    Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                     if let attention = data.attention {
                         AIMAttentionList(data: data, items: attention.items.filter(\.actionable))
                         DisclosureGroup(L10n.text("Needs verification") + " · \(attention.items.filter { !$0.actionable }.count)") {
@@ -182,10 +183,13 @@ struct AIMCompanionView: View {
                             Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
                         }
                     }
+                    DisclosureGroup(L10n.text("Connection and access details")) {
                     Text("Murmur \(data.server_version) · " + L10n.text("Transport") + ": \(data.transport) · " + L10n.text("Codex service") + ": \(data.responder)").font(AIMTheme.meta)
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
+                    if data.attention == nil {
                     Text(L10n.text("Your action") + ": \(data.ownerQuestions.count) · " + L10n.text("Waiting for agents") + ": \(data.agentQuestions.count) · " + L10n.text("Waiting for people") + ": \(data.peerQuestions.count)").font(AIMTheme.heading)
                     Text(L10n.text("Open topics") + ": \(data.pending_count) · " + L10n.text("Needs verification") + ": \(data.verificationQuestions.count)").font(AIMTheme.meta)
+                    }
                     if data.budget.allowed != true || data.budget.fresh != true {
                         Text(L10n.text("Budget observation is separate from each contact’s responder. Check People for missing responders.")).foregroundStyle(AIMTheme.signal)
                         Text((data.budget.reason ?? "unknown") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)).font(AIMTheme.meta)
@@ -197,6 +201,8 @@ struct AIMCompanionView: View {
                             }
                         }
                     }
+                    }
+                    if data.attention == nil {
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
                     Picker(L10n.text("Answer queue"), selection: $queue) {
@@ -215,6 +221,7 @@ struct AIMCompanionView: View {
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
                         let person = data.people.first { $0.agents.contains(row.peer) }
                         Text("\(person?.name ?? row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
+                    }
                     }
                     if let contours = data.private_contours, !contours.isEmpty {
                         Divider()
