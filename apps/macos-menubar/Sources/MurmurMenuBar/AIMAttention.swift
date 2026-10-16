@@ -6,7 +6,7 @@ struct AIMAttentionList: View {
     let data: AIMCompanionSnapshot
     let items: [AIMCompanionSnapshot.Attention.Item]
     @MurmurViewState private var expanded = false
-    @MurmurViewState private var historyPerson: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var selectedItem: AIMCompanionSnapshot.Attention.Item?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -22,8 +22,8 @@ struct AIMAttentionList: View {
                     Text(item.title).font(AIMTheme.heading)
                     Text((data.people.first { $0.agents.contains(item.peer) }?.name ?? item.peer)).font(AIMTheme.meta)
                     Text(item.next_action).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
-                    if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
-                        Button(L10n.text("Read conversation")) { historyPerson = person }
+                    if data.people.contains(where: { $0.agents.contains(item.peer) }) {
+                        Button(L10n.text("Read conversation")) { selectedItem = item }
                     }
                 }.padding(10).background(AIMTheme.muted.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 8))
             }
@@ -31,8 +31,8 @@ struct AIMAttentionList: View {
                 Button(L10n.text(expanded ? "Show fewer questions" : "Show more questions")) { expanded.toggle() }
             }
         }
-        .sheet(item: $historyPerson) { person in
-            AIMMessageSearchView(enabled: true, people: data.people, historyPeer: person.agents.first)
+        .sheet(item: $selectedItem) { item in
+            AIMMessageSearchView(enabled: true, people: data.people, historyPeer: item.peer)
         }
     }
     private func label(_ kind: String) -> String {
