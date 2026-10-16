@@ -17,12 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   then delete only the unchanged preview with its digest. No automatic pruning or migration.
 
 ### Pending
-- **NATS transport security (TLS + per-peer auth)** — reviewed and CI-green in #103, held for a coordinated broker/peer credential cutover. It intentionally makes existing non-loopback `nats://` configurations fail closed, so it ships with a maintenance window, not as a routine merge. Two gaps to close first: the Kubernetes ACL example does not cover JetStream subjects (`$JS.API.*`, `$JS.ACK.*`, `_INBOX.*`), and the dashboard's NATS client supports a token only, no user/password or CA.
+- **Mandatory remote TLS and production credential cutover** remain a coordinated
+  operational change. The compatible client preparation below does not switch the
+  shared broker, enforce remote TLS on existing profiles, or revoke live credentials.
 - **Turning on `ackSecurity.requireSigned`** — a rollout step, not a code step. Until every peer runs 2.5.0+ and the flag is set, unsigned ACKs are still accepted.
 
 ## [2.12.1] - Unreleased
 
 ### Added
+- **Optional NATS TLS and user/password authentication** (#153 compatible scope).
+  Explicit TLS endpoints require certificate/hostname validation without plaintext
+  fallback; existing remote `nats://` profiles keep working. Daemon, MCP reply tap,
+  doctor, bridges and dashboard share the connection policy. Restricted JetStream
+  roles can use pre-provisioned durables without administrative permissions.
+- **Guarded broker migration.** `broker migrate` previews changes, then requires
+  explicit `--apply`, a stopped service state and independently unused profile.
+  Credentials come from private files. Exact private backups, input rechecks and
+  rollback preserve identity and history; unknown usage refuses without changes.
+  See [transport setup and its operational limits](docs/nats-transport-security.md).
 - **Windows release installer in CI.** The native bundle job builds setup.exe,
   verifies silent install/upgrade/uninstall and refusal while a registered service
   references the installation, and preserves installer provenance with the ZIP.

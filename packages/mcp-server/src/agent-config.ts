@@ -6,6 +6,9 @@ export interface AgentConfig {
   memberId?: string;
   natsUrl: string;
   natsToken?: string;
+  natsUser?: string;
+  natsPassword?: string;
+  natsTls?: import("@murmurv2/core").NatsTlsOptions;
   subject: string;
   subjectScoping?: { enabled?: boolean; channelIds?: string[] };
   dataDir: string;
@@ -37,7 +40,7 @@ const validateFile = (s: BigIntStats) => {
 const identity = (c: AgentConfig) => JSON.stringify([c.agentId,
   c.keys?.encryption?.publicKey, c.keys?.encryption?.privateKey,
   c.keys?.signing?.publicKey, c.keys?.signing?.privateKey]);
-const binding = (c: AgentConfig) => JSON.stringify([c.memberId, c.subject, c.natsUrl, c.natsToken, c.dataDir,
+const binding = (c: AgentConfig) => JSON.stringify([c.memberId, c.subject, c.natsUrl, c.natsToken, c.natsUser, c.natsPassword, c.natsTls, c.dataDir,
   c.subjectScoping?.enabled, [...(c.subjectScoping?.channelIds ?? [])].sort()]);
 
 /** Peer-only refresh; a process remains bound to its first valid identity/runtime. */

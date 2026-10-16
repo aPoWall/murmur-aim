@@ -92,3 +92,17 @@ clean them. `murmur backups preview --kind agent --data-dir /absolute/profile
 The policy keeps 30 days and at least five copies per source, plus named restore
 points. Client JSON/TOML files use `--kind client --config-file ABSOLUTE`.
 See [backup retention and recovery](../../docs/backup-retention.md) before deleting copies.
+
+## Optional broker TLS (2.12.1 candidate)
+
+`init` and `join` accept `--user-file` with `--password-file`, or `--token-file`,
+plus optional `--ca-file` and `--server-name`. Paths must be absolute; secrets are
+read from existing private files. Explicit `tls://` endpoints require verified TLS,
+while existing remote `nats://` profiles remain compatible. The recipient supplies
+their own user/password files; token-bearing Invitations retain their current format.
+
+`broker migrate --broker-url URL` previews a transport change. Add the intended
+credential/TLS files and `--apply` only after explicitly stopping the owned Service
+and closing clients. Apply requires independently verified unused files; unknown
+use refuses, with no force option. It backs up exact configuration bytes and never
+automatically restarts a Service. See [TLS setup and migration](../../docs/nats-transport-security.md).

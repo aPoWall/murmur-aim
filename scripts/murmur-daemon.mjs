@@ -58,7 +58,7 @@ try {
   process.exit(1);
 }
 
-const { agentId, natsUrl, natsToken, subject, keys } = config;
+const { agentId, natsUrl, natsToken, natsUser, natsPassword, natsTls, subject, keys } = config;
 const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
 const flushIntervalMs = Number(process.env.FLUSH_INTERVAL_MS) || 2000;
 const jetstreamConfig = config.jetstream || {};
@@ -203,7 +203,11 @@ const broker = new NatsBroker({
   connectBaseBackoffMs: 2000,
   url: natsUrl,
   token: natsToken,
+  user: natsUser,
+  password: natsPassword,
+  tls: natsTls,
   jetstream: jetstreamEnabled,
+  jetstreamProvisioning: jetstreamConfig.provisioning,
   stream: jetstreamEnabled ? jetstreamStream : undefined,
   streamSubjects: jetstreamSubjects,
   jetstreamMaxDeliver,
@@ -536,6 +540,7 @@ try {
     broker,
     outbox: store,
     jetstreamEnabled,
+    advisoryDlqEnabled: jetstreamConfig.advisoryDlq !== false,
     log,
   });
 

@@ -190,3 +190,54 @@ faults cannot be dismissed with this command. See [accepted-turn observation](wa
 Without `--json`, errors are actionable English sentences using the shared
 vocabulary; unrecognized codes receive a safe diagnostic action. `--json` keeps
 stable error codes on stderr, never echoing Invitation content or private paths.
+
+## Migrating an existing broker
+
+The 2.12.1 candidate supports optional [TLS and per-user broker authentication](nats-transport-security.md).
+An upgrade leaves existing remote `nats://` profiles usable. `broker migrate`
+previews a target URL and credentials; only `--apply` can replace configuration.
+No service is stopped or restarted automatically. Supply target credentials
+explicitly; omitting them selects no authentication.
+
+Apply requires the selected service to report stopped and a native usage probe
+to establish that no process holds the profile. A tray window closing is not such
+proof: daemon and MCP clients can keep files open. Unknown process visibility,
+an unverifiable daemon observation or unsupported file layout refuses the change.
+There is no force option. Do not delete observations or recreate an identity to
+evade checks. Native probes differ by platform; fixture tests of safe refusal
+are not evidence that apply will succeed on a particular user's machine.
+
+Successful replacement keeps a private byte-exact backup and returns
+`restartRequired: true`. Start the owned service explicitly and restart clients,
+then check the intended contact with doctor and obtain the assistant's reply.
+The command does not test the proposed broker during preview or apply.
+
+### Profile path aliases
+
+On Unix, migration refuses a selected path containing an alias before writing.
+Read its physical path without changing files:
+
+```sh
+node -e 'console.log(require("node:fs").realpathSync(process.argv[1]))' /absolute/selected/profile
+```
+
+Inspect the existing service registration before retrying with that physical path.
+If the service was registered from the alias, preserve its explicit `--service-name`;
+the default name depends on the selected path. Never create a second identity or
+silently change service ownership to resolve this error.
+
+### Files with more than one name
+
+A hardlink is another name for the same file; renaming it does not separate its
+contents. On macOS/Linux this read-only command lists files with multiple links:
+
+```sh
+find /absolute/profile -type f -links +1 -print
+```
+
+For each result, inspect its inode and other names on the same volume before
+changing anything. On Windows, `fsutil hardlink list C:\absolute\profile\FILE`
+lists a selected file's hardlink names. Remove a link only after identifying its
+owner and purpose. Do not delete the profile or database. If use or ownership
+remains uncertain, keep the existing configuration and investigate the reported
+usage reason; the migration command provides no bypass.

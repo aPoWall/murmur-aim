@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { SQLiteDedupeOutboxStore } from '@murmurv2/core';
 import { createKeyPair, createSigningKeyPair } from '@murmurv2/security';
 import { loadConfig, validateConfig, validAgentId, type AgentConfig, type PeerConfig } from './config.js';
+import { readBrokerInputs, type BrokerInputFiles, type BrokerAuthConfig } from './broker-input.js';
 import { writeState } from './state.js';
 import { refuseVirtualizedAppData } from './appdata.js';
 import { protectPrivateFile } from './private-file.js';
@@ -129,9 +130,9 @@ async function locked<T>(c: ServiceContext, fn: () => Promise<T>) {
 async function existing(c: ServiceContext): Promise<AgentConfig | null> {
   try { return await loadConfig(c); } catch (e) { if (e instanceof Error && e.message === 'config.missing') return null; throw e; }
 }
-async function newConfig(agentId: string, url: string, token?: string): Promise<AgentConfig> {
+async function newConfig(agentId: string, url: string, auth: BrokerAuthConfig = {}): Promise<AgentConfig> {
   if (!validAgentId(agentId)) throw new Error('config.identity-invalid');
-  return validateConfig({ agentId, subject: `msg.${agentId}`, natsUrl: url, ...(token ? { natsToken: token } : {}),
+  return validateConfig({ agentId, subject: `msg.${agentId}`, natsUrl: url, ...auth,
     keys: { encryption: await createKeyPair(), signing: await createSigningKeyPair() }, peers: {},
     wake: { enabled: true }, ackSecurity: { emitSigned: true, requireSigned: true } });
 }
@@ -173,18 +174,18 @@ function addPeer(config: AgentConfig, peer: { agentId: string; subject: string; 
   const next: PeerConfig = previous ?? { subject: peer.subject, encryption: { publicKey: peer.encryption.publicKey }, signing: { publicKey: peer.signing.publicKey } };
   return { ...config, peers: { ...config.peers, [peer.agentId]: next } };
 }
-export async function initialize(c: ServiceContext, options: { agentId: string; brokerUrl: string; tokenFile?: string }) {
+export async function initialize(c: ServiceContext, options: { agentId: string; brokerUrl: string } & BrokerInputFiles) {
   await refuseVirtualizedAppData(c.dataDir);
+  const supplied = await readBrokerInputs(options);
   return locked(c, async () => {
     const previous = await existing(c);
     if (previous) {
-      if (previous.agentId !== options.agentId || previous.natsUrl !== options.brokerUrl) throw new Error('onboarding.existing-profile-conflict');
+      if (previous.agentId !== options.agentId || previous.natsUrl !== options.brokerUrl
+        || Object.keys(supplied).some(key => !isDeepStrictEqual(previous[key as keyof AgentConfig], supplied[key as keyof BrokerAuthConfig]))) throw new Error('onboarding.existing-profile-conflict');
       // Re-running init never rotates keys or replaces credentials.
       return { schema: 'murmur.init/1', agentId: previous.agentId, dataDir: c.dataDir, serviceName: c.serviceName, existing: true };
     }
-    const token = options.tokenFile ? await privateText(options.tokenFile, 'token-file') : undefined;
-    if (token?.includes('\n') || token?.includes('\r')) throw new Error('onboarding.token-file-invalid');
-    const config = await newConfig(options.agentId, options.brokerUrl, token);
+    const config = await newConfig(options.agentId, options.brokerUrl, supplied);
     await saveChanged(c, null, config);
     return { schema: 'murmur.init/1', agentId: config.agentId, dataDir: c.dataDir, serviceName: c.serviceName, existing: false };
   });
@@ -201,15 +202,19 @@ export async function invite(c: ServiceContext, outFile?: string, options: { bro
       ? 'This Invitation contains a Server access key. Send it personally to your colleague. After exchanging the Reply, check the connection.'
       : 'This Invitation contains your Identity and the Server address. Send it to your colleague. After exchanging the Reply, check the connection.' };
 }
-export async function join(c: ServiceContext, options: { agentId: string; inviteFile?: string; invitation?: string; replyOut?: string }) {
+export async function join(c: ServiceContext, options: { agentId: string; inviteFile?: string; invitation?: string; replyOut?: string } & BrokerInputFiles) {
   if (options.replyOut !== undefined) await validateOutput(c, options.replyOut);
   const incoming = await readBlob({ file: options.inviteFile, text: options.invitation }, 'invite');
+  const supplied = await readBrokerInputs(options);
+  if (incoming.natsToken && (supplied.natsUser || supplied.natsPassword || supplied.natsToken && supplied.natsToken !== incoming.natsToken)) throw new Error('nats-auth-methods-conflict');
+  const auth = { ...(incoming.natsToken ? { natsToken: incoming.natsToken } : {}), ...supplied };
   // Before anything is created: a profile the service cannot see must not be written at all.
   await refuseVirtualizedAppData(c.dataDir);
   return locked(c, async () => {
     const previous = await existing(c);
-    if (previous && (previous.agentId !== options.agentId || previous.natsUrl !== incoming.natsUrl)) throw new Error('onboarding.existing-profile-conflict');
-    const config = previous ?? await newConfig(options.agentId, incoming.natsUrl, incoming.natsToken);
+    if (previous && (previous.agentId !== options.agentId || previous.natsUrl !== incoming.natsUrl
+      || Object.keys(auth).some(key => !isDeepStrictEqual(previous[key as keyof AgentConfig], auth[key as keyof BrokerAuthConfig])))) throw new Error('onboarding.existing-profile-conflict');
+    const config = previous ?? await newConfig(options.agentId, incoming.natsUrl, auth);
     const next = addPeer(config, incoming);
     let backup: string | null = null;
     // Reserve the reply path before changing config: an existing output must not half-import a profile.

@@ -1,3 +1,6 @@
+import { ErrorCode } from "nats";
+import path from "node:path";
+import { buildNatsTransportOptions, type NatsTlsOptions } from "@murmurv2/core";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import type { ServiceContext } from "./types.js";
@@ -5,7 +8,7 @@ import type { ServiceContext } from "./types.js";
 export interface PeerConfig { subject: string; encryption: { publicKey: string }; signing: { publicKey: string };
   channelId?: string; memberId?: string; subjectScoping?: boolean }
 export interface AgentConfig {
-  agentId: string; subject: string; natsUrl: string; natsToken?: string;
+  agentId: string; subject: string; natsUrl: string; natsToken?: string; natsUser?: string; natsPassword?: string; natsTls?: NatsTlsOptions;
   keys: { encryption: { publicKey: string; privateKey: string }; signing: { publicKey: string; privateKey: string } };
   peers: Record<string, PeerConfig>; memberId?: string;
   subjectScoping?: { enabled?: boolean; channelIds?: string[] };
@@ -16,9 +19,14 @@ export const validAgentId = (v: unknown): v is string => typeof v === "string" &
 const validKey = (v: unknown) => typeof v === "string" && Buffer.from(v, "base64").length === 32 && Buffer.from(v, "base64").toString("base64") === v;
 export function validateConfig(input: unknown): AgentConfig {
   if (!object(input) || !validAgentId(input.agentId) || input.subject !== `msg.${input.agentId}`) throw new Error("config.identity-invalid");
-  let url: URL;
-  try { url = new URL(input.natsUrl); } catch { throw new Error("config.broker-url-invalid"); }
-  if (!["nats:", "tls:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error("config.broker-url-invalid");
+  if (typeof input.natsUrl !== "string") throw new Error("config.broker-url-invalid");
+  const tls = input.natsTls;
+  if (tls !== undefined && !object(tls)) throw new Error("config.broker-tls-invalid");
+  for (const value of [input.natsToken, input.natsUser, input.natsPassword]) if (value !== undefined && (typeof value !== "string" || !value || /[\r\n\0]/.test(value))) throw new Error("config.broker-auth-invalid");
+  if (object(tls)) for (const key of ["caFile", "certFile", "keyFile"] as const) {
+    const value = tls[key]; if (value !== undefined && (typeof value !== "string" || !path.isAbsolute(value))) throw new Error("config.broker-tls-file-invalid");
+  }
+  buildNatsTransportOptions({ url: input.natsUrl, token: input.natsToken, user: input.natsUser, password: input.natsPassword, tls: tls as NatsTlsOptions | undefined });
   for (const kind of ["encryption", "signing"]) {
     if (!validKey(input.keys?.[kind]?.publicKey) || !validKey(input.keys?.[kind]?.privateKey)) throw new Error("config.keys-invalid");
   }
@@ -32,12 +40,20 @@ export function validateConfig(input: unknown): AgentConfig {
 
 /** Read-only: status and doctor never chmod, initialize, or migrate user state. */
 export async function readJson(file: string): Promise<any> {
+  return (await readJsonSnapshot(file)).value;
+}
+export async function readJsonSnapshot(file: string): Promise<{ value: any; bytes: Buffer }> {
   const handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size > 4 * 1024 * 1024) throw new Error("config.file-invalid");
     if (typeof process.getuid === "function" && stat.uid !== process.getuid()) throw new Error("config.owner-mismatch");
-    return JSON.parse(await handle.readFile("utf8"));
+    const bytes=Buffer.alloc(4*1024*1024+1);let offset=0;
+    while(offset<bytes.length){const result=await handle.read(bytes,offset,bytes.length-offset,null);if(result.bytesRead===0)break;offset+=result.bytesRead;}
+    const after=await handle.stat();
+    if(offset>4*1024*1024 || after.dev!==stat.dev || after.ino!==stat.ino || after.size!==stat.size || offset!==stat.size) throw new Error("config.file-changed");
+    const exact=bytes.subarray(0,offset);
+    return {value:JSON.parse(exact.toString("utf8")),bytes:Buffer.from(exact)};
   } finally { await handle.close(); }
 }
 export async function loadConfig(context: ServiceContext): Promise<AgentConfig> {
@@ -49,7 +65,11 @@ export function safeError(error: unknown): string {
   const value = error instanceof Error ? error.message : String(error ?? "");
   if (value === "database is locked") return value;
   // Neither command output nor transport errors may leak tokens/message content.
-  if (/^[a-zA-Z][a-zA-Z0-9_.:-]{0,150}$/.test(value)) return value;
+  const natsPolicy=new Set(["nats-url-invalid","nats-url-scheme-invalid","nats-url-embedded-credentials-rejected","nats-url-components-invalid",
+    "nats-auth-methods-conflict","nats-user-password-pair-required","nats-plaintext-non-loopback-rejected","nats-tls-options-require-tls-url",
+    "nats-tls-server-name-required-for-ip","nats-tls-server-name-invalid","nats-tls-option-unsupported","nats-tls-file-invalid",
+    "nats-tls-cert-key-pair-required","nats-tls-handshake-first-invalid"]);
+  if (new Set(Object.values(ErrorCode)).has(value as ErrorCode) || natsPolicy.has(value) || /^(?!nats-)[a-z][a-z0-9]*(?:[.-][a-z0-9_-]+)+(?::[a-zA-Z0-9_.-]+)?$/.test(value)) return value;
   // System error messages embed paths; their errno code and syscall alone are safe and actionable
   // (an unreadable invite file must not surface as a bare operation-failed).
   const { code, syscall } = (error ?? {}) as NodeJS.ErrnoException;
@@ -70,6 +90,11 @@ export function humanError(error: unknown): string {
   }
   const messages: Record<string, string> = {
     'client.inherited-mcp-entry-conflict': 'A global Claude connection already uses this folder connection name. Review that registration before connecting; no settings were changed.',
+    'migration.profile-usage-unavailable': 'This account cannot prove that the selected profile is unused. Stop its clients and obtain a complete native inspection; no configuration was changed.',
+    'migration.service-must-be-stopped': 'Stop the selected service before applying a broker migration. The migration command never stops services.',
+    'migration.profile-in-use': 'The selected profile is still in use. Close its clients before applying a broker migration.',
+    'broker-input.file-not-private': 'Credential input files must be private to your account.',
+    'nats-user-password-pair-required': 'Supply both --user-file and --password-file for user/password authentication.',
     'client.inherited-wake-hook-conflict': 'A global or parent-folder Murmur hook already wakes chats. Review and remove that older hook before connecting a dedicated folder; no settings were changed.',
     'client.project-directory-required': 'Create and select a dedicated folder for your Murmur conversation, then try again.',
     'client.project-must-be-dedicated': 'Choose a dedicated Murmur folder, not the assistant configuration home.',

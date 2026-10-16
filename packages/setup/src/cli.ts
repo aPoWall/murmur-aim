@@ -1,3 +1,4 @@
+import { migrateBroker } from './broker-migration.js';
 import { configureClient, previewClientConfiguration } from './clients.js';
 import { previewBackups, cleanupBackups, type BackupSelection } from './backups.js';
 import { checkInstallationSelection, selectInstallation, showInstallation } from './installation.js';
@@ -47,6 +48,7 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
       'installation-file': { type: 'string' }, select: { type: 'boolean' },
       'msg-id': { type: 'string' }, 'expected-state': { type: 'string' }, 'expected-agent': { type: 'string' },
       'project-dir': { type: 'string' },
+      'user-file': { type: 'string' }, 'password-file': { type: 'string' }, 'ca-file': { type: 'string' }, 'server-name': { type: 'string' },
       'agent-id': { type: 'string' }, 'broker-url': { type: 'string' }, broker: { type: 'string' }, 'token-file': { type: 'string' }, 'invite-file': { type: 'string' }, 'reply-file': { type: 'string' }, 'reply-out': { type: 'string' }, out: { type: 'string' },
       'invite-stdin': { type: 'boolean' }, 'reply-stdin': { type: 'boolean' },
       client: { type: 'string' }, replace: { type: 'boolean' }, 'replace-previous': { type: 'boolean' }, 'plan-id': { type: 'string' }, 'test-token': { type: 'string' }, json: { type: 'boolean' }, line: { type: 'boolean' }, limit: { type: 'string' }, peer: { type: 'string' }, timeout: { type: 'string' }, 'data-dir': { type: 'string' }, 'service-name': { type: 'string' }, apply: { type: 'boolean' }, help: { type: 'boolean' },
@@ -56,10 +58,13 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
     throw new Error((error as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ? 'cli.unknown-option' : 'cli.invalid-arguments');
   }
   const { values, positionals } = parsed;
-  if (values.help || !positionals.length) return { commands: ['installation show [--installation-file ABSOLUTE]', 'installation select --data-dir ABSOLUTE [--replace] [--installation-file ABSOLUTE]', 'backups preview|cleanup --kind agent|client [--config-file ABSOLUTE] [--keep-file ABSOLUTE] [--plan-id SHA256]', 'version --json', 'updates check|enable|disable --json', 'init --agent-id ID --broker-url URL [--token-file FILE] [--select]', 'invite [--out FILE] [--broker PUBLIC_URL] [--json]', 'join --agent-id ID (--invite-stdin|--invite-file FILE) [--reply-out FILE] [--select] [--json]', 'add-peer (--reply-stdin|--reply-file FILE)', 'status --json|--line', 'doctor --json [--peer AGENT] [--timeout MILLISECONDS]', 'logs path --json', 'service install [--replace-previous]|start|stop|uninstall', 'clients detect', 'clients preview --client ID [--project-dir ABSOLUTE]', 'clients configure --client ID [--project-dir ABSOLUTE] [--replace] [--plan-id SHA256]', 'reply-test prepare --peer AGENT', 'reply-test check --test-token TOKEN', 'wake pause|resume [--apply]', 'wake dismiss --msg-id ID --expected-agent ID', 'inbox read [--limit 1..100]', 'inbox mark-read', 'outbox list --json', 'outbox dismiss|restore --msg-id ID --expected-state TOKEN --expected-agent ID', 'mcp serve [--data-dir ABSOLUTE]'],
+  if (values.help || !positionals.length) return { commands: ['broker migrate --broker-url URL [--token-file FILE|--user-file FILE --password-file FILE] [--ca-file FILE] [--server-name NAME] [--apply]', 'installation show [--installation-file ABSOLUTE]', 'installation select --data-dir ABSOLUTE [--replace] [--installation-file ABSOLUTE]', 'backups preview|cleanup --kind agent|client [--config-file ABSOLUTE] [--keep-file ABSOLUTE] [--plan-id SHA256]', 'version --json', 'updates check|enable|disable --json', 'init --agent-id ID --broker-url URL [--token-file FILE] [--select]', 'invite [--out FILE] [--broker PUBLIC_URL] [--json]', 'join --agent-id ID (--invite-stdin|--invite-file FILE) [--reply-out FILE] [--select] [--json]', 'add-peer (--reply-stdin|--reply-file FILE)', 'status --json|--line', 'doctor --json [--peer AGENT] [--timeout MILLISECONDS]', 'logs path --json', 'service install [--replace-previous]|start|stop|uninstall', 'clients detect', 'clients preview --client ID [--project-dir ABSOLUTE]', 'clients configure --client ID [--project-dir ABSOLUTE] [--replace] [--plan-id SHA256]', 'reply-test prepare --peer AGENT', 'reply-test check --test-token TOKEN', 'wake pause|resume [--apply]', 'wake dismiss --msg-id ID --expected-agent ID', 'inbox read [--limit 1..100]', 'inbox mark-read', 'outbox list --json', 'outbox dismiss|restore --msg-id ID --expected-state TOKEN --expected-agent ID', 'mcp serve [--data-dir ABSOLUTE]'],
     options: ['--data-dir ABSOLUTE', '--service-name NAME'], note: 'Windows service mutations require an elevated terminal and the matching native helper.' };
   const [command, action, extra] = positionals;
   if (extra) throw new Error('cli.unexpected-argument');
+  if (['token-file', 'user-file', 'password-file', 'ca-file', 'server-name'].some(key => values[key as keyof typeof values] !== undefined)
+    && !['init', 'join'].includes(command) && !(command === 'broker' && action === 'migrate')
+    || values['broker-url'] !== undefined && command !== 'init' && !(command === 'broker' && action === 'migrate')) throw new Error('cli.option-not-supported');
   if (values.line && command !== 'status') throw new Error('cli.line-only-for-status');
   if (values.line && values.json) throw new Error('cli.output-mode-conflict');
   if (command === 'version' && !action) return readVersion();
@@ -84,7 +89,11 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
   if (command === 'installation' && action === 'select') return selectInstallation(context, { file: values['installation-file'], replace: values.replace });
   if (values.select) checkInstallationSelection(context, { file: values['installation-file'], replace: values.replace });
   const selected = async <T extends object>(result: T) => values.select ? { ...result, installation: await selectInstallation(context, { file: values['installation-file'], replace: values.replace }) } : result;
-  if (command === 'init' && !action) return selected(await initialize(context, { agentId: required('agent-id'), brokerUrl: required('broker-url'), tokenFile: values['token-file'] }));
+  const brokerFiles = { tokenFile: values['token-file'], userFile: values['user-file'], passwordFile: values['password-file'],
+    caFile: values['ca-file'], serverName: values['server-name'] };
+  if (command === 'broker' && action === 'migrate') return migrateBroker(context, adapter, { ...brokerFiles,
+    brokerUrl: required('broker-url'), apply: values.apply });
+  if (command === 'init' && !action) return selected(await initialize(context, { agentId: required('agent-id'), brokerUrl: required('broker-url'), ...brokerFiles }));
   const onboardingInput = async (kind: 'invite' | 'reply') => {
     if (values[`${kind}-file`] !== undefined && values[`${kind}-stdin`]) throw new Error('onboarding.input-conflict');
     if (!values[`${kind}-stdin`]) {
@@ -102,7 +111,7 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
   };
   if (command === 'invite' && !action) return invite(context, values.out, { brokerUrl: values.broker });
   if (command === 'join' && !action) return selected(await join(context, { agentId: required('agent-id'), inviteFile: values['invite-file'],
-    invitation: await onboardingInput('invite'), replyOut: values['reply-out'] }));
+    invitation: await onboardingInput('invite'), replyOut: values['reply-out'], ...brokerFiles }));
   if (command === 'add-peer' && !action) return importPeer(context, values['reply-file'], await onboardingInput('reply'));
   if (command === 'status' && !action) {
     const status = await readStatus({ context, adapter });

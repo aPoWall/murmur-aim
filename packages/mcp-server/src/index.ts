@@ -215,6 +215,9 @@ const getWakeBroker = async (agentConfig: AgentConfig, now: () => number = Date.
   const broker = new NatsBroker({
     url: agentConfig.natsUrl,
     token: agentConfig.natsToken,
+    user: agentConfig.natsUser,
+    password: agentConfig.natsPassword,
+    tls: agentConfig.natsTls,
     jetstream: false,
     // The tap is optional. Daemon reconnect policy must not make this tool wait
     // forever before it can poll the durable local store.

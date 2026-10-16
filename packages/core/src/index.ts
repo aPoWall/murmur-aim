@@ -16,6 +16,10 @@ export * from "./subjects.js";
 export * from './outbox-attention.js';
 export * from './installation.js';
 
+// NATS endpoint/auth policy shared by every production NATS client.
+export * from "./nats-security.js";
+export * from "./nats-acl.js";
+
 export type DeliveryMode = "at-least-once";
 
 export interface EnvelopeV1 {

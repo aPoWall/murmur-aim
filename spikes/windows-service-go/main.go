@@ -117,6 +117,8 @@ func main() {
 		mustDo(printStatus())
 	case "observe-store":
 		mustDo(printStoreProof(args[1:]))
+	case "profile-usage":
+		mustDo(printProfileUsage())
 	default:
 		usage()
 		os.Exit(2)

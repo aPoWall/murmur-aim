@@ -55,7 +55,13 @@ const consumerId = process.env.MURMUR_MCP_CONSUMER_ID || `${config.agentId}-mcp-
 const emitToSession = envFlag("MURMUR_MCP_TO_SESSION", true);
 const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
 
-const broker = new NatsBroker({ url: config.natsUrl, token: config.natsToken });
+const broker = new NatsBroker({
+  url: config.natsUrl,
+  token: config.natsToken,
+  user: config.natsUser,
+  password: config.natsPassword,
+  tls: config.natsTls,
+});
 const dedupe = new SQLiteDedupeOutboxStore(dbPath);
 const roster = config.channelRoster?.enabled
   ? new ChannelRosterStore(config.channelRoster.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH)) : null;

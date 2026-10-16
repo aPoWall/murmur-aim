@@ -80,6 +80,12 @@ Build this branch with `npm ci` and `npm run build` to test the candidate. Nativ
 desktop acceptance and exact-head review are still required before publishing.
 The stable install commands below intentionally select the already available 2.12.0.
 
+Optional [TLS and per-user broker credentials](docs/nats-transport-security.md)
+are also available in the candidate, with an explicit guarded migration command.
+Existing remote `nats://` profiles remain compatible. An explicit `tls://` endpoint
+requires certificate validation and cannot fall back to plaintext; upgrading does
+not migrate the shared broker or rotate credentials.
+
 ## Install
 
 **Using the app on Mac or Windows?** The step-by-step guide with every screen and system
@@ -861,7 +867,8 @@ See [protocol-v1.md](docs/protocol-v1.md) for the full specification.
 
 *Security first — the shared broker still runs on one token*
 - [x] **Participant enrollment design** (#169) — separate client-generated NKeys, one-use expiring invitations, exact subject ACLs and durable revocation tombstones have a [validated reference](docs/participant-enrollment.md). An isolated real broker test revokes one participant while another keeps its connection. Runtime integration, TLS, JetStream/federation grants and production cutover remain separate; existing invitations still carry the configured shared token.
-- [ ] **TLS + per-peer NATS authentication** (#103) — reviewed, CI-green, held for a coordinated cutover: every peer today shares one broker token, which is why a 2.6.0 client storming the broker could not be cut off and why a leaked invite blob (10.09) meant rotating everyone. Ships with a maintenance window (broker config + re-invite of all peers), not as a routine merge. Two gaps to close first: the Kubernetes ACL example does not cover JetStream subjects (`$JS.API.*`, `$JS.ACK.*`, `_INBOX.*`), and the dashboard's NATS client speaks token only (no user/password, no CA).
+- [x] **Compatible TLS/authentication preparation** (#153, 2.12.1 candidate) — explicit TLS verification, per-user credentials, guarded migration, restricted JetStream ACLs and a separate read-only dashboard role have [isolated tests and documented limits](docs/nats-transport-security.md). Existing remote plaintext profiles remain usable.
+- [ ] **Production TLS and credential cutover** — configure the deployment's certificate and peer roles, coordinate migration/rollback, then verify each live client before retiring shared credentials. The client update does not perform this operational change or implement automatic enrollment/revocation.
 - [ ] **Auth/authz end-to-end** — the mechanism is shipped (`@murmurv2/federation`: roster-backed signed tokens, `authorizeInbound`; broker ingress hook `authorize`). Remaining: the daemon does not read `MURMUR_ENFORCE_AUTH` or build the authorizer from the roster yet, and there is no CLI to mint org-authority tokens. Two small pieces: `murmur-daemon.mjs` wiring (default OFF) and `murmur-auth-token.mjs` (mint / verify), then provision tokens to the peers.
 - [ ] **Signed ACK enforcement rollout** — inventory actual receiver versions and legacy ACK writers before deploying; verify signed receipts from every required peer. Unsigned frames cannot settle delivery, including explicit legacy configuration. Production rollout remains separate from this code fix.
 

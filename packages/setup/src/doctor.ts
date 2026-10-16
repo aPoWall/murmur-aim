@@ -8,6 +8,7 @@ import { channelSubjectRoutes, resolveMessageSubject, SQLiteDedupeOutboxStore, s
 import { encryptPayload, signEnvelope, verifyEnvelopeSignature, decryptPayload } from '@murmurv2/security';
 import { claudeWakeHookState } from './clients.js';
 import { loadConfig, readJson, safeError, type AgentConfig } from './config.js';
+import { validateConfiguredTlsFiles } from './broker-input.js';
 import { pairFingerprint, readStatus } from './status.js';
 import { writeState } from './state.js';
 import type { ServiceContext, PlatformAdapter } from './types.js';
@@ -133,7 +134,11 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
     }
   };
   try {
-    await stage('config', 'Configuration', async () => { config = await loadConfig(context); return { detail: 'Identity, keys and peer configuration validated' }; });
+    await stage('config', 'Configuration', async () => {
+      config = await loadConfig(context);
+      await validateConfiguredTlsFiles(config);
+      return { detail: 'Identity, keys, peer configuration, and referenced TLS files validated' };
+    });
     await stage('daemon', 'Daemon and store', async () => {
       snapshot = await readStatus({ context, adapter });
       if (!['running', 'running-unmanaged'].includes(snapshot.service.state)) throw new Error('daemon.not-running');
@@ -142,7 +147,8 @@ export async function runDoctor({ context, adapter, peer, timeoutMs = 10000 }: D
     });
     await stage('broker', 'Broker authentication and RTT', async () => {
       try {
-        connection = await connect({ ...buildNatsConnectionOptions({ url: config!.natsUrl, token: config!.natsToken }), reconnect: false, waitOnFirstConnect: false, timeout: timeoutMs });
+        connection = await connect({ ...buildNatsConnectionOptions({ url: config!.natsUrl, token: config!.natsToken,
+          user: config!.natsUser, password: config!.natsPassword, tls: config!.natsTls }), reconnect: false, waitOnFirstConnect: false, timeout: timeoutMs });
         await connection.rtt();
       } catch (e) { throw new Error((e as { code?: string }).code === 'AUTHORIZATION_VIOLATION' ? 'broker.unauthorized' : 'broker.unreachable'); }
       return { detail: 'Broker accepted authentication and replied' };
