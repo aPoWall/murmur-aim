@@ -23,16 +23,22 @@ $acl = Get-Acl -LiteralPath $env:MURMUR_TEST_ACL_FILE
 $entries = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object {
   @{ sid=$_.IdentityReference.Value; kind=$_.AccessControlType.ToString(); rights=[int]$_.FileSystemRights; inherited=$_.IsInherited }
 })
-@{ protected=$acl.AreAccessRulesProtected; user=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; entries=$entries } | ConvertTo-Json -Depth 4 -Compress
+@{ protected=$acl.AreAccessRulesProtected; owner=$acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; user=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; entries=$entries } | ConvertTo-Json -Depth 4 -Compress
 `));
   const expected = new Set([value.user, 'S-1-5-18']);
   assert.equal(value.protected, true, 'private output must not inherit public parent permissions');
+  assert.equal(value.owner, value.user, 'private output must belong to the creating user, including an elevated creator');
   assert.equal(value.entries.length, expected.size);
   for (const entry of value.entries) {
     assert.equal(expected.delete(entry.sid), true, 'only creator and SYSTEM may access the private output');
     assert.equal(entry.kind, 'Allow'); assert.equal(entry.rights, 0x1f01ff); assert.equal(entry.inherited, false);
   }
   assert.equal(expected.size, 0);
+}
+
+export async function fileOwner(file) {
+  assert.equal(process.platform, 'win32');
+  return powershell(file, `(Get-Acl -LiteralPath $env:MURMUR_TEST_ACL_FILE).GetOwner([System.Security.Principal.SecurityIdentifier]).Value`);
 }
 
 export async function fileAccessPolicy(file) {

@@ -30,7 +30,11 @@ if ($source) {
   $expected = $original.GetSecurityDescriptorSddlForm($section)
   $security.SetSecurityDescriptorSddlForm($expected, $section)
   $expectedPolicy = AccessPolicy $original
+  $expectedOwner = $original.GetOwner([System.Security.Principal.SecurityIdentifier])
 } else {
+  # An elevated token may default new files to the Administrators group owner.
+  # Pin this still-empty output to its actual creator before writing any secrets.
+  $expectedOwner = New-Object System.Security.Principal.SecurityIdentifier($user)
   $security.SetAccessRuleProtection($true, $false)
   foreach ($id in $allowed) {
     $sid = New-Object System.Security.Principal.SecurityIdentifier($id)
@@ -38,11 +42,15 @@ if ($source) {
     $security.AddAccessRule($rule)
   }
 }
+$security.SetOwner($expectedOwner)
 Set-Acl -LiteralPath $file -AclObject $security
 $actual = Get-Acl -LiteralPath $file
+if ($actual.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $expectedOwner.Value) { throw 'unexpected owner' }
 if ($source) {
+  $sourceAfter = Get-Acl -LiteralPath $source
   if ((AccessPolicy $actual) -cne $expectedPolicy -or
-      (AccessPolicy (Get-Acl -LiteralPath $source)) -cne $expectedPolicy) { throw 'changed access policy' }
+      (AccessPolicy $sourceAfter) -cne $expectedPolicy -or
+      $sourceAfter.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $expectedOwner.Value) { throw 'changed access policy' }
   exit 0
 }
 if (!$actual.AreAccessRulesProtected) { throw 'unprotected ACL' }
@@ -78,7 +86,7 @@ async function prepareFile(file: string, handle: FileHandle, accessSource?: stri
   } catch (error) {
     // Keep paths, command text and arbitrary PowerShell stderr out of diagnostics.
     const failure = error as { killed?: boolean; code?: string | number; stderr?: string };
-    const rejection = ['changed access policy', 'unprotected ACL', 'unexpected ACL entries', 'unexpected ACL']
+    const rejection = ['changed access policy', 'unprotected ACL', 'unexpected ACL entries', 'unexpected ACL', 'unexpected owner']
       .find(reason => failure.stderr?.includes(reason));
     const reason = failure.killed ? 'timeout' : failure.code === 'ENOENT' ? 'powershell-unavailable'
       : rejection?.replaceAll(' ', '-') ?? 'command-failed';
@@ -97,7 +105,7 @@ export async function protectPrivateFile(file: string, handle: FileHandle): Prom
   return prepareFile(file, handle);
 }
 
-/** Existing Windows files keep their access policy, including intentional sandbox readers. */
+/** Existing Windows files keep their owner and access policy, including intentional sandbox readers. */
 export async function preparePrivateReplacement(file: string, handle: FileHandle, previous: string): Promise<void> {
   return prepareFile(file, handle, previous);
 }
