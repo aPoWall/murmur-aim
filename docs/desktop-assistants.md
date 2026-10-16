@@ -33,13 +33,13 @@ Claude Desktop Chat does not automatically start an AI turn when a message arriv
 
 ## One dedicated conversation in Claude's Code tab (2.12.1 candidate)
 
-This new configuration mode is part of the unpublished 2.12.1 candidate. Stable
+This new configuration mode is part of the unpublished 2.12.1 candidate.
 In the 2.12.1 Mac app, **Connect Claude Code** asks you to choose or create the
 dedicated Murmur folder. Open that same folder in the Code tab afterwards. The
 preview and confirmation remain tied to that folder; an inherited global hook is
 reported for review before any changes.
 
-2.12.0 does not accept `--project-dir`. Code inside Claude.app is detected from its
+Stable 2.12.0 does not accept `--project-dir`. Code inside Claude.app is detected from its
 installed bundled agent even when a separate `claude` terminal command is absent.
 
 1. In Finder create a folder named **Murmur** in your home folder. Open that folder
@@ -51,8 +51,10 @@ installed bundled agent even when a separate `claude` terminal command is absent
    asks. Confirm the actual tools and contacts, then test one authorized exchange.
 4. Leave this conversation open for incoming messages. Multiple chats in this same
    folder share a cursor and lock: one active reader receives a letter. The selected
-   reader is not necessarily the chat currently visible on screen. Exact-session
-   conversation routing in PR #305 is a separate change, not included here.
+   reader is not necessarily the chat currently visible on screen. Replies sent
+   from this folder belong to its shared lane; outside project mode they belong
+   to the exact sending session. Existing hand-written shared hooks must set the
+   same `MURMUR_WAKE_SESSION_KEY` in their MCP environment and wake command.
 
 ```sh
 murmur clients preview --client claude-code --project-dir /Users/YOU/Murmur --data-dir /ABSOLUTE/EXISTING/IDENTITY --json

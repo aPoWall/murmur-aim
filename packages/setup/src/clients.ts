@@ -23,10 +23,16 @@ async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clien
     const parents = new Set([path.dirname(client.configPath)]);
     let parent = path.dirname(c.clientProjectDir);
     while (true) { parents.add(parent); const next = path.dirname(parent); if (next === parent) break; parent = next; }
+    // Local settings merge their hooks with project settings. They must not leave
+    // a second reader behind even in the selected project itself.
+    const local = await readClientFile(path.join(c.clientProjectDir, '.claude', 'settings.local.json'));
+    if (local.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
     for (const dir of parents) {
       if (dir === c.clientProjectDir) throw new Error('client.project-must-be-dedicated');
-      const file = await readClientFile(path.join(dir, '.claude', 'settings.json'));
-      if (file.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
+      for (const name of ['settings.json', 'settings.local.json']) {
+        const file = await readClientFile(path.join(dir, '.claude', name));
+        if (file.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
+      }
     }
     return { ...client, configPath: path.join(c.clientProjectDir, '.mcp.json') };
   }
@@ -70,11 +76,13 @@ const hookPath = (value: string) => `"${value.replaceAll('\\', '/')}"`;
 // Eight hours after each turn instead of the drain's 20-minute default: a message that arrives
 // during a working day still wakes the session (docs/wake-native.md, known limitation).
 const WAKE_WINDOW_SECONDS = 28800;
+const projectLane = (c: ServiceContext) => c.clientProjectDir
+  ? createHash('sha256').update(c.clientProjectDir).digest('hex').slice(0, 8) : null;
 /** The node wake drain (docs/wake-native.md): polls the store after each turn and wakes the session. */
 function desiredWakeHook(c: ServiceContext) {
   // Claude Code ends a hook without its own `timeout` after 600 s (hooks reference, asyncRewake);
   // the entry carries the same window the drain script is asked for, or the script never gets it.
-  const lane = c.clientProjectDir ? createHash('sha256').update(c.clientProjectDir).digest('hex').slice(0, 8) : null;
+  const lane = projectLane(c);
   return { type: 'command', asyncRewake: true, timeout: WAKE_WINDOW_SECONDS,
     command: `${hookPath(c.nodePath)} --no-warnings ${hookPath(path.join(c.repoRoot, 'scripts', 'wake-drain-claude.mjs'))} --db ${hookPath(c.storePath)} --max-seconds ${WAKE_WINDOW_SECONDS}${lane ? ` --session-key ${lane}` : ''}` };
 }
@@ -146,8 +154,10 @@ async function configureWakeHook(c: ServiceContext, file: string, before: Awaite
   } finally { await rmdir(lock); }
 }
 function desiredEntry(c: ServiceContext) {
+  const lane = projectLane(c);
   return { command: c.nodePath, args: [path.join(c.repoRoot, 'packages', 'mcp-server', 'dist', 'src', 'index.js')],
-    env: { DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath } };
+    env: { DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath,
+      ...(lane ? { MURMUR_WAKE_SESSION_KEY: lane } : {}) } };
 }
 type ClientFile = Awaited<ReturnType<typeof readClientFile>>;
 async function planFor(c: ServiceContext, client: ClientDetection & { configPath: string }, current: ClientFile, settings?: ClientFile) {

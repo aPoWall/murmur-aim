@@ -69,6 +69,9 @@ test('a dedicated Claude project gets project MCP/settings and one stable wake k
   const result = await configureClient(context, f.adapter, 'claude-code', false, plan.planId);
   const settings = JSON.parse(await fs.readFile(result.wakeHook.settingsPath, 'utf8'));
   assert.match(settings.hooks.Stop[0].hooks[0].command, /--session-key [a-f0-9]{8}$/);
+  const lane = settings.hooks.Stop[0].hooks[0].command.match(/--session-key ([a-f0-9]{8})$/)[1];
+  const mcp = JSON.parse(await fs.readFile(path.join(project, '.mcp.json'), 'utf8'));
+  assert.equal(mcp.mcpServers.murmur.env.MURMUR_WAKE_SESSION_KEY, lane, 'reply bindings and the shared reader must name the same lane');
   assert.equal((await configureClient(context, f.adapter, 'claude-code')).changed, false);
   await assert.rejects(fs.stat(f.configPath), { code: 'ENOENT' });
   await assert.rejects(fs.stat(f.settingsPath), { code: 'ENOENT' });
@@ -84,6 +87,25 @@ test('project connection refuses an inherited wake hook without rewriting global
   assert.equal(await fs.readFile(f.settingsPath, 'utf8'), before);
   await assert.rejects(fs.stat(path.join(project, '.mcp.json')), { code: 'ENOENT' });
   await assert.rejects(fs.stat(path.join(project, '.claude')), { code: 'ENOENT' });
+});
+
+for (const scope of ['project', 'parent', 'global']) test(`project connection refuses a ${scope} settings.local.json wake hook before any write`, async t => {
+  const f = await fixture(t);
+  const parent = path.join(f.home, 'work');
+  const project = path.join(parent, 'Murmur'); await fs.mkdir(project, { recursive: true });
+  const dir = scope === 'project' ? project : scope === 'parent' ? parent : f.home;
+  const local = path.join(dir, '.claude', 'settings.local.json');
+  await fs.mkdir(path.dirname(local), { recursive: true });
+  const before = '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"node /old/wake-drain-claude.mjs"}]}]},"model":"keep"}\n';
+  await fs.writeFile(local, before);
+  const context = { ...f.context, clientProjectDir: project };
+  await assert.rejects(previewClientConfiguration(context, f.adapter, 'claude-code'), /client.inherited-wake-hook-conflict/);
+  await assert.rejects(configureClient(context, f.adapter, 'claude-code', true), /client.inherited-wake-hook-conflict/);
+  assert.equal(await fs.readFile(local, 'utf8'), before);
+  for (const file of [f.configPath, f.settingsPath, path.join(project, '.mcp.json'), path.join(project, '.claude', 'settings.json')]) {
+    await assert.rejects(fs.stat(file), { code: 'ENOENT' });
+  }
+  assert.deepEqual(await fs.readdir(path.dirname(local)), ['settings.local.json']);
 });
 
 test('a different Murmur wake hook is replaced only on request, and the .sh variant goes', async t => {
