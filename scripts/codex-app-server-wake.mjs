@@ -13,6 +13,7 @@ const DEFAULT_TURN_COMPLETION_TIMEOUT_MS = 180000;
 const DEFAULT_UNOBSERVABLE_TIMEOUT_MS = 300000;
 const SESSION_LOG_POLL_INTERVAL_MS = 1000;
 const SESSION_LOG_TAIL_BYTES = 8 * 1024 * 1024;
+export const NO_REPLY_REQUIRED = '[[MURMUR_NO_REPLY_REQUIRED]]';
 
 const shellQuote = (value) => `'${String(value ?? "").replace(/'/g, "'\\''")}'`;
 
@@ -23,6 +24,7 @@ const buildReplyHint = (payload, peer = {}) => {
       "[MURMUR REPLY RELAY]",
       "If this Murmur message asks for a reply, put only the reply body in your final answer.",
       "Do not call tools to send Murmur yourself; the local daemon will relay your final answer back through Murmur.",
+      `If the message requires no substantive reply under the existing owner instructions (for example ACK, thanks, or an explicit no-reply notice), return exactly ${NO_REPLY_REQUIRED} as your final answer. This is a local completion receipt and is never sent to the peer. Do not use it for an unanswered question, missing access, or a failed task.`,
     ];
   }
 
@@ -754,6 +756,17 @@ export const createCodexAppServerInjector = ({
         }
         if (!relayEnabled) return result;
         const finalText = String(result?.finalText || "").trim();
+        if (finalText === NO_REPLY_REQUIRED && result?.status !== 'completed') {
+          throw Object.assign(new Error('codex-app-server-no-reply-completion-unverified'), {retryable:false});
+        }
+        if (finalText === NO_REPLY_REQUIRED) {
+          const receipt = await turns.get(payload.msgId);
+          if (receipt) await turns.set({...receipt, outcome:'no_reply_required'});
+          log('info', 'Codex app-server wake completed without a reply by explicit decision', {
+            msgId: payload.msgId, threadId, turnId: result.turnId, source: result.source,
+          });
+          return { ...result, finalText: null, replyMsgId: null, outcome: 'no_reply_required' };
+        }
         if (!finalText) {
           // #106 — the turn ended and there is nothing to relay. That is not a relay;
           // logging it as one is how the peer waited six hours believing it was answered.

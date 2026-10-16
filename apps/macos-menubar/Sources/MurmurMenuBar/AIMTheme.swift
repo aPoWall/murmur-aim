@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import CoreText
+import UserNotifications
 import MurmurTrayCore
 
 /// N1 product assembly. Shared files are vendored byte-for-byte; transport stays upstream.
@@ -66,16 +67,20 @@ struct AIMQuietButtonStyle: ButtonStyle {
 }
 
 @MainActor final class AIMWindowState: NSObject, NSWindowDelegate, ObservableObject {
-    static let shared = AIMWindowState()
+    static let shared = AIMWindowState(defaults: AIMThemeRegression.scratchDefaults ?? .standard)
     /// A saved pin survives migration, Escape and relaunch.
     static let pinKey = "org.aimindset.murmur.pinned"
     /// Rule 49: ⌥⌘U in the family pattern, recorded in settings (rule 50). Until AIM 5 the app held ⌃⌥⌘M.
     static let hotkeyStore = FamilyHotkeyStore(owner: FamilyHotkeys.murmur,
                                                fallback: FamilyHotkey(keyCode: 32, modifiers: [.option, .command], character: "u"))
     var surface: AIMSurface?
+    private weak var attachedWindow: NSWindow?
+    private let defaults: UserDefaults
     @Published var pinned: Bool
     /// Rule 53: white by default, `org.aimindset.murmur.theme`.
-    @Published var theme: AIMThemePolicy.Mode = AIMThemePolicy.load()
+    @Published var theme: AIMThemePolicy.Mode
+    @Published var followsSystem: Bool
+    private var appearanceObservation: NSKeyValueObservation?
     @Published var hotkey: FamilyHotkey? = AIMWindowState.hotkeyStore.current
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
@@ -84,26 +89,54 @@ struct AIMQuietButtonStyle: ButtonStyle {
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
     var onStateChange: (() -> Void)?
 
-    override init() {
-        let d = UserDefaults.standard
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        theme = AIMThemePolicy.load(defaults)
+        followsSystem = defaults.bool(forKey: "org.aimindset.murmur.followSystemAppearance")
+        let d = defaults
         let resolution = AIMPinPolicy.resolve(stored: d.object(forKey: Self.pinKey) == nil ? nil : d.bool(forKey: Self.pinKey),
                                               migrated: d.bool(forKey: AIMPinPolicy.migrationKey))
         if resolution.writePinned { d.set(resolution.pinned, forKey: Self.pinKey) }
         if resolution.markMigrated { d.set(true, forKey: AIMPinPolicy.migrationKey) }
         pinned = resolution.pinned
         super.init()
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.refreshSystemAppearance() }
+        }
+        if followsSystem { NSApp.appearance = nil; refreshSystemAppearance() }
+    }
+    func setFollowSystem(_ enabled: Bool) {
+        followsSystem = enabled
+        defaults.set(enabled, forKey: "org.aimindset.murmur.followSystemAppearance")
+        if enabled { NSApp.appearance = nil; refreshSystemAppearance() }
+        else { setTheme(theme) }
+    }
+    private func refreshSystemAppearance() {
+        guard followsSystem else { return }
+        let mode: AIMThemePolicy.Mode = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light
+        renderTheme(mode)
+    }
+    private func renderTheme(_ mode: AIMThemePolicy.Mode) {
+        AIMThemePolicy.withAppearance(mode) {
+            attachedWindow?.appearance = AIMThemePolicy.appearance(mode)
+            attachedWindow?.backgroundColor = AIMAppShellStyle.canvas
+            theme = mode
+            attachedWindow?.contentView?.needsDisplay = true
+            onStateChange?()
+        }
     }
     func setPinned(_ value: Bool) {
         pinned = value
-        UserDefaults.standard.set(value, forKey: Self.pinKey)
+        defaults.set(value, forKey: Self.pinKey)
         surface?.pinned = value
         onStateChange?()
     }
     func setTheme(_ mode: AIMThemePolicy.Mode) {
-        theme = mode
-        AIMThemePolicy.store(mode)
+        followsSystem = false
+        defaults.set(false, forKey: "org.aimindset.murmur.followSystemAppearance")
+        AIMThemePolicy.store(mode, defaults)
         AIMThemePolicy.apply(mode)
-        onStateChange?()
+        renderTheme(mode)
     }
     func hotkeyChanged(_ combo: FamilyHotkey?) {
         hotkey = combo
@@ -111,6 +144,8 @@ struct AIMQuietButtonStyle: ButtonStyle {
     }
     var keysLine: String { hotkey.map { $0.display + " open and close" } ?? "no global key" }
     func attach(_ window: NSWindow) {
+        attachedWindow = window
+        window.appearance = AIMThemePolicy.appearance(theme)
         surface = AIMSurface(host: .window(window), pinned: pinned)
         window.delegate = self
     }
@@ -132,7 +167,7 @@ struct AIMHeaderBridge: NSViewRepresentable {
         // N1 family character in the header; flat family mark remains in the menu bar.
         let voxel = AIMVoxelView(model: AIMVoxelModels.murmur)
         voxel.wantsLayer = true
-        voxel.layer?.backgroundColor = AIMAppShellStyle.plate.cgColor
+        voxel.layer?.backgroundColor = AIMThemePolicy.resolvedCGColor(AIMAppShellStyle.plate, appearance: AIMThemePolicy.appearance(.light))
         voxel.toolTip = "murmur aim \u{00B7} live character \u{00B7} click: scatter and assemble"
         voxel.frame = header.markView.bounds
         voxel.autoresizingMask = [.width, .height]
@@ -190,14 +225,29 @@ struct AIMHotkeyBridge: NSViewRepresentable {
 
 /// Fixture-only offscreen capture; no window, profile, daemon or AI-client changes.
 @MainActor enum AIMPreview {
-    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-render"]
+    static let commands: Set<String> = ["--aim-icon", "--aim-check-avatars", "--aim-check-shell", "--aim-check-theme", "--aim-render", "--aim-notification-status"]
     static var isRequested: Bool { ProcessInfo.processInfo.arguments.contains(where: commands.contains) }
     static func runIfRequested() -> Bool {
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("--aim-notification-status") {
+            // Read the OS decision for this bundle. No activation, permission prompt,
+            // notification delivery, runtime startup or preference writes.
+            Task { @MainActor in
+                let settings = await UNUserNotificationCenter.current().notificationSettings()
+                let names: [UNAuthorizationStatus: String] = [.notDetermined:"not_determined", .denied:"denied", .authorized:"authorized", .provisional:"provisional"]
+                print("{\"bundle\":\"\(Bundle.main.bundleIdentifier ?? "unknown")\",\"authorization\":\"\(names[settings.authorizationStatus] ?? "unknown")\",\"alerts\":\(settings.alertSetting.rawValue),\"sounds\":\(settings.soundSetting.rawValue)}")
+                exit(0)
+            }
+            Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { _ in
+                print("{\"authorization\":\"unavailable\"}"); exit(1)
+            }
+            RunLoop.main.run(); return true
+        }
         if let index = args.firstIndex(of: "--aim-icon"), args.indices.contains(index + 1) {
             save(AIMTheme.appIcon(), to: args[index + 1]); return true
         }
         if args.contains("--aim-check-avatars") { AIMAvatarChecks.run(); return true }
+        if args.contains("--aim-check-theme") { AIMThemeRegression.run(); return true }
         if args.contains("--aim-check-shell") { checkShell(); return true }
         guard let index = args.firstIndex(of: "--aim-render"), args.indices.contains(index + 1) else { return false }
         let model = TrayModel(startRuntime: false)
@@ -255,6 +305,19 @@ struct AIMHotkeyBridge: NSViewRepresentable {
         AIMMenuPresence.prepare(defaults: scratch, screenWidth: 1728)
         need(scratch.integer(forKey: AIMMenuPresence.positionKey) == 240, "menu: relaunch retains valid placement")
         need(AIMAppMarkView.image(.murmur, size: 18, mono: true).isTemplate, "menu: canonical 18 pt template mark")
+        let display = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let panel = NSSize(width: 740, height: 640)
+        let centered = AIMMenuPresence.panelFrame(size: panel, status: NSRect(x: 700, y: 900, width: 28, height: 24), visible: display)
+        need(centered == NSRect(x: 344, y: 254, width: 740, height: 640), "menu anchor: below the actual status item")
+        let left = AIMMenuPresence.panelFrame(size: panel, status: NSRect(x: 10, y: 900, width: 28, height: 24), visible: display)
+        need(left?.minX == 0, "menu anchor: left edge stays on display")
+        let right = AIMMenuPresence.panelFrame(size: panel, status: NSRect(x: 1400, y: 900, width: 28, height: 24), visible: display)
+        need(right?.maxX == 1440, "menu anchor: right edge stays on display")
+        let secondary = AIMMenuPresence.panelFrame(size: panel, status: NSRect(x: -1200, y: 100, width: 28, height: 24), visible: NSRect(x: -1440, y: -800, width: 1440, height: 900))
+        need(secondary?.minX == -1440 && secondary?.maxY == 94, "menu anchor: negative-coordinate display")
+        let short = AIMMenuPresence.panelFrame(size: panel, status: NSRect(x: 700, y: 500, width: 28, height: 24), visible: NSRect(x: 0, y: 0, width: 1440, height: 500))
+        need(short?.height == 500 && short?.minY == 0, "menu anchor: short display contains panel")
+        need(AIMMenuPresence.panelFrame(size: panel, status: .zero, visible: display) == nil, "menu anchor: hidden item keeps fallback window")
         need(AIMPinPolicy.resolve(stored: true, migrated: false).pinned == true && AIMPinPolicy.resolve(stored: true, migrated: true).pinned,
              "pin: explicit saved choice survives first migration and later launches")
         need(AIMThemePolicy.key(bundle: "org.aimindset.murmur") == "org.aimindset.murmur.theme", "theme: one key form, <bundle id>.theme")

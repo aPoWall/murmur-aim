@@ -799,3 +799,17 @@
 "Choose or create a Murmur folder for one mail conversation. Open this same folder in Claude's Code tab afterwards." = "Выберите или создайте папку Murmur для одного почтового чата. Затем откройте эту же папку во вкладке Code приложения Claude.";
 "Use this folder" = "Использовать эту папку";
 "Open this folder in Claude Code and keep one mail conversation there: %@" = "Откройте эту папку в Claude Code и оставьте в ней один почтовый чат: %@";
+"The team registry and your connected assistants. Access rules decide what can be sent." = "Реестр команды и подключённые помощники. Правила доступа определяют, что можно отправить.";
+"Connected only" = "Только подключённые";
+"contacts" = "контактов";
+"More" = "Ещё";
+"History in dashboard" = "История на дашборде";
+"Private connection · status only" = "Приватный контур · только статус";
+"No connected sending route" = "Нет подключённого маршрута отправки";
+"Connection and access details" = "Подключение и правила доступа";
+"No contacts match these filters." = "Нет контактов по этим фильтрам.";
+"Incoming message" = "Входящее сообщение";
+"Outgoing message" = "Исходящее сообщение";
+"Recent messages · open a row to read its text. No read receipts are sent." = "Последние сообщения · откройте строку, чтобы прочитать текст. Отметка о прочтении не отправляется.";
+"Follow macOS appearance" = "Следовать теме macOS";
+"System appearance follows macOS automatically. Manual theme changes stay local to this app." = "Системная тема меняется вместе с macOS. Ручной выбор действует только в этом приложении.";

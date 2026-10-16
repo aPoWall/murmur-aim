@@ -2,92 +2,93 @@ import AppKit
 import SwiftUI
 import MurmurTrayCore
 
+/// Compact directory: every current contact has a visible route or an explicit reason.
 struct AIMPeopleView: View {
     @ObservedObject var model: AIMCompanionModel
     @MurmurViewState private var query = ""
     @MurmurViewState private var policyPerson: AIMCompanionSnapshot.Person?
     @MurmurViewState private var recipient: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var historyPerson: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var connectedOnly = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("People & agents")).font(AIMTheme.title)
-            Text(L10n.text("Choose a person, then their contact. Messages leave through your server under your identity."))
-            TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
+            Text(L10n.text("The team registry and your connected assistants. Access rules decide what can be sent.")).font(AIMTheme.meta)
+            HStack {
+                TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
+                Toggle(L10n.text("Connected only"), isOn: $connectedOnly).toggleStyle(.checkbox)
+            }
             if let data = model.snapshot {
-                ForEach(data.people.filter { person in
-                    query.isEmpty || ([person.name, person.nickname ?? ""] + person.agents + Array((person.agent_labels ?? [:]).values)).joined(separator: " ").localizedCaseInsensitiveContains(query)
-                }) { person in
-                    HStack(alignment: .top, spacing: 12) {
-                        AIMPersonAvatar(person: person, imageReadEnabled: !model.previewConnected)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(person.name).font(AIMTheme.heading)
-                            if person.approvedPhoto != nil, let note = person.photo_note, !note.isEmpty {
-                                Text(L10n.text(note)).font(AIMTheme.meta).foregroundStyle(.secondary)
-                            }
-                            if let nickname = person.nickname { Text(nickname).foregroundStyle(.secondary).textSelection(.enabled) }
-                            ForEach(person.agents, id: \.self) { agent in
-                                Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").font(AIMTheme.meta)
-                                if let policy = model.snapshot?.peer_policy?.peers[agent] {
-                                    Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
-                                    Text(L10n.text("Companion sending") + ": " + (policy.send_allowed ? L10n.text("Allowed") : L10n.text("Disabled")) + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
-                                    Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
-                                    if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal) }
-                                }
-                                if let owner = data.ownerThread(for: agent), let url = owner.verifiedURL {
-                                    Button(L10n.text("Open owner chat") + " · " + owner.title) { NSWorkspace.shared.open(url) }
-                                        .help(L10n.text("Open this agent's verified owner chat"))
-                                }
-                            }
-                            Text(person.agents.isEmpty ? L10n.text("No linked agent") : (L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at))).font(AIMTheme.meta)
-                            if person.last_at == nil && !(person.writable_agents ?? []).isEmpty {
-                                Text(L10n.text("Configured locally · two-way delivery not yet observed")).font(AIMTheme.meta)
-                            }
+                let rows = data.people.filter { person in
+                    (!connectedOnly || !(person.writable_agents ?? []).isEmpty) &&
+                    (query.isEmpty || ([person.name, person.nickname ?? ""] + person.agents + Array((person.agent_labels ?? [:]).values)).joined(separator: " ").localizedCaseInsensitiveContains(query))
+                }
+                Text("\(rows.count) / \(data.people.count) " + L10n.text("contacts") + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
+                ForEach(rows) { person in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 12) {
+                            AIMPersonAvatar(person: person, imageReadEnabled: !model.previewConnected)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(person.name).font(AIMTheme.heading)
+                                Text([person.nickname, person.role].compactMap { $0 }.joined(separator: " · ")).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                                Text(person.agents.map { person.agent_labels?[$0] ?? $0 }.joined(separator: " · ")).font(AIMTheme.meta)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            Button(L10n.text("Write message")) { recipient = person }
+                                .disabled(!model.current || (person.writable_agents ?? []).isEmpty)
                         }
-                        Spacer()
-                        VStack {
-                            Button(L10n.text("Access & context")) { policyPerson = person }.help(L10n.text("Edit what this person's agents may receive from this app"))
-                            if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
-                                Button("Telegram ↗") { NSWorkspace.shared.open(url) }.help(L10n.text("Open a Telegram chat with this person; nothing is sent"))
+                        HStack(spacing: 10) {
+                            if !person.agents.isEmpty, person.contact_state != "status_only", AIMEditionConfig.current.privatePeers.intersection(person.agents).isEmpty {
+                                Button(L10n.text("History")) { historyPerson = person }.disabled(!model.enabled)
                             }
-                            Button(L10n.text("Connection map")) { openMap(person.id) }.help(L10n.text("Open this person's observed message flows"))
-                            Button(L10n.text("History")) { openHistory(person.id) }.help(L10n.text("Open the message history with this person in the dashboard"))
+                            Button(L10n.text("Connection map")) { openBoard(person.id, section: "map") }
                             if !(person.writable_agents ?? []).isEmpty {
-                                Button(L10n.text("Write message")) { recipient = person }.help(L10n.text("Compose a message; it leaves only after you press Send message")).disabled(!model.current)
+                                Button(L10n.text("Access & context")) { policyPerson = person }
+                            }
+                            Menu(L10n.text("More")) {
+                                Button(L10n.text("History in dashboard")) { openBoard(person.id, section: "history") }
+                                if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
+                                    Button("Telegram ↗") { NSWorkspace.shared.open(url) }
+                                }
+                                ForEach(person.agents, id: \.self) { agent in
+                                    if let owner = data.ownerThread(for: agent), let url = owner.verifiedURL {
+                                        Button(L10n.text("Open owner chat") + " · " + owner.title) { NSWorkspace.shared.open(url) }
+                                    }
+                                }
                             }
                         }
-                    }
+                        Text((person.writable_agents ?? []).isEmpty ? L10n.text(person.contact_state == "status_only" ? "Private connection · status only" : "No connected sending route") : L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                        if !person.agents.isEmpty {
+                            DisclosureGroup(L10n.text("Connection and access details")) {
+                                ForEach(person.agents, id: \.self) { agent in
+                                    if let policy = data.peer_policy?.peers[agent] {
+                                        Text(agent + " · " + L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
+                                        Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
+                                        Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
+                                        if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta) }
+                                    }
+                                }
+                            }
+                        }
+                    }.padding(.vertical, 8)
                     Divider()
                 }
-                Divider()
-                Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)
-                if let contours = data.private_contours, !contours.isEmpty {
-                    ForEach(contours) { contour in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(contour.name).font(AIMTheme.heading)
-                            Text(AIMCompanionModel.privateStatus(contour)).font(AIMTheme.meta)
-                            Text(L10n.text("Private message bodies and connection details stay outside this view.")).font(AIMTheme.meta)
-                        }
-                    }
-                } else {
-                    Text(L10n.text("No private status in this snapshot.")).font(AIMTheme.meta)
-                }
+                if rows.isEmpty { Text(L10n.text("No contacts match these filters.")) }
                 if !model.current { Text(L10n.text("Refresh the server overview before sending.")).foregroundStyle(AIMTheme.signal) }
             } else {
                 Text(L10n.text("Connect your server in Settings to load people."))
             }
-            Text(L10n.text("An incoming message confirms observed activity. A configured connection alone does not confirm that the other side has imported your reply.")).font(AIMTheme.meta)
         }
         .sheet(item: $recipient) { person in AIMComposeView(person: person) }
         .sheet(item: $policyPerson) { person in AIMPolicyView(person: person) }
+        .sheet(item: $historyPerson) { person in
+            AIMMessageSearchView(enabled: model.enabled, people: model.snapshot?.people ?? [], historyPeer: person.agents.first)
+        }
     }
-    private func openMap(_ actor: String) {
-        var parts = URLComponents(string: AIMCompanionModel.board)!
-        parts.queryItems = [URLQueryItem(name: "view", value: "mesh"), URLQueryItem(name: "section", value: "map"), URLQueryItem(name: "actor", value: actor)]
+    private func openBoard(_ actor: String, section: String) {
+        guard var parts = URLComponents(string: AIMCompanionModel.board) else { return }
+        parts.queryItems = [.init(name: "view", value: "mesh"), .init(name: "section", value: section), .init(name: "actor", value: actor)]
         if let url = parts.url { NSWorkspace.shared.open(url) }
-    }
-    private func openHistory(_ actor: String) {
-        var url = URLComponents(string: AIMCompanionModel.board)!
-        url.queryItems = [.init(name: "view", value: "mesh"), .init(name: "section", value: "history"), .init(name: "actor", value: actor)]
-        if let link = url.url { NSWorkspace.shared.open(link) }
     }
 }
 

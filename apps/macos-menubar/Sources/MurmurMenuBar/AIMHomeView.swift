@@ -57,6 +57,7 @@ struct AIMHomeView: View {
             AIMFooterBridge(keys: window.keysLine, status: model.isDemo ? "preview" : (["Overview", "People"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
+            .preferredColorScheme(window.theme == .dark ? .dark : .light)
             .tint(AIMTheme.signal).aimQuietButtonStyle()
             .background(AIMKeyboardBridge(onEscape: handleEscape, onSettings: { navigation.openSettings() }, onTab: { navigation.select($0) })
                 .frame(width: 0, height: 0).accessibilityHidden(true))
@@ -293,6 +294,9 @@ struct AIMHomeView: View {
                 .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
             Button(window.theme == .dark ? L10n.text("White theme") : L10n.text("Black theme")) { window.setTheme(window.theme == .dark ? .light : .dark) }
                 .help(L10n.text("Stored as org.aimindset.murmur.theme and applied at once"))
+            Divider()
+            Toggle(L10n.text("Follow macOS appearance"), isOn: Binding(get: { window.followsSystem }, set: { window.setFollowSystem($0) }))
+            Text(L10n.text("System appearance follows macOS automatically. Manual theme changes stay local to this app.")).font(AIMTheme.meta)
             Divider()
             Text(L10n.text("Global key")).font(AIMTheme.heading)
             Text(L10n.text("One combination opens and closes this window from any app. Press the field, then the keys: esc keeps the old one, delete clears it. A combination another AIM app or macOS holds is refused by name."))
