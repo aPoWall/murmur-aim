@@ -94,5 +94,25 @@ func runAIMCompanionChecks() throws -> Int {
     try check(portrait[0].approvedPhoto(in: edition) != nil && portrait[0].approvedPhoto(in: stock) == nil
               && portrait[1].approvedPhoto(in: edition) == nil,
               "portraits follow the edition roster and never show for a private identity")
-    return 27
+    var attentionObject = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+    let attentionItem: [String: Any] = ["id":"topic:q", "peer":"agent-demo", "kind":"owner", "title":"Synthetic decision", "date":"2026-09-29T15:00:00Z", "next_action":"Review source", "source_ids":["source-demo"], "conversation":"dm:agent-demo:agent-self", "actionable":true, "alert":true]
+    attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[attentionItem]]
+    let attentionValue = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject))
+    try check(attentionValue.attentionCount == 1 && attentionValue.attentionKeys.count == 1, "shared attention replaces raw incoming counts")
+    var changedTitle = attentionItem; changedTitle["title"] = "Renamed synthetic decision"
+    attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[changedTitle]]
+    let renamedAttention = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject))
+    try check(renamedAttention.attentionKeys == attentionValue.attentionKeys, "editorial title changes do not notify again")
+    var quietItem = attentionItem; quietItem["actionable"] = false; quietItem["alert"] = false
+    attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[quietItem]]
+    let quietAttention = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject))
+    try check(quietAttention.attentionCount == 0 && quietAttention.attentionKeys.isEmpty, "historical review never becomes an actionable badge")
+    attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[attentionItem, attentionItem]]
+    do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)); throw CheckFailure(message: "duplicate attention accepted") }
+    catch is CocoaError {}
+    var privateItem = attentionItem; privateItem["peer"] = "agent-viola-alex"
+    attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[privateItem]]
+    do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)); throw CheckFailure(message: "private attention accepted") }
+    catch is CocoaError {}
+    return 32
 }

@@ -54,6 +54,24 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let ids: [String]
         public let date: String?
     }
+    public struct Attention: Decodable, Sendable {
+        public struct Item: Decodable, Identifiable, Sendable {
+            public let id: String
+            public let peer: String
+            public let kind: String
+            public let title: String
+            public let date: String?
+            public let next_action: String
+            public let source_ids: [String]
+            public let conversation: String
+            public let actionable: Bool
+            public let alert: Bool
+            public var notificationKey: String { "attention:\(id):\(kind):\(source_ids.last ?? "")" }
+        }
+        public let schema: Int
+        public let receipts_ok: Bool
+        public let items: [Item]
+    }
     public struct Budget: Decodable, Sendable {
         public let allowed: Bool?
         public let reason: String?
@@ -92,6 +110,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public let decision_count: Int
     public let questions: [Question]
     public let incoming: [Incoming]
+    public let attention: Attention?
     public let private_contours: [PrivateContour]?
     public let owner_threads: [String: OwnerThread]?
     public let budget: Budget
@@ -110,6 +129,16 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
               (value.private_contours ?? []).allSatisfy({ $0.privacy == "status-only" }),
               (value.owner_threads ?? [:]).values.allSatisfy({ $0.verifiedURL != nil })
         else { throw CocoaError(.fileReadCorruptFile) }
+        if let attention = value.attention {
+            guard attention.schema == 1, attention.items.count <= 200,
+                  Set(attention.items.map(\.id)).count == attention.items.count,
+                  attention.items.allSatisfy({ item in
+                      ["owner", "agent", "peer", "verify", "delivery"].contains(item.kind)
+                      && !AIMEditionConfig.current.privatePeers.contains(item.peer)
+                      && !["shaper-viola", "agent-viola-alex"].contains(item.peer)
+                      && item.source_ids.count <= 30
+                  }) else { throw CocoaError(.fileReadCorruptFile) }
+        }
         return value
     }
     public func isCurrent(now: Date = Date()) -> Bool {
@@ -123,8 +152,16 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
     }
     public var attentionKeys: Set<String> {
-        Set(incoming.flatMap { item in item.ids.map { "message:\(item.peer):\($0)" } }
+        if let attention { return Set(attention.items.filter(\.alert).map(\.notificationKey)) }
+        return Set(incoming.flatMap { item in item.ids.map { "message:\(item.peer):\($0)" } }
             + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" })
+    }
+    public var attentionCount: Int {
+        attention.map { $0.items.filter(\.actionable).count }
+            ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count })
+    }
+    public func attentionItems(for person: Person) -> [Attention.Item] {
+        (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }
     }
     public var ownerQuestions: [Question] { questions.filter(\.needsOwner) }
     public var agentQuestions: [Question] { questions.filter(\.waitingForAgent) }
