@@ -1,4 +1,5 @@
 import { verifyPrivateFileAccess } from './private-file.js';
+import { sameClientFileIdentity } from './file-identity.js';
 import { constants } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -17,13 +18,13 @@ export interface BrokerInputSnapshot { config: BrokerAuthConfig; proof: string }
 
 async function checkedFile(file: string, secret: boolean, limit: number): Promise<{ text: string; file: string; proof: string }> {
   if (!path.isAbsolute(file)) throw new Error('broker-input.file-must-be-absolute');
-  const pathInfo = await lstat(file);
+  const pathInfo = await lstat(file, { bigint: true });
   if (pathInfo.isSymbolicLink() || !pathInfo.isFile()) throw new Error('broker-input.file-invalid');
   const handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const info = await handle.stat();
     if (!info.isFile() || info.size < 1 || info.size > limit) throw new Error('broker-input.file-invalid');
-    if (pathInfo.dev !== info.dev || pathInfo.ino !== info.ino) throw new Error('broker-input.file-changed');
+    if (!sameClientFileIdentity(pathInfo, await handle.stat({ bigint: true }))) throw new Error('broker-input.file-changed');
     if (typeof process.getuid === 'function' && info.uid !== process.getuid()) throw new Error('broker-input.owner-mismatch');
     if (secret && process.platform === 'win32') {
       try { await verifyPrivateFileAccess(file, await handle.stat({ bigint: true })); } catch { throw new Error('broker-input.file-not-private'); }

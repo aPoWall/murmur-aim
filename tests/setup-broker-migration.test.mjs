@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createKeyPair, createSigningKeyPair } from '../packages/security/dist/src/index.js';
 import { SQLiteMessageStore } from '../packages/core/dist/src/index.js';
 import { resolveContext } from '../packages/setup/dist/src/paths.js';
@@ -18,7 +19,7 @@ async function privateWrite(file, bytes, options) {
   const handle=await fs.open(file,'w',0o600);
   try {await protectPrivateFile(file,handle);await handle.writeFile(bytes);}finally{await handle.close();}
 }
-const root=new URL('../',import.meta.url).pathname;
+const root=fileURLToPath(new URL('../',import.meta.url));
 const profileFree=async()=>({state:'free',reason:'test.fixture-exclusive'});
 
 test('actual migration CLI refuses a user-supplied profile alias without mutating or exposing state', { skip: process.platform === 'win32' }, async t => {

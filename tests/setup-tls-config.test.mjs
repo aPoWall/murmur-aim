@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { createKeyPair, createSigningKeyPair } from '../packages/security/dist/src/index.js';
 import { validateConfig, safeError } from '../packages/setup/dist/src/config.js';
 import { loadConfig } from '../packages/setup/dist/src/config.js';
@@ -12,13 +13,13 @@ import { resolveContext } from '../packages/setup/dist/src/paths.js';
 import { protectPrivateFile } from '../packages/setup/dist/src/private-file.js';
 import { addExplicitAccessFixture } from './helpers/private-files.mjs';
 import { readBrokerInputs } from '../packages/setup/dist/src/broker-input.js';
-const exec=promisify(execFile), root=new URL('../',import.meta.url).pathname;
+const exec=promisify(execFile), root=fileURLToPath(new URL('../',import.meta.url));
 
 const config = async overrides => ({ agentId:'agent-a', subject:'msg.agent-a', natsUrl:'tls://broker.example:4222',
   keys:{ encryption:await createKeyPair(), signing:await createSigningKeyPair() }, peers:{}, ...overrides });
 
 test('setup config delegates TLS/auth policy to shared secure builder', async () => {
-  assert.equal(validateConfig(await config({natsUser:'alice',natsPassword:'secret',natsTls:{caFile:'/tmp/ca.pem'}})).natsUser,'alice');
+  assert.equal(validateConfig(await config({natsUser:'alice',natsPassword:'secret',natsTls:{caFile:path.join(os.tmpdir(),'ca.pem')}})).natsUser,'alice');
   const plaintext=await config({natsUrl:'nats://broker.example:4222'}), mixed=await config({natsToken:'x',natsUser:'alice',natsPassword:'secret'}), ip=await config({natsUrl:'tls://127.0.0.1:4222'});
   assert.equal(validateConfig(plaintext).natsUrl, plaintext.natsUrl);
   assert.throws(()=>validateConfig(mixed),/nats-auth-methods-conflict/);
@@ -35,7 +36,7 @@ test('private broker inputs require owned private single-line files', async t =>
   if(process.platform==='win32') await addExplicitAccessFixture(pass);else await fs.chmod(pass,0o644);
   await assert.rejects(readBrokerInputs({userFile:user,passwordFile:pass}),/broker-input.file-not-private/);
   if(process.platform!=='win32') await fs.chmod(pass,0o600);
-  const repair=await fs.open(pass,'r+');try{await protectPrivateFile(pass,repair);}finally{await repair.close();}
+  const repair=await fs.open(pass,'w');try{await protectPrivateFile(pass,repair);}finally{await repair.close();}
   await fs.writeFile(pass,'bad\nvalue');
   await assert.rejects(readBrokerInputs({userFile:user,passwordFile:pass}),/broker-input.secret-invalid/);
   await fs.writeFile(pass,'secret');
@@ -53,7 +54,7 @@ test('safe errors redact URL credentials, auth values, and private keys', () => 
 
 test('ordinary config load preserves legacy remote plaintext', async t => {
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'murmur-plaintext-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
-  const context=resolveContext({dataDir:dir,repoRoot:new URL('../',import.meta.url).pathname});await fs.mkdir(dir,{recursive:true});
+  const context=resolveContext({dataDir:dir,repoRoot:root});await fs.mkdir(dir,{recursive:true});
   await fs.writeFile(context.configPath,JSON.stringify(await config({natsUrl:'nats://remote.example:4222'})),{mode:0o600});
   assert.equal((await loadConfig(context)).natsUrl, 'nats://remote.example:4222');
 });
