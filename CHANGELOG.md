@@ -118,6 +118,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contacts have fresh proofs.
 
 ### Documentation
+- **Independently revocable enrollment design** (#169): an executable SQLite/NKey reference
+  and isolated Core NATS acceptance cover one-use expiry, peer-specific ACLs and revoking one
+  live participant without reconnecting another. Includes migration/rollback and explicit
+  JetStream/federation limits. Normal runtime authentication and invitations are unchanged.
 - **First opening on macOS 26** (#284): the working path is System Settings → Privacy &
   Security → Open Anyway; Finder's right-click → Open no longer offers to run the 2.12.0 app.
   Updated in README-Mac, `Read Me First.txt` inside the DMG and on the site.
