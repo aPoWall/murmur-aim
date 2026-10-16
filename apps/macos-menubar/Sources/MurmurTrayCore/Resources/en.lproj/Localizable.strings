@@ -769,7 +769,7 @@
 
 "For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection." = "For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection.";
 
-"For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically." = "For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically.";
+"For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically." = "For Claude Desktop Chat. Local Code sessions also inherit this connection; connect a dedicated Code folder for its selected Identity and Wake-up. Chat checks messages when asked.";
 
 "Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately." = "Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately.";
 "Incoming messages" = "Incoming messages";
@@ -813,3 +813,9 @@
 "Recent messages · open a row to read its text. No read receipts are sent." = "Recent messages · open a row to read its text. No read receipts are sent.";
 "Follow macOS appearance" = "Follow macOS appearance";
 "System appearance follows macOS automatically. Manual theme changes stay local to this app." = "System appearance follows macOS automatically. Manual theme changes stay local to this app.";
+
+"A global Claude connection already uses this folder's connection name. Ask your assistant to review it before connecting. No settings were changed." = "A global Claude connection already uses this folder's connection name. Ask your assistant to review it before connecting. No settings were changed.";
+
+"First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection." = "First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection.";
+
+"In your assistant, choose connection %@ and verify Identity %@ before reading or sending." = "In your assistant, choose connection %@ and verify Identity %@ before reading or sending.";

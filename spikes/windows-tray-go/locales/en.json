@@ -381,6 +381,7 @@
   "updates.unavailable": "Update information unavailable; try checking again",
   "updates.unknown": "unknown",
   "wake.settingUnknown": "The wake-up setting was not confirmed",
+  "assistants.inheritedMCPConflict": "A global Claude connection uses this folder connection name. Review that registration before connecting; no settings were changed.",
   "assistants.inheritedWakeConflict": "Murmur Wake-up is already configured globally or in a parent folder. Review and remove that connection before connecting a dedicated folder; no settings were changed.",
   "assistants.projectDirectoryRequired": "Create and select a dedicated folder for your Murmur conversation, then try again.",
   "assistants.projectMustBeDedicated": "Choose a dedicated Murmur folder, not the assistant configuration home.",

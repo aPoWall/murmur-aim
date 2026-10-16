@@ -49,9 +49,12 @@ retries creation automatically. The copy remains available in Finder after reope
 Choosing an earlier private profile restores its reply link and service setup steps
 after checking the same identity. It does not create the profile again.
 **Connect your AI assistants** writes the Murmur entry for Claude Code, Claude Desktop
-or the Codex CLI on this Mac and asks you to restart that assistant. Claude Desktop and
-Claude Code keep separate MCP files, and the Code tab inside Claude Desktop is Claude
-Code: connect each one you use ([#283](https://github.com/alexfrmn/murmur/issues/283)).
+or the Codex CLI on this Mac and asks you to restart that assistant. Local Code-tab
+sessions also inherit Desktop Chat MCP entries, which win over project entries with
+the same name. A dedicated folder uses its own `murmur-<folder-key>` connection.
+Choose that connection and check the `agentId` from `murmur_peers` against the Identity
+in Murmur before reading or sending. Chat setup alone does not install Code wake hooks
+([#283](https://github.com/alexfrmn/murmur/issues/283)).
 In the check of 29 September 2026, Codex Desktop on the same Mac showed the Murmur tools
 only after it was restarted; an open chat kept its old tool list. Other clients follow
 the shared

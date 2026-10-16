@@ -28,6 +28,14 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
         "agentId": "agent-misha", "dataDir": profile.dataDirectory, "planId": planID, "changed": true, "restartRequired": true,
         "backup": target + ".murmur-backup-" + UUID().uuidString]
     _ = try ClientConfigurationReceipt.decode(data(receipt), plan: plan); count += 1
+    var namedPlanObject = planObject; namedPlanObject["serverName"] = "murmur-1234abcd"
+    let namedPlan = try ClientConfigurationPlan.decode(data(namedPlanObject), profile: profile, agentID: "agent-misha", client: .codexCLI)
+    var namedReceipt = receipt; namedReceipt["serverName"] = "murmur-1234abcd"
+    try check(try ClientConfigurationReceipt.decode(data(namedReceipt), plan: namedPlan).serverName == "murmur-1234abcd", "The receipt retains the exact selected connection name"); count += 1
+    namedReceipt["serverName"] = "murmur"
+    try refuse("A different loaded connection name is not the confirmed plan") { _ = try ClientConfigurationReceipt.decode(data(namedReceipt), plan: namedPlan) }
+    namedPlanObject["serverName"] = "foreign-server"
+    try refuse("Unrecognized connection name") { _ = try ClientConfigurationPlan.decode(data(namedPlanObject), profile: profile, agentID: "agent-misha", client: .codexCLI) }
     for (key, value): (String, Any) in [("configPath", "/different"), ("planId", String(repeating: "b", count: 64)), ("backup", "/unrelated/file"), ("backup", NSNull()), ("changed", false)] {
         var bad = receipt; bad[key] = value
         try refuse("Invalid client receipt: \(key)") { _ = try ClientConfigurationReceipt.decode(data(bad), plan: plan) }
@@ -39,6 +47,7 @@ func runClientSetupChecks(fixtures: URL) throws -> Int {
         "expectedReply": "MURMUR-SETUP-REPLY " + nonce]
     let testPlan = try ReplyTestPlan.decode(data(testObject), agentID: "agent-misha", peerID: "peer-one", now: now)
     try check(testPlan.prompt.contains("murmur_send") && testPlan.prompt.contains("conversationId"), "Prompt must ask the selected AI client to send the real correlated request"); count += 1
+    try check(testPlan.prompt.contains("murmur_peers") && testPlan.prompt.contains("agent-misha"), "The prompt checks the actual identity before sending through a possibly different connector"); count += 1
     let observation: [String: Any] = ["schema": "murmur.reply-test/1", "agentId": "agent-misha", "peerId": "peer-one",
         "conversationId": testPlan.conversationId, "generatedAt": date.string(from: now), "state": "replied",
         "requestMsgId": "outbound-test", "replyMsgId": "inbound-test", "receivedAt": date.string(from: now)]

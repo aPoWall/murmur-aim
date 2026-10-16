@@ -41,6 +41,10 @@ struct MurmurClientSetupView: View {
             if let receipt = model.aiReceipt {
                 Divider()
                 Text(L10n.text("Connection saved for %@", receipt.client.title)).font(AIMTheme.heading)
+                if let name = receipt.serverName {
+                    Text(L10n.text("In your assistant, choose connection %@ and verify Identity %@ before reading or sending.", name, receipt.agentId))
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
                 Text(L10n.text("Reload your AI application or start a new session so it can load Murmur. Your current conversation is not closed automatically."))
                     .fixedSize(horizontal: false, vertical: true)
                 if receipt.client == .claudeCode {

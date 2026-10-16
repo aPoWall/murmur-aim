@@ -12,7 +12,8 @@ export { sameClientFileIdentity } from './file-identity.js';
 const object = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);
 
 async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clientId: string) {
-  const client = (await adapter.detectClients(c)).find(item => item.id === clientId);
+  const clients = await adapter.detectClients(c);
+  const client = clients.find(item => item.id === clientId);
   if (!client || !client.installed) throw new Error('client.not-detected');
   if (!client.configPath || !path.isAbsolute(client.configPath)) throw new Error('client.config-path-unverified');
   if (c.clientProjectDir) {
@@ -33,6 +34,14 @@ async function selectedClient(c: ServiceContext, adapter: PlatformAdapter, clien
         const file = await readClientFile(path.join(dir, '.claude', name));
         if (file.text.includes('wake-drain-claude')) throw new Error('client.inherited-wake-hook-conflict');
       }
+    }
+    // Desktop forwards Chat/user MCP registrations ahead of project entries.
+    // Refuse an occupied dedicated name instead of selecting a global identity.
+    for (const global of clients.filter(item => ['claude-code', 'claude-desktop'].includes(item.id))) {
+      if (!global.configPath || !path.isAbsolute(global.configPath)) continue;
+      const file = await readClientFile(global.configPath);
+      const { original, key } = clientDocument(global, file.text);
+      if (original[key]?.[mcpEntryName(c)] !== undefined) throw new Error('client.inherited-mcp-entry-conflict');
     }
     return { ...client, configPath: path.join(c.clientProjectDir, '.mcp.json') };
   }
@@ -78,6 +87,7 @@ const hookPath = (value: string) => `"${value.replaceAll('\\', '/')}"`;
 const WAKE_WINDOW_SECONDS = 28800;
 const projectLane = (c: ServiceContext) => c.clientProjectDir
   ? createHash('sha256').update(c.clientProjectDir).digest('hex').slice(0, 8) : null;
+const mcpEntryName = (c: ServiceContext) => c.clientProjectDir ? `murmur-${projectLane(c)}` : 'murmur';
 /** The node wake drain (docs/wake-native.md): polls the store after each turn and wakes the session. */
 function desiredWakeHook(c: ServiceContext) {
   // Claude Code ends a hook without its own `timeout` after 600 s (hooks reference, asyncRewake);
@@ -160,10 +170,23 @@ function desiredEntry(c: ServiceContext) {
       ...(lane ? { MURMUR_WAKE_SESSION_KEY: lane } : {}) } };
 }
 type ClientFile = Awaited<ReturnType<typeof readClientFile>>;
+function mcpChange(c: ServiceContext, original: Record<string, any>, key: string) {
+  const entry = desiredEntry(c), name = mcpEntryName(c), previous = original[key]?.[name];
+  const servers = { ...original[key] }, legacy = servers.murmur;
+  // Only migrate the old project registration for this exact profile. Other
+  // servers and identities remain intact, and replacement keeps a raw backup.
+  const legacyOwned = !!c.clientProjectDir && object(legacy) && object(legacy.env)
+    && legacy.env.DATA_DIR === c.dataDir && legacy.env.MURMUR_STORE_PATH === c.storePath
+    && typeof legacy.command === 'string' && Array.isArray(legacy.args) && legacy.args.length === 1
+    && typeof legacy.args[0] === 'string' && /[/\\]packages[/\\]mcp-server[/\\]dist[/\\]src[/\\]index\.js$/.test(legacy.args[0]);
+  if (legacyOwned) delete servers.murmur;
+  servers[name] = entry;
+  const action = legacyOwned ? 'replace' : isDeepStrictEqual(previous, entry) ? 'unchanged' : previous === undefined ? 'add' : 'replace';
+  return { entry, name, action, next: { ...original, [key]: servers } };
+}
 async function planFor(c: ServiceContext, client: ClientDetection & { configPath: string }, current: ClientFile, settings?: ClientFile) {
   const config = await loadConfig(c), { original, key } = clientDocument(client, current.text);
-  const entry = desiredEntry(c), previous = original[key]?.murmur;
-  const entryAction = isDeepStrictEqual(previous, entry) ? 'unchanged' : previous === undefined ? 'add' : 'replace';
+  const { entry, name, action: entryAction } = mcpChange(c, original, key);
   const plannedHook = settings && planWakeHook(c, settings.text);
   // The preview names the hand-written events it would repoint, so the person reads them before
   // confirming rather than finding a changed command afterwards (#294).
@@ -176,9 +199,9 @@ async function planFor(c: ServiceContext, client: ClientDetection & { configPath
   // Bind confirmation to the target, exact bytes and selected identity/runtime.
   // No existing commands, environment values, auth or config contents leave the engine.
   const planId = createHash('sha256').update(JSON.stringify([client.id, client.configPath, current,
-    config.agentId, config.keys.signing.publicKey, config.keys.encryption.publicKey, entry, settings ?? null])).digest('hex');
+    config.agentId, config.keys.signing.publicKey, config.keys.encryption.publicKey, name, entry, settings ?? null])).digest('hex');
   return { schema: 'murmur.client-plan/1', client: client.id, configPath: client.configPath,
-    agentId: config.agentId, dataDir: c.dataDir, action, planId, configExisted: current.existed, restartRequired: true, ...(wakeHook ? { wakeHook } : {}) };
+    agentId: config.agentId, dataDir: c.dataDir, serverName: name, action, planId, configExisted: current.existed, restartRequired: true, ...(wakeHook ? { wakeHook } : {}) };
 }
 
 /**
@@ -236,12 +259,11 @@ async function configureMcpEntry(c: ServiceContext, client: ClientDetection & { 
     const current = await readClientFile(file), { text, existed } = current;
     const plan = expectedPlan === undefined ? undefined : await planFor(c, client, current, settings);
     if (plan && plan.planId !== expectedPlan) throw new Error('client.plan-stale');
-    const { original, key, parse } = clientDocument(client, text), entry = desiredEntry(c);
-    const confirmed = plan ? { planId: plan.planId, agentId: plan.agentId, dataDir: plan.dataDir } : {};
-    const previous = original[key]?.murmur;
-    if (isDeepStrictEqual(previous, entry)) return { schema: 'murmur.client/1', client: clientId, configPath: file, changed: false, backup: null, restartRequired: true, ...confirmed };
-    if (previous !== undefined && !replace) throw new Error('client.murmur-entry-conflict');
-    const next = { ...original, [key]: { ...original[key], murmur: entry } };
+    const { original, key, parse } = clientDocument(client, text);
+    const { name, action, next } = mcpChange(c, original, key);
+    const confirmed = { ...(plan ? { planId: plan.planId, agentId: plan.agentId, dataDir: plan.dataDir } : {}), serverName: name };
+    if (action === 'unchanged') return { schema: 'murmur.client/1', client: clientId, configPath: file, changed: false, backup: null, restartRequired: true, ...confirmed };
+    if (action === 'replace' && !replace) throw new Error('client.murmur-entry-conflict');
     const serialized = client.format === 'json' ? JSON.stringify(next, null, 2) + '\n' : TOML.stringify(next);
     if (!isDeepStrictEqual(parse(serialized), next)) throw new Error('client.config-roundtrip-failed');
     const backup = existed ? `${file}.murmur-backup-${randomUUID()}` : null;

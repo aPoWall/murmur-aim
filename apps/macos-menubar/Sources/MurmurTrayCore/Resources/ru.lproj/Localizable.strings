@@ -769,7 +769,7 @@
 
 "For Claude Code in a terminal or the Code tab in Claude Desktop. The Chat tab needs its own connection." = "Для Claude Code в терминале или вкладки Code в Claude Desktop. Вкладка Chat подключается отдельно.";
 
-"For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically." = "Для вкладки Chat в Claude Desktop. Для вкладки Code отдельно подключите Claude Code. Chat читает входящие по вашей просьбе; автоматического пробуждения нет.";
+"For the Chat tab in Claude Desktop. To use the Code tab, connect Claude Code separately. Chat checks incoming messages when you ask; it does not start a turn automatically." = "Для Chat в Claude Desktop. Локальные сессии Code также наследуют это подключение; подключите отдельную папку Code для выбранной Личности и Пробуждения. Chat проверяет письма по запросу.";
 
 "Codex and Codex CLI share this connection. Reload the application you use, then test a returned reply. Automatic wake-up is configured separately." = "Codex и Codex CLI используют общее подключение. Перезапустите нужное приложение и проверьте получение ответа. Автоматическое пробуждение настраивается отдельно.";
 "Incoming messages" = "Входящие сообщения";
@@ -813,3 +813,9 @@
 "Recent messages · open a row to read its text. No read receipts are sent." = "Последние сообщения · откройте строку, чтобы прочитать текст. Отметка о прочтении не отправляется.";
 "Follow macOS appearance" = "Следовать теме macOS";
 "System appearance follows macOS automatically. Manual theme changes stay local to this app." = "Системная тема меняется вместе с macOS. Ручной выбор действует только в этом приложении.";
+
+"A global Claude connection already uses this folder's connection name. Ask your assistant to review it before connecting. No settings were changed." = "Глобальное подключение Claude уже использует имя подключения этой папки. Попросите Помощника проверить его перед подключением. Настройки не изменены.";
+
+"First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection." = "Сначала вызови murmur_peers в выбранном подключении и проверь, что agentId равен %@. Если он отличается, остановись без чтения и отправки сообщений; выбери правильное подключение.";
+
+"In your assistant, choose connection %@ and verify Identity %@ before reading or sending." = "В Помощнике выберите подключение %@ и проверьте Личность %@ перед чтением или отправкой.";

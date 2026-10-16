@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Russian guides next to the English ones.
 
 ### Fixed
+- **Claude.app keeps the selected project Identity.** Dedicated folders use a
+  distinct MCP connection name because Code forwards same-named Desktop/user MCP
+  entries ahead of project entries. Global settings stay intact; an older owned
+  project entry migrates only after confirmation. The Mac test prompt checks the
+  actual `agentId` before any message is sent.
 - **Project lane replies use the same binding key as their shared reader.** Replies
   cannot be skipped as belonging to another session. Project connection also checks
   `settings.local.json` in the selected folder, ancestors and global configuration

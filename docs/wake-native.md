@@ -202,14 +202,17 @@ Env:
 - `MURMUR_WAKE_CURSOR`: cursor file. Defaults to one file **per session**,
   `~/.murmur-wake-cursor-<session>`.
 - `MURMUR_WAKE_SESSION_KEY`: overrides the session key (first 8 chars of
-  `CLAUDE_CODE_SESSION_ID` otherwise).
+  `CLAUDE_CODE_SESSION_ID` otherwise). A manually configured shared lane must set
+  this same key in both the MCP entry environment and the Stop hook. Project
+  configuration writes both sides together.
 
 Drain semantics:
 
 - Only `local_messages.direction='inbound'` rows are surfaced.
-- One cursor per session, so a message wakes **every** live session rather than only
-  whichever one reached the hook first. Within a session the hook and the cold-idle
-  watcher share the key, so it still wakes exactly once.
+- Outside project mode, each session has its own cursor; an unbound message may
+  wake every eligible session. Within a session the hook and cold-idle watcher
+  share a key. Dedicated project mode shares one cursor/lock across its sessions
+  and binds outgoing conversations to that lane, so one reader takes a reply once.
 - Session binding (node drain, `wake-drain-claude.mjs`). When a Claude Code session sends
   on a conversation through `murmur_send` or `murmur_request`, the MCP server records it as
   the conversation's owner in `<store dir>/.claude-session-bindings/`. A reply on that

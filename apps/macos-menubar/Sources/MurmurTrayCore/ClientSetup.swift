@@ -1,10 +1,11 @@
 import Foundation
 
 public enum ClientSetupError: Error, LocalizedError, Sendable {
-    case inheritedHook, projectFolder
+    case inheritedHook, inheritedMCP, projectFolder
     static func from(code: String?) -> Self? {
         switch code {
         case "client.inherited-wake-hook-conflict": .inheritedHook
+        case "client.inherited-mcp-entry-conflict": .inheritedMCP
         case "client.project-directory-required", "client.project-must-be-dedicated", "client.project-path-invalid": .projectFolder
         default: nil
         }
@@ -12,6 +13,7 @@ public enum ClientSetupError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .inheritedHook: L10n.text("An older global or parent-folder Murmur connection already wakes chats. Ask your assistant to review that older hook before connecting this folder. No settings were changed.")
+        case .inheritedMCP: L10n.text("A global Claude connection already uses this folder's connection name. Ask your assistant to review it before connecting. No settings were changed.")
         case .projectFolder: L10n.text("Choose a separate Murmur folder for your mail conversation. Do not select Claude's settings folder.")
         }
     }
@@ -51,6 +53,7 @@ public struct ClientConfigurationPlan: Decodable, Sendable, Identifiable {
     public let client: AIClientKind
     public let action: Action
     public let restartRequired: Bool, configExisted: Bool
+    public let serverName: String?
     public var id: String { planId }
     public static func decode(_ data: Data, profile: ProfileBinding, agentID: String, client: AIClientKind) throws -> Self {
         let plan = try JSONDecoder().decode(Self.self, from: data)
@@ -58,6 +61,7 @@ public struct ClientConfigurationPlan: Decodable, Sendable, Identifiable {
               plan.agentId == agentID, plan.dataDir == profile.dataDirectory,
               explicitAbsolutePath(plan.configPath), plan.restartRequired,
               plan.planId.range(of: "\\A[a-f0-9]{64}\\z", options: .regularExpression) != nil else { throw ProfileError.invalidResponse }
+        if let name = plan.serverName, name.range(of: "\\Amurmur(?:-[a-f0-9]{8})?\\z", options: .regularExpression) == nil { throw ProfileError.invalidResponse }
         return plan
     }
 }
@@ -66,11 +70,13 @@ public struct ClientConfigurationReceipt: Decodable, Sendable {
     public let client: AIClientKind
     public let changed: Bool, restartRequired: Bool
     public let backup: String?
+    public let serverName: String?
     public static func decode(_ data: Data, plan: ClientConfigurationPlan) throws -> Self {
         let value = try JSONDecoder().decode(Self.self, from: data)
         guard schemaKnown(value.schema, name: "murmur.client"), value.planId == plan.planId,
               value.client == plan.client, value.agentId == plan.agentId, value.dataDir == plan.dataDir,
               value.configPath == plan.configPath, value.restartRequired,
+              value.serverName == plan.serverName,
               value.changed == (plan.action != .unchanged) else { throw ProfileError.invalidResponse }
         if let backup = value.backup {
             guard value.changed, explicitAbsolutePath(backup), backup.hasPrefix(plan.configPath + ".murmur-backup-"),
@@ -99,7 +105,8 @@ public struct ReplyTestPlan: Decodable, Sendable {
     public var prompt: String {
         let arguments = ["to": peerId, "conversationId": conversationId, "text": requestText]
         let json = (try? JSONSerialization.data(withJSONObject: arguments, options: [.prettyPrinted, .sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        return L10n.text("Use the Murmur tool murmur_send with exactly these arguments. Send a real message; do not simulate the tool or its result.") + "\n\n" + json
+        return L10n.text("First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection.", agentId)
+            + "\n\n" + L10n.text("Use the Murmur tool murmur_send with exactly these arguments. Send a real message; do not simulate the tool or its result.") + "\n\n" + json
     }
 }
 public struct ReplyTestObservation: Decodable, Sendable {

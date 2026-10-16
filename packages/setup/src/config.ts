@@ -69,6 +69,7 @@ export function humanError(error: unknown): string {
     return 'Enter a valid public Server address with --broker, such as nats://server.example.com:4222. Do not include an access key in the address.';
   }
   const messages: Record<string, string> = {
+    'client.inherited-mcp-entry-conflict': 'A global Claude connection already uses this folder connection name. Review that registration before connecting; no settings were changed.',
     'client.inherited-wake-hook-conflict': 'A global or parent-folder Murmur hook already wakes chats. Review and remove that older hook before connecting a dedicated folder; no settings were changed.',
     'client.project-directory-required': 'Create and select a dedicated folder for your Murmur conversation, then try again.',
     'client.project-must-be-dedicated': 'Choose a dedicated Murmur folder, not the assistant configuration home.',

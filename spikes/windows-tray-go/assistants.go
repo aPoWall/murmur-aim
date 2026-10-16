@@ -79,6 +79,7 @@ func configureAssistant(s onboardingSteps, client, profile, identity string) err
 // can return a sentence with an action. assistant_codes_test.go reads the engine sources, so a
 // new engine code without a sentence fails the build instead of reaching a person as a shrug.
 var assistantFailureKeys = map[string]string{
+	"client.inherited-mcp-entry-conflict": "assistants.inheritedMCPConflict",
 	"client.inherited-wake-hook-conflict": "assistants.inheritedWakeConflict",
 	"client.project-directory-required":   "assistants.projectDirectoryRequired",
 	"client.project-must-be-dedicated":    "assistants.projectMustBeDedicated",
