@@ -25,6 +25,11 @@ its Windows access policy, including intentional service or sandbox readers; it
 does not audit or tighten that existing policy. Its new backup is private. Preview
 and unchanged client entries do not change permissions.
 
+Private backups are never pruned automatically. The explicit `backups preview`
+and `backups cleanup --plan-id` commands preserve a 30-day recovery window and at
+least five copies for each selected source. See [backup retention](backup-retention.md)
+for agent/client scopes, additional restore points, refusal rules and migration.
+
 When `init` or `join` creates the profile directory, it first applies the same
 owner-and-SYSTEM policy with the system `icacls.exe`. An existing profile directory
 keeps its ACL. If protecting a newly created directory fails, setup removes the

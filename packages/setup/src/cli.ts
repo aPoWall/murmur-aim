@@ -1,4 +1,5 @@
 import { configureClient, previewClientConfiguration } from './clients.js';
+import { previewBackups, cleanupBackups, type BackupSelection } from './backups.js';
 import { prepareReplyTest, checkReplyTest } from './reply-test.js';
 import { listOutboxAttention, setOutboxDismissed } from './outbox-attention.js';
 import { dismissWake } from './wake-attention.js';
@@ -41,6 +42,7 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
   let parsed;
   try {
     parsed = parseArgs({ args, allowPositionals: true, options: {
+      kind: { type: 'string' }, 'config-file': { type: 'string' }, 'keep-file': { type: 'string', multiple: true },
       'msg-id': { type: 'string' }, 'expected-state': { type: 'string' }, 'expected-agent': { type: 'string' },
       'project-dir': { type: 'string' },
       'agent-id': { type: 'string' }, 'broker-url': { type: 'string' }, broker: { type: 'string' }, 'token-file': { type: 'string' }, 'invite-file': { type: 'string' }, 'reply-file': { type: 'string' }, 'reply-out': { type: 'string' }, out: { type: 'string' },
@@ -52,7 +54,7 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
     throw new Error((error as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ? 'cli.unknown-option' : 'cli.invalid-arguments');
   }
   const { values, positionals } = parsed;
-  if (values.help || !positionals.length) return { commands: ['version --json', 'updates check|enable|disable --json', 'init --agent-id ID --broker-url URL [--token-file FILE]', 'invite [--out FILE] [--broker PUBLIC_URL] [--json]', 'join --agent-id ID (--invite-stdin|--invite-file FILE) [--reply-out FILE] [--json]', 'add-peer (--reply-stdin|--reply-file FILE)', 'status --json|--line', 'doctor --json [--peer AGENT] [--timeout MILLISECONDS]', 'logs path --json', 'service install [--replace-previous]|start|stop|uninstall', 'clients detect', 'clients preview --client ID [--project-dir ABSOLUTE]', 'clients configure --client ID [--project-dir ABSOLUTE] [--replace] [--plan-id SHA256]', 'reply-test prepare --peer AGENT', 'reply-test check --test-token TOKEN', 'wake pause|resume [--apply]', 'wake dismiss --msg-id ID --expected-agent ID', 'inbox read [--limit 1..100]', 'inbox mark-read', 'outbox list --json', 'outbox dismiss|restore --msg-id ID --expected-state TOKEN --expected-agent ID', 'mcp serve --data-dir ABSOLUTE'],
+  if (values.help || !positionals.length) return { commands: ['backups preview|cleanup --kind agent|client [--config-file ABSOLUTE] [--keep-file ABSOLUTE] [--plan-id SHA256]', 'version --json', 'updates check|enable|disable --json', 'init --agent-id ID --broker-url URL [--token-file FILE]', 'invite [--out FILE] [--broker PUBLIC_URL] [--json]', 'join --agent-id ID (--invite-stdin|--invite-file FILE) [--reply-out FILE] [--json]', 'add-peer (--reply-stdin|--reply-file FILE)', 'status --json|--line', 'doctor --json [--peer AGENT] [--timeout MILLISECONDS]', 'logs path --json', 'service install [--replace-previous]|start|stop|uninstall', 'clients detect', 'clients preview --client ID [--project-dir ABSOLUTE]', 'clients configure --client ID [--project-dir ABSOLUTE] [--replace] [--plan-id SHA256]', 'reply-test prepare --peer AGENT', 'reply-test check --test-token TOKEN', 'wake pause|resume [--apply]', 'wake dismiss --msg-id ID --expected-agent ID', 'inbox read [--limit 1..100]', 'inbox mark-read', 'outbox list --json', 'outbox dismiss|restore --msg-id ID --expected-state TOKEN --expected-agent ID', 'mcp serve --data-dir ABSOLUTE'],
     options: ['--data-dir ABSOLUTE', '--service-name NAME'], note: 'Windows service mutations require an elevated terminal and the matching native helper.' };
   const [command, action, extra] = positionals;
   if (extra) throw new Error('cli.unexpected-argument');
@@ -64,6 +66,12 @@ export async function main(args: string[], adapter = platformAdapter(), input: A
   if (values['project-dir'] !== undefined && !['clients', 'doctor'].includes(command)) throw new Error('cli.project-dir-only-for-clients-or-doctor');
   const context = resolveContext({ dataDir: values['data-dir'], serviceName: values['service-name'], clientProjectDir: values['project-dir'] });
   const required = (name: string) => { const value = values[name as keyof typeof values]; if (typeof value !== 'string' || !value) throw new Error('cli.required-option:' + name); return value; };
+  if (command === 'backups' && ['preview', 'cleanup'].includes(action)) {
+    const kind = required('kind');
+    if (kind !== 'agent' && kind !== 'client') throw new Error('backups.kind-required');
+    const selection: BackupSelection = { kind, configFile: values['config-file'], keepFiles: values['keep-file'] };
+    return action === 'preview' ? previewBackups(context, selection) : cleanupBackups(context, selection, required('plan-id'));
+  }
   if (command === 'init' && !action) return initialize(context, { agentId: required('agent-id'), brokerUrl: required('broker-url'), tokenFile: values['token-file'] });
   const onboardingInput = async (kind: 'invite' | 'reply') => {
     if (values[`${kind}-file`] !== undefined && values[`${kind}-stdin`]) throw new Error('onboarding.input-conflict');

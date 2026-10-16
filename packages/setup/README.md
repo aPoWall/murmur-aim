@@ -82,3 +82,9 @@ Pass the same `--service-name` used during installation when it was customized.
 ## Dedicated Claude Code folder (2.12.1 candidate)
 
 Use `clients preview/configure --client claude-code --project-dir ABSOLUTE` to connect a dedicated existing folder. The writer preserves the selected identity, writes project MCP/hooks, shares one wake cursor across chats there, and refuses inherited wake hooks before mutation. See [desktop assistant setup](../../docs/desktop-assistants.md#one-dedicated-conversation-in-claudes-code-tab-2121-candidate). Status/doctor report live reader counts on macOS/Linux and explicit unknowns elsewhere. Homebrew Node paths use a verified stable executable; explicit runtime overrides remain unchanged.
+Private Identity and client configuration backups are kept until you explicitly
+clean them. `murmur backups preview --kind agent --data-dir /absolute/profile
+--json` shows the exact removal plan; `backups cleanup` requires its `--plan-id`.
+The policy keeps 30 days and at least five copies per source, plus named restore
+points. Client JSON/TOML files use `--kind client --config-file ABSOLUTE`.
+See [backup retention and recovery](../../docs/backup-retention.md) before deleting copies.

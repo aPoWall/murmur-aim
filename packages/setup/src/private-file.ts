@@ -3,6 +3,7 @@ import { lstat, type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { sameClientFileIdentity } from './file-identity.js';
+import type { BigIntStats } from 'node:fs';
 
 const exec = promisify(execFile);
 const protect = `
@@ -99,4 +100,31 @@ export async function protectPrivateFile(file: string, handle: FileHandle): Prom
 /** Existing Windows files keep their access policy, including intentional sandbox readers. */
 export async function preparePrivateReplacement(file: string, handle: FileHandle, previous: string): Promise<void> {
   return prepareFile(file, handle, previous);
+}
+
+/** Read-only verification for backup cleanup; never repair an unexpectedly public backup. */
+export async function verifyPrivateFileAccess(file: string, info: BigIntStats): Promise<void> {
+  if (process.platform !== 'win32') {
+    if ((info.mode & 0o077n) !== 0n) throw new Error('backups.permissions-invalid');
+    return;
+  }
+  const script = `
+$ErrorActionPreference = 'Stop'
+$env:PSModulePath = [System.IO.Path]::Combine($PSHOME, 'Modules')
+$acl = Get-Acl -LiteralPath $env:MURMUR_SETUP_PRIVATE_FILE
+$user = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$allowed = @($user, 'S-1-5-18') | Select-Object -Unique
+if (!$acl.AreAccessRulesProtected -or $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $user) { throw 'invalid' }
+$rules = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]))
+if ($rules.Count -ne $allowed.Count) { throw 'invalid' }
+foreach ($rule in $rules) {
+  if ($allowed -notcontains $rule.IdentityReference.Value -or $rule.AccessControlType -ne 'Allow' -or
+      $rule.FileSystemRights -ne [System.Security.AccessControl.FileSystemRights]::FullControl -or $rule.IsInherited) { throw 'invalid' }
+}
+`;
+  try {
+    await exec(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+      ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+      { env: { ...process.env, MURMUR_SETUP_PRIVATE_FILE: file }, windowsHide: true, timeout: 60_000, maxBuffer: 64 * 1024 });
+  } catch { throw new Error('backups.permissions-invalid'); }
 }
