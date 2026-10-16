@@ -7,15 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **One explicit installation profile** (#168): a private, identity-bound descriptor
-  shared by CLI, MCP and daemon. Explicit profile overrides remain available;
-  missing or conflicting selection fails before opening a store. Legacy `.data`
-  migration is an explicit `installation select`, never an automatic move.
-- **Explicit private backup cleanup** (#167): preview one Identity or client configuration's
-  copies, keep 30 days and at least five restore points, optionally retain named older copies,
-  then delete only the unchanged preview with its digest. No automatic pruning or migration.
-
 ### Pending
 - **Mandatory remote TLS and production credential cutover** remain a coordinated
   operational change. The compatible client preparation below does not switch the
@@ -25,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.12.1] - Unreleased
 
 ### Added
+- **One explicit installation profile** (#168): a private, identity-bound descriptor
+  shared by CLI, MCP and daemon. Explicit profile overrides remain available;
+  missing or conflicting selection fails before opening a store. Legacy `.data`
+  migration is an explicit `installation select`, never an automatic move.
+- **Explicit private backup cleanup** (#167): preview one Identity or client configuration's
+  copies, keep 30 days and at least five restore points, optionally retain named older copies,
+  then delete only the unchanged preview with its digest. No automatic pruning or migration.
 - **Optional NATS TLS and user/password authentication** (#153 compatible scope).
   Explicit TLS endpoints require certificate/hostname validation without plaintext
   fallback; existing remote `nats://` profiles keep working. Daemon, MCP reply tap,
