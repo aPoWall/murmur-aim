@@ -159,3 +159,48 @@ test('real isolated daemon uses the selected identity from another cwd and pinne
   const pinned = resolveInstallation({ env: { DATA_DIR: f.dataDir, HOME: '/other-account', MURMUR_INSTALLATION_FILE: '/absent/descriptor.json' }, requireConfig: true });
   assert.equal(pinned.source, 'environment'); assert.equal(pinned.dataDir, f.dataDir);
 });
+
+for (const entry of ['scripts/murmur-daemon.mjs', 'scripts/murmur-mcp-channel-server.mjs']) {
+  test(`${entry} refuses a conflicting roster path before creating any store`, async t => {
+    const f = await fixture(t); await f.init('nats://127.0.0.1:1');
+    const configPath = path.join(f.dataDir, 'agent-config.json');
+    const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    await fs.writeFile(configPath, JSON.stringify({ ...config, channelRoster: { enabled: true } }));
+    const before = new Map(await Promise.all((await fs.readdir(f.dataDir)).map(async name =>
+      [name, await fs.readFile(path.join(f.dataDir, name))])));
+    const cwd = path.join(f.root, 'unrelated'); await fs.mkdir(cwd);
+    const wrongRoster = path.join(f.root, 'wrong-roster.db');
+    const result = spawnSync(process.execPath, [path.join(repo, entry)], {
+      cwd, env: { ...f.env, MURMUR_CHANNEL_ROSTER_PATH: wrongRoster }, encoding: 'utf8', timeout: 5000,
+    });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /installation.store-conflict/);
+    assert.deepEqual((await fs.readdir(f.dataDir)).sort(), [...before.keys()].sort());
+    for (const [name, bytes] of before) assert.deepEqual(await fs.readFile(path.join(f.dataDir, name)), bytes);
+    await assert.rejects(fs.stat(wrongRoster), { code: 'ENOENT' });
+    assert.deepEqual(await fs.readdir(cwd), []);
+  });
+
+  test(`${entry} preserves an explicit configured roster path over an inherited override`, { timeout: 20000 }, async t => {
+    try { execFileSync('nats-server', ['--version'], { stdio: 'ignore' }); } catch { t.skip('isolated broker unavailable'); return; }
+    const f = await fixture(t), listener = createServer(); listener.listen(0, '127.0.0.1'); await once(listener, 'listening');
+    const port = listener.address().port; await new Promise(resolve => listener.close(resolve));
+    await f.init(`nats://127.0.0.1:${port}`);
+    const configPath = path.join(f.dataDir, 'agent-config.json'), rosterPath = path.join(f.root, 'configured-roster.db');
+    const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    await fs.writeFile(configPath, JSON.stringify({ ...config, channelRoster: { enabled: true, path: rosterPath } }));
+    const broker = spawn('nats-server', ['-a', '127.0.0.1', '-p', String(port)], { stdio: 'ignore' });
+    t.after(async () => { if (broker.exitCode === null) { broker.kill(); await once(broker, 'exit'); } });
+    const wrongRoster = path.join(f.root, 'wrong-roster.db');
+    const child = spawn(process.execPath, [path.join(repo, entry)], { cwd: f.root, env: { ...f.env,
+      MURMUR_CHANNEL_ROSTER_PATH: wrongRoster, MURMUR_MCP_LOG_PATH: path.join(f.root, 'channel.log') }, stdio: ['pipe', 'pipe', 'pipe'] });
+    t.after(async () => { if (child.exitCode === null) { child.kill(); await once(child, 'exit'); } });
+    let output = ''; child.stdout.on('data', chunk => { output += chunk; }); child.stderr.on('data', chunk => { output += chunk; });
+    const ready = entry.includes('daemon') ? 'Daemon ready' : 'Murmur MCP channel server subscribed';
+    for (let i = 0; i < 200 && !output.includes(ready); i++) { if (child.exitCode !== null) break; await delay(25); }
+    assert.ok(output.includes(ready), output);
+    assert.equal((await fs.stat(rosterPath)).isFile(), true);
+    await assert.rejects(fs.stat(wrongRoster), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(f.dataDir, 'channel-roster.db')), { code: 'ENOENT' });
+  });
+}

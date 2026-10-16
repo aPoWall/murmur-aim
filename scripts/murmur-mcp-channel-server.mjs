@@ -51,6 +51,9 @@ const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true 
 const configPath = path.join(dataDir, "agent-config.json");
 const config = await readPrivateJson(configPath);
 const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
+// Resolve the effective roster path before opening the shared outbox store.
+const rosterPath = config.channelRoster?.enabled
+  ? config.channelRoster.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH) : null;
 const consumerId = process.env.MURMUR_MCP_CONSUMER_ID || `${config.agentId}-mcp-channel-${process.pid}`;
 const emitToSession = envFlag("MURMUR_MCP_TO_SESSION", true);
 const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
@@ -63,8 +66,7 @@ const broker = new NatsBroker({
   tls: config.natsTls,
 });
 const dedupe = new SQLiteDedupeOutboxStore(dbPath);
-const roster = config.channelRoster?.enabled
-  ? new ChannelRosterStore(config.channelRoster.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH)) : null;
+const roster = rosterPath === null ? null : new ChannelRosterStore(rosterPath);
 const subjectRoutes = channelSubjectRoutes(config.subject, consumerId, config.subjectScoping);
 if (subjectRoutes.length > 1 && !roster) throw new Error("subject-scoping-requires-roster");
 

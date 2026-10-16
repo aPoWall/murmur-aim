@@ -60,6 +60,10 @@ try {
 
 const { agentId, natsUrl, natsToken, natsUser, natsPassword, natsTls, subject, keys } = config;
 const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
+// Refuse conflicting installation paths before any SQLite store is opened.
+const channelRosterConfig = config.channelRoster || {};
+const channelRosterEnabled = channelRosterConfig.enabled ?? process.env.MURMUR_CHANNEL_ROSTER === "1";
+const channelRosterPath = channelRosterConfig.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH);
 const flushIntervalMs = Number(process.env.FLUSH_INTERVAL_MS) || 2000;
 const jetstreamConfig = config.jetstream || {};
 const jetstreamEnabled = jetstreamConfig.enabled ?? process.env.MURMUR_JETSTREAM === "1";
@@ -160,9 +164,6 @@ const nativeLeaseGate = leaseStore
   : null;
 if (scopedChannelsEnabled) log("info", "Scoped-channels native lease gate enabled", { ttlMs: nativeLeaseTtlMs });
 
-const channelRosterConfig = config.channelRoster || {};
-const channelRosterEnabled = channelRosterConfig.enabled ?? process.env.MURMUR_CHANNEL_ROSTER === "1";
-const channelRosterPath = channelRosterConfig.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH);
 const channelRosterStore = channelRosterEnabled ? new ChannelRosterStore(channelRosterPath) : null;
 const subjectRoutes = channelSubjectRoutes(subject, agentId, config.subjectScoping);
 if (subjectRoutes.length > 1) {
