@@ -38,7 +38,7 @@ struct AIMAttentionList: View {
     private func label(_ kind: String) -> String {
         switch kind {
         case "owner": return "Your reply or decision"
-        case "agent": return "Agent action needed"
+        case "agent": return "Assistant action needed"
         case "delivery": return "Delivery failed"
         default: return "Needs verification"
         }
