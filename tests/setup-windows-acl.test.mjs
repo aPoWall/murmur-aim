@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { main } from '../packages/setup/dist/src/cli.js';
+import { writePrivateFixture } from './helpers/private-files.mjs';
 
 const windows = process.platform === 'win32';
 const system32 = tool => path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', tool);
@@ -21,12 +22,12 @@ async function broadParent(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'murmur-acl- пробел кириллица-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   execFileSync(system32('icacls.exe'), [root, '/grant', `*${AUTHENTICATED_USERS}:(OI)(CI)(M)`, `*${USERS}:(OI)(CI)(RX)`]);
-  await fs.writeFile(path.join(root, 'token.txt'), 'test-token-not-a-secret');
+  await writePrivateFixture(path.join(root, 'token.txt'), 'test-token-not-a-secret');
   const probe = path.join(root, 'probe.txt'); await fs.writeFile(probe, '');
   assert.ok(aces(probe).some(a => a.startsWith(`${AUTHENTICATED_USERS}|`)), 'fixture parent must hand broad access to new files');
   return root;
 }
-const initArgs = root => ['init', '--agent-id', 'agent-a', '--broker-url', 'nats://server.example.com:4222', '--token-file', path.join(root, 'token.txt'), '--data-dir', path.join(root, 'agent-a')];
+const initArgs = (root, credential = true) => ['init', '--agent-id', 'agent-a', '--broker-url', 'nats://server.example.com:4222', ...(credential ? ['--token-file', path.join(root, 'token.txt')] : []), '--data-dir', path.join(root, 'agent-a')];
 function assertOwnerOnly(target) {
   const actual = aces(target);
   for (const broad of [AUTHENTICATED_USERS, USERS]) assert.ok(!actual.some(a => a.startsWith(`${broad}|`)), `${path.basename(target)} grants ${broad}: ${actual}`);
@@ -55,7 +56,9 @@ test('an existing profile directory keeps the ACL its owner chose', { skip: !win
 
 test('a failed ACL step leaves nothing that a retry could take for an existing profile', { skip: !windows && 'Windows DACL' }, async t => {
   const root = await broadParent(t), profile = path.join(root, 'nested', 'agent-a');
-  const args = initArgs(root).map(a => a === path.join(root, 'agent-a') ? profile : a);
+  // Exercise the profile ACL failure itself, independently of the earlier
+  // credential-file ACL verification, which also requires SystemRoot.
+  const args = initArgs(root, false).map(a => a === path.join(root, 'agent-a') ? profile : a);
   const systemRoot = process.env.SystemRoot;
   process.env.SystemRoot = path.join(root, 'no-windows-here');
   try {

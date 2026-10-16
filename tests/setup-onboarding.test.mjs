@@ -8,7 +8,7 @@ import { main } from '../packages/setup/dist/src/cli.js';
 import { readStatus } from '../packages/setup/dist/src/status.js';
 import { resolveContext } from '../packages/setup/dist/src/paths.js';
 import { skipWithoutSymlinks } from './windows-host.mjs';
-import { assertPrivateFile, allowPublicReadInFixtureDirectory } from './helpers/private-files.mjs';
+import { assertPrivateFile, allowPublicReadInFixtureDirectory, writePrivateFixture } from './helpers/private-files.mjs';
 const adapter = { manager: 'none', status: async () => ({ state: 'stopped', manager: 'none', pid: null, since: null, lastExitCode: null, observedStorePath: null, restartCount: null, restartWindowMs: null }) };
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'murmur-onboard-')), cleanup = [];
@@ -54,7 +54,7 @@ test('the Invitation warning names a Server access key only when one is present'
   assert.ok(!/password/i.test(plain.instruction), 'a profile without a broker credential must not be called a password');
   assert.match(plain.instruction, /identity/i);
 
-  const token = path.join(f.root, 'token'); await fs.writeFile(token, 'broker-secret');
+  const token = path.join(f.root, 'token'); await writePrivateFixture(token, 'broker-secret');
   await f.command('agent-b', ['init', '--agent-id', 'agent-b', '--broker-url', 'nats://server.example.com:4222', '--token-file', token]);
   const secret = await f.command('agent-b', ['invite', '--out', path.join(f.root, 'secret-invite')]);
   assert.equal(secret.containsBrokerCredential, true);
@@ -74,7 +74,7 @@ test('malformed invite fails before profile creation and never overwrites an out
   assert.equal(await fs.readFile(file, 'utf8'), 'MURMUR:broken');
 });
 test('broker credentials come from a private input file and are absent from command result', async t => {
-  const f = await fixture(t), token = path.join(f.root, 'token'); await fs.writeFile(token, 'fixture-secret-token\n', { mode: 0o600 });
+  const f = await fixture(t), token = path.join(f.root, 'token'); await writePrivateFixture(token, 'fixture-secret-token\n');
   const result = await f.command('agent-a', ['init', '--agent-id', 'agent-a', '--broker-url', 'nats://server.example.com:4222', '--token-file', token]);
   assert.ok(!JSON.stringify(result).includes('fixture-secret-token'));
   assert.equal((await f.config('agent-a')).natsToken, 'fixture-secret-token');
@@ -143,7 +143,7 @@ test('case-insensitive volumes reject fresh and existing mixed-case profile outp
 
 test('Windows credential invite does not inherit public read access from its output folder', { skip: process.platform !== 'win32' }, async t => {
   const f = await fixture(t), token = path.join(f.root, 'token');
-  await fs.writeFile(token, 'fixture-broker-secret');
+  await writePrivateFixture(token, 'fixture-broker-secret');
   await f.command('agent-a', ['init', '--agent-id', 'agent-a', '--broker-url', 'nats://server.example.com:4222', '--token-file', token]);
   const shared = path.join(f.root, 'shared'); await fs.mkdir(shared);
   await allowPublicReadInFixtureDirectory(shared);

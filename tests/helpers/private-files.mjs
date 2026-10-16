@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { protectPrivateFile } from '../../packages/setup/dist/src/private-file.js';
+
+/** Create only new synthetic credential inputs with the platform's private policy. */
+export async function writePrivateFixture(file, text) {
+  const handle = await open(file, 'wx', 0o600);
+  try { await protectPrivateFile(file, handle); await handle.writeFile(text); }
+  finally { await handle.close(); }
+}
 
 const exec = promisify(execFile);
 async function powershell(file, script) {
