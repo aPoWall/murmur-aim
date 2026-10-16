@@ -21,7 +21,11 @@ The tarball includes the CLI, daemon, MCP entry, and prebuilt Windows x64 servic
 helper. It does not include a desktop application. On Windows PowerShell use
 `npm.cmd` and `murmur.cmd` if execution policy blocks the PowerShell shims.
 
-Use the same absolute profile path for every command below.
+Use an explicit absolute profile path for the commands below, or register one
+with `murmur installation select --data-dir /absolute/profile`. New `init` and
+`join` commands accept `--select` to register their profile. The CLI, daemon and
+MCP server then share that choice from every working directory. See
+[installation selection and legacy migration](../../docs/installation-profile.md).
 
 To create an Invitation, use `murmur invite --data-dir /absolute/profile`.
 It prints one `MURMUR:` line. Add `--out /private/invitation.txt` for a private

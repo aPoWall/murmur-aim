@@ -116,6 +116,9 @@ test('CLI requires explicit kind, exact client path and preview digest', async t
   await assert.rejects(main(['backups', 'cleanup', '--kind', 'client', '--config-file', f.source, ...args]), /cli.required-option:plan-id/);
   await assert.rejects(main(['backups', 'preview', '--kind', 'client', '--config-file', 'relative.json', ...args]), /backups.absolute-config-file-required/);
   const plan = await main(['backups', 'preview', '--kind', 'client', '--config-file', f.source, ...args]);
+  const independent = await main(['backups', 'preview', '--kind', 'client', '--config-file', f.source,
+    '--installation-file', path.join(f.root, 'missing-installation.json')]);
+  assert.equal(independent.planId, plan.planId, 'client backup cleanup does not require an agent installation');
   const result = await main(['backups', 'cleanup', '--kind', 'client', '--config-file', f.source, '--plan-id', plan.planId, ...args]);
   assert.deepEqual(result.removed, []);
 });

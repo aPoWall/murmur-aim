@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { SQLiteDedupeOutboxStore, SQLiteMessageStore, stableEnvelopePayload, resolveMessageSubject } from "@murmurv2/core";
+import { SQLiteDedupeOutboxStore, SQLiteMessageStore, stableEnvelopePayload, resolveMessageSubject, resolveInstallation, installationStorePath } from "@murmurv2/core";
 import { encryptPayload, signEnvelope } from "@murmurv2/security";
 import { readPrivateJson } from "./secure-state.mjs";
 
@@ -51,9 +51,9 @@ if (!text) {
   process.exit(1);
 }
 
-const dataDir = process.env.DATA_DIR || ".data";
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
 const configPath = path.join(dataDir, "agent-config.json");
-const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
 
 let cfg;
 try {

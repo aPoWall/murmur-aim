@@ -13,6 +13,8 @@ import {
   SQLiteMessageStore,
   stableAckPayload,
   stableEnvelopePayload,
+  resolveInstallation,
+  installationStorePath,
 } from "@murmurv2/core";
 import { decryptPayload, signEnvelope, verifyEnvelopeSignature } from "@murmurv2/security";
 import { NotifyQueue, flushNotifyQueue, normalizeNotifyTargets, enqueuePeerNotification } from "./notify-router.mjs";
@@ -38,7 +40,10 @@ const log = (level, msg, data) => {
   observeLog(level, msg, data);
 };
 
-const dataDir = process.env.DATA_DIR || ".data";
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
+// Hooks inherit this process's pinned choice even if a person later selects another installation.
+process.env.DATA_DIR = dataDir;
+process.env.MURMUR_DATA_DIR = dataDir;
 const configPath = path.join(dataDir, "agent-config.json");
 
 let config;
@@ -54,7 +59,7 @@ try {
 }
 
 const { agentId, natsUrl, natsToken, subject, keys } = config;
-const dbPath = path.join(dataDir, "murmur.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
 const flushIntervalMs = Number(process.env.FLUSH_INTERVAL_MS) || 2000;
 const jetstreamConfig = config.jetstream || {};
 const jetstreamEnabled = jetstreamConfig.enabled ?? process.env.MURMUR_JETSTREAM === "1";
@@ -157,7 +162,7 @@ if (scopedChannelsEnabled) log("info", "Scoped-channels native lease gate enable
 
 const channelRosterConfig = config.channelRoster || {};
 const channelRosterEnabled = channelRosterConfig.enabled ?? process.env.MURMUR_CHANNEL_ROSTER === "1";
-const channelRosterPath = channelRosterConfig.path || process.env.MURMUR_CHANNEL_ROSTER_PATH || path.join(dataDir, "channel-roster.db");
+const channelRosterPath = channelRosterConfig.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH);
 const channelRosterStore = channelRosterEnabled ? new ChannelRosterStore(channelRosterPath) : null;
 const subjectRoutes = channelSubjectRoutes(subject, agentId, config.subjectScoping);
 if (subjectRoutes.length > 1) {

@@ -33,7 +33,7 @@ function validate(ctx: ServiceContext) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(ctx.serviceName)) {
     throw new Error("darwin-invalid-service-name");
   }
-  // The current daemon resolves both paths from DATA_DIR, ignoring STORE_PATH.
+  // The daemon pins DATA_DIR and requires derived store paths to agree.
   // Refuse an inconsistent context instead of starting against the wrong DB.
   if (ctx.configPath !== path.join(ctx.dataDir, "agent-config.json") ||
       ctx.storePath !== path.join(ctx.dataDir, "murmur.db") ||
@@ -76,6 +76,8 @@ export function createDarwinAdapter(options: DarwinOptions = {}): PlatformAdapte
     const args = [ctx.nodePath, path.join(ctx.repoRoot, "scripts", "murmur-daemon.mjs")];
     const environment = {
       DATA_DIR: ctx.dataDir,
+      MURMUR_DATA_DIR: ctx.dataDir,
+      MURMUR_CHANNEL_ROSTER_PATH: path.join(ctx.dataDir, "channel-roster.db"),
       MURMUR_STORE_PATH: ctx.storePath,
       PATH: [path.dirname(ctx.nodePath), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].join(":"),
     };

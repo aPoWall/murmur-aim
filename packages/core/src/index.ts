@@ -14,6 +14,7 @@ export * from "./lease.js";
 export * from "./channel.js";
 export * from "./subjects.js";
 export * from './outbox-attention.js';
+export * from './installation.js';
 
 export type DeliveryMode = "at-least-once";
 

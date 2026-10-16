@@ -24,7 +24,7 @@ export function renderLinuxUnit(c: ServiceContext): string {
   check(c);
   // ExecStart expands $ independently from specifiers; Environment values do not.
   const arg = (v: string) => q(v.replaceAll("$", () => "$$"));
-  return `${marker}[Unit]\nDescription=Murmur agent daemon\nStartLimitIntervalSec=60\nStartLimitBurst=5\n\n[Service]\nType=simple\nWorkingDirectory=${c.repoRoot.replaceAll("%", "%%")}\nEnvironment=${q(`DATA_DIR=${c.dataDir}`)}\nExecStart=${arg(c.nodePath)} ${arg(path.join(c.repoRoot, "scripts", "murmur-daemon.mjs"))}\nStandardOutput=append:${path.join(c.logDir, `${c.serviceName}.out.log`).replaceAll("%", "%%")}\nStandardError=append:${path.join(c.logDir, `${c.serviceName}.err.log`).replaceAll("%", "%%")}\nRestart=on-failure\nRestartSec=5\nUMask=0077\n\n[Install]\nWantedBy=default.target\n`;
+  return `${marker}[Unit]\nDescription=Murmur agent daemon\nStartLimitIntervalSec=60\nStartLimitBurst=5\n\n[Service]\nType=simple\nWorkingDirectory=${c.repoRoot.replaceAll("%", "%%")}\nEnvironment=${q(`DATA_DIR=${c.dataDir}`)} ${q(`MURMUR_DATA_DIR=${c.dataDir}`)} ${q(`MURMUR_STORE_PATH=${c.storePath}`)} ${q(`MURMUR_CHANNEL_ROSTER_PATH=${path.join(c.dataDir, "channel-roster.db")}`)}\nExecStart=${arg(c.nodePath)} ${arg(path.join(c.repoRoot, "scripts", "murmur-daemon.mjs"))}\nStandardOutput=append:${path.join(c.logDir, `${c.serviceName}.out.log`).replaceAll("%", "%%")}\nStandardError=append:${path.join(c.logDir, `${c.serviceName}.err.log`).replaceAll("%", "%%")}\nRestart=on-failure\nRestartSec=5\nUMask=0077\n\n[Install]\nWantedBy=default.target\n`;
 }
 export function createLinuxAdapter(options: LinuxOptions = {}): PlatformAdapter {
   const env = options.env ?? process.env, home = options.homeDir ?? homedir();

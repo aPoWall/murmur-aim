@@ -166,7 +166,8 @@ async function configureWakeHook(c: ServiceContext, file: string, before: Awaite
 function desiredEntry(c: ServiceContext) {
   const lane = projectLane(c);
   return { command: c.nodePath, args: [path.join(c.repoRoot, 'packages', 'mcp-server', 'dist', 'src', 'index.js')],
-    env: { DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath,
+    env: { DATA_DIR: c.dataDir, MURMUR_DATA_DIR: c.dataDir, MURMUR_STORE_PATH: c.storePath,
+      MURMUR_CHANNEL_ROSTER_PATH: path.join(c.dataDir, 'channel-roster.db'),
       ...(lane ? { MURMUR_WAKE_SESSION_KEY: lane } : {}) } };
 }
 type ClientFile = Awaited<ReturnType<typeof readClientFile>>;

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { accessSync, constants, realpathSync } from "node:fs";
 import type { ServiceContext } from "./types.js";
+import { resolveInstallation } from '@murmurv2/core';
 
 /** Homebrew resolves process.execPath into a versioned Cellar. Persist a stable
  * executable only when it is executable and resolves to this very same Node. */
@@ -22,27 +23,12 @@ export function stableNodeExecutable(executable: string, platform: NodeJS.Platfo
 }
 
 export function resolveContext(options: { dataDir?: string; repoRoot?: string; nodePath?: string; serviceName?: string;
-  platform?: NodeJS.Platform; home?: string; env?: NodeJS.ProcessEnv; clientProjectDir?: string } = {}): ServiceContext {
+  platform?: NodeJS.Platform; home?: string; env?: NodeJS.ProcessEnv; installationFile?: string; clientProjectDir?: string } = {}): ServiceContext {
   const env = options.env ?? process.env;
   const platform = options.platform ?? process.platform;
   const home = options.home ?? homedir();
   const paths = platform === "win32" ? path.win32 : path.posix;
-  const defaultDir = platform === "darwin" ? paths.join(home, "Library", "Application Support", "Murmur")
-    : platform === "win32" ? paths.join(env.LOCALAPPDATA || paths.join(home, "AppData", "Local"), "Murmur")
-    : paths.join(env.XDG_STATE_HOME || paths.join(home, ".local", "state"), "murmur");
-  let selected = options.dataDir;
-  if (selected === undefined) {
-    if (env.DATA_DIR !== undefined) {
-      if (!env.DATA_DIR) throw new Error("config.data-dir-empty");
-      if (env.MURMUR_DATA_DIR && paths.normalize(env.DATA_DIR) !== paths.normalize(env.MURMUR_DATA_DIR)) throw new Error("config.data-dir-conflict");
-      selected = env.DATA_DIR;
-    } else selected = env.MURMUR_DATA_DIR ?? defaultDir;
-  }
-  const dataDir = paths.normalize(selected);
-  if (!paths.isAbsolute(dataDir)) throw new Error("config.data-dir-must-be-absolute");
-  // The default service name hashes the path as written (see AGENTS.md), and shell completion appends
-  // a separator to folders: refuse it rather than silently select a second service for one profile.
-  if (dataDir.length > paths.parse(dataDir).root.length && /[\\/]$/.test(dataDir)) throw new Error("profile.trailing-separator");
+  const { dataDir } = resolveInstallation({ ...options, platform, home, env });
   const repoRoot = paths.normalize(options.repoRoot ?? fileURLToPath(new URL("../../../../", import.meta.url))).replace(/[\\/]$/, "");
   const nodePath = paths.normalize(options.nodePath ?? stableNodeExecutable(process.execPath, platform));
   if (!paths.isAbsolute(repoRoot) || !paths.isAbsolute(nodePath)) throw new Error("config.runtime-path-must-be-absolute");

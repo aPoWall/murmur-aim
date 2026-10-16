@@ -39,10 +39,10 @@ function validateDocument(text: string, selection: BackupSelection, file: string
   } catch { throw new Error('backups.config-invalid'); }
 }
 
-async function selected(c: ServiceContext, selection: BackupSelection) {
+async function selected(c: ServiceContext | null, selection: BackupSelection) {
   if (!['agent', 'client'].includes(selection.kind)) throw new Error('backups.kind-required');
   if (selection.kind === 'agent' && selection.configFile !== undefined) throw new Error('backups.selection-conflict');
-  const file = selection.kind === 'agent' ? c.configPath : selection.configFile;
+  const file = selection.kind === 'agent' ? c?.configPath : selection.configFile;
   if (!file || !path.isAbsolute(file) || path.normalize(file) !== file) throw new Error('backups.absolute-config-file-required');
   if (selection.kind === 'client' && !/\.(json|toml)$/.test(file)) throw new Error('backups.client-format-invalid');
   const directory = await realpath(path.dirname(file));
@@ -60,7 +60,7 @@ async function selected(c: ServiceContext, selection: BackupSelection) {
     lock: selection.kind === 'agent' ? path.join(directory, '.setup-write.lock') : `${configFile}.murmur-lock` };
 }
 
-async function inspect(c: ServiceContext, selection: BackupSelection, now: number) {
+async function inspect(c: ServiceContext | null, selection: BackupSelection, now: number) {
   const source = await selected(c, selection), current = await readFile(source.configFile, false);
   validateDocument(current.text, selection, source.configFile);
   const cutoff = Math.floor(now / DAY) * DAY - POLICY.days * DAY;
@@ -85,12 +85,12 @@ async function inspect(c: ServiceContext, selection: BackupSelection, now: numbe
 }
 
 /** No chmod, lock, directory creation, metadata write or automatic migration during preview. */
-export async function previewBackups(c: ServiceContext, selection: BackupSelection, now = Date.now()) {
+export async function previewBackups(c: ServiceContext | null, selection: BackupSelection, now = Date.now()) {
   return (await inspect(c, selection, now)).report;
 }
 
 /** Explicit deletion requires an unchanged, same-day preview and the existing setup writer's lock. */
-export async function cleanupBackups(c: ServiceContext, selection: BackupSelection, expectedPlan: string, now = Date.now()) {
+export async function cleanupBackups(c: ServiceContext | null, selection: BackupSelection, expectedPlan: string, now = Date.now()) {
   if (!/^[a-f0-9]{64}$/.test(expectedPlan)) throw new Error('backups.plan-required');
   const source = await selected(c, selection);
   await mkdir(source.lock, { mode: 0o700 });

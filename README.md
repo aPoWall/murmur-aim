@@ -166,6 +166,12 @@ will not display that warning until a maintainer applies the registry deprecatio
 
 ## What's New in v2.12
 
+- **Development source: select one installation explicitly** (#168). `init`/`join --select`
+  or `installation select --data-dir ABSOLUTE` registers a private identity-bound choice
+  shared by CLI, MCP and daemon. Missing selection no longer creates a working-directory
+  `.data` store. Explicit multi-profile overrides and existing service/client pins remain;
+  see [selection and legacy migration](docs/installation-profile.md). This is not in v2.12.0.
+
 - **Set up a connection without a terminal.** On Windows and Mac, paste an Invitation or a Reply from your messenger into the app; it picks the `MURMUR:` line out of the surrounding text, keeps a backup of the Invitation next to the profile and, on the Mac, keeps the Identity you selected through recovery. A Service left by a pilot or an earlier version is replaced from the tray with one administrator consent.
 - **Claude Code listens for eight hours, as documented.** The Stop hook entry now carries its own `timeout`; an entry written by 2.11.0 or earlier listened for ten minutes and is updated with `--replace` or by reconnecting the assistant in the app.
 - **A lost server link is no longer silent.** Every failed reconnect attempt is counted and logged once a minute, `murmur status` shows `broker.disconnectedAt` and `broker.reconnectAttempts`, and a daemon whose connection closed for good exits with code 3 so the service manager restarts it and shows the failure. See [docs/broker-link.md](docs/broker-link.md).

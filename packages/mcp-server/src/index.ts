@@ -19,6 +19,8 @@ import {
   stableEnvelopePayload,
   resolveMessageSubject,
   channelScopedSubject,
+  resolveInstallation,
+  installationStorePath,
   type EnvelopeV1,
   type LocalMessageRecord,
 } from "@murmurv2/core";
@@ -36,11 +38,13 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-// --- Load agent config (optional — gracefully degrade if missing) ---
-const dataDir = process.env.DATA_DIR || ".data";
+// Resolve the same explicit installation as setup/daemon, before opening any store.
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
+process.env.DATA_DIR = dataDir;
+process.env.MURMUR_DATA_DIR = dataDir;
 const configPath = path.join(dataDir, "agent-config.json");
-const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
-const channelRosterPath = process.env.MURMUR_CHANNEL_ROSTER_PATH ?? path.join(dataDir, "channel-roster.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
+const channelRosterPath = installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH);
 // One stdio connection is one chat session. Callers cannot impersonate another
 // session/agent through tool arguments; hosts may supply their stable session ID.
 const presenceSessionId = (process.env.MURMUR_SESSION_ID || process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID || `mcp:${randomUUID()}`).trim();

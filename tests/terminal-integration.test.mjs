@@ -59,7 +59,7 @@ test('status --line returns a raw composable result and rejects conflicting outp
     { cwd: root, encoding: 'utf8', env: { ...process.env, MURMUR_UPDATE_CHECK: '0' } });
   assert.notEqual(failed.status, 0); assert.equal(failed.stdout, 'Murmur: unknown (status.command-failed)\n');
   await assert.rejects(main(['status', '--line', '--json', '--data-dir', f.dataDir], stopped), /output-mode-conflict/);
-  await assert.rejects(main(['mcp', 'serve'], stopped), /required-option:data-dir/);
+  await assert.rejects(main(['mcp', 'serve', '--installation-file', path.join(f.dataDir, 'missing-installation.json')], stopped), /installation.descriptor-missing/);
   f.messages.close();
 });
 

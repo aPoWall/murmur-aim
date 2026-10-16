@@ -4,7 +4,7 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { NatsBroker } from "../packages/broker-nats/dist/src/index.js";
-import { SQLiteDedupeOutboxStore, ChannelRosterStore, channelSubjectRoutes, stableEnvelopePayload } from "../packages/core/dist/src/index.js";
+import { SQLiteDedupeOutboxStore, ChannelRosterStore, channelSubjectRoutes, stableEnvelopePayload, resolveInstallation, installationStorePath } from "../packages/core/dist/src/index.js";
 import {
   decryptPayload,
   verifyEnvelopeSignature,
@@ -47,10 +47,10 @@ const envFlag = (name, defaultValue) => {
   return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
 };
 
-const dataDir = process.env.DATA_DIR || ".data";
+const { dataDir } = resolveInstallation({ env: process.env, requireConfig: true });
 const configPath = path.join(dataDir, "agent-config.json");
 const config = await readPrivateJson(configPath);
-const dbPath = process.env.MURMUR_STORE_PATH ?? path.join(dataDir, "murmur.db");
+const dbPath = installationStorePath(dataDir, 'murmur.db', process.env.MURMUR_STORE_PATH);
 const consumerId = process.env.MURMUR_MCP_CONSUMER_ID || `${config.agentId}-mcp-channel-${process.pid}`;
 const emitToSession = envFlag("MURMUR_MCP_TO_SESSION", true);
 const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
@@ -58,7 +58,7 @@ const textPrefix = process.env.MURMUR_MCP_TEXT_PREFIX || "";
 const broker = new NatsBroker({ url: config.natsUrl, token: config.natsToken });
 const dedupe = new SQLiteDedupeOutboxStore(dbPath);
 const roster = config.channelRoster?.enabled
-  ? new ChannelRosterStore(config.channelRoster.path || process.env.MURMUR_CHANNEL_ROSTER_PATH || path.join(dataDir, "channel-roster.db")) : null;
+  ? new ChannelRosterStore(config.channelRoster.path || installationStorePath(dataDir, 'channel-roster.db', process.env.MURMUR_CHANNEL_ROSTER_PATH)) : null;
 const subjectRoutes = channelSubjectRoutes(config.subject, consumerId, config.subjectScoping);
 if (subjectRoutes.length > 1 && !roster) throw new Error("subject-scoping-requires-roster");
 

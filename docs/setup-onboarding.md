@@ -15,6 +15,13 @@ No environment assignment syntax is required. Every profile-specific command
 accepts `--data-dir ABSOLUTE_PATH`; the service, daemon and MCP entry use this one
 profile. In an npm installation replace the source entry with `murmur`.
 
+`init`/`join --select` also register the profile for commands without an explicit
+path. `installation select --data-dir ABSOLUTE` registers an existing profile
+without moving it or changing keys. CLI, MCP and daemon share the same resolver;
+missing selection does not fall back to a working-directory `.data` store.
+See [installation profile](installation-profile.md) for precedence, service-account
+behavior, explicit multi-profile overrides and legacy migration.
+
 On Windows, setup protects new identity state, invitations, client configuration
 and backups with a non-inheriting file ACL before writing secrets.
 Only the creating account and SYSTEM (used by the native service) receive access.

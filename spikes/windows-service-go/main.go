@@ -1105,12 +1105,14 @@ func (h *daemonHost) supervise(spec *launchSpec, fatal chan<- uint32, done chan<
 		// одному месту по одному правилу.
 		//
 		// Имя переменной проверено по исходнику демона: scripts/murmur-daemon.mjs читает
-		// DATA_DIR и при её отсутствии берёт «.data» относительно рабочего каталога.
+		// DATA_DIR; отсутствие явного профиля теперь требует installation descriptor.
 		// DATA_DIR is canonical. The legacy name is passed with the same value only
 		// for existing auxiliary consumers; it does not name a future migration.
 		cmd.Env = append(os.Environ(),
 			"DATA_DIR="+spec.DataDir,
-			"MURMUR_DATA_DIR="+spec.DataDir)
+			"MURMUR_DATA_DIR="+spec.DataDir,
+			"MURMUR_STORE_PATH="+filepath.Join(spec.DataDir, "murmur.db"),
+			"MURMUR_CHANNEL_ROSTER_PATH="+filepath.Join(spec.DataDir, "channel-roster.db"))
 		out, ferr := os.OpenFile(filepath.Join(logDir(), "daemon.log"),
 			os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 		if ferr == nil {
