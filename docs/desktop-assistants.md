@@ -33,9 +33,9 @@ Windows automatic setup currently offers Claude Code and Codex CLI. Other client
 
 Claude Desktop Chat does not automatically start an AI turn when a message arrives. Opening Chat alone is insufficient: ask it to read the inbox. Claude Code and Codex wake require their respective integrations; see [native wake](wake-native.md) and [Codex Desktop exact-task delivery](codex-desktop-queue-wake.md).
 
-## One dedicated conversation in Claude's Code tab (2.12.1 candidate)
+## One dedicated conversation in Claude's Code tab (2.12.1 review prerelease)
 
-This new configuration mode is part of the unpublished 2.12.1 candidate.
+This configuration mode is available in the [published 2.12.1 review prerelease](https://github.com/alexfrmn/murmur/releases/tag/v2.12.1). Stable/npm installation remains on 2.12.0; use the prerelease assets and the [upgrade checklist](releases/2.12.1.md#upgrade-without-replacing-an-identity), also [in Russian](releases/2.12.1.ru.md).
 In the 2.12.1 Mac app, **Connect Claude Code** asks you to choose or create the
 dedicated Murmur folder. Open that same folder in the Code tab afterwards. The
 preview and confirmation remain tied to that folder; an inherited global hook is
@@ -58,9 +58,17 @@ installed bundled agent even when a separate `claude` terminal command is absent
    to the exact sending session. Existing hand-written shared hooks must set the
    same `MURMUR_WAKE_SESSION_KEY` in their MCP environment and wake command.
 
+For a DMG installation in Applications, use its bundled CLI explicitly; the app
+does not install a `murmur` command on PATH. A previously installed npm command may
+still be 2.12.0 and cannot configure this mode. First confirm that the following
+version command reports **2.12.1**. Adjust the application path if installed
+elsewhere, and replace both folder placeholders with the actual absolute paths.
+Preserve an existing custom service name with `--service-name` where applicable.
+
 ```sh
-murmur clients preview --client claude-code --project-dir /Users/YOU/Murmur --data-dir /ABSOLUTE/EXISTING/IDENTITY --json
-murmur clients configure --client claude-code --project-dir /Users/YOU/Murmur --data-dir /ABSOLUTE/EXISTING/IDENTITY --plan-id PLAN_FROM_PREVIEW --json
+"/Applications/Murmur.app/Contents/MacOS/murmur" version --json
+"/Applications/Murmur.app/Contents/MacOS/murmur" clients preview --client claude-code --project-dir /Users/YOU/Murmur --data-dir /ABSOLUTE/EXISTING/IDENTITY --json
+"/Applications/Murmur.app/Contents/MacOS/murmur" clients configure --client claude-code --project-dir /Users/YOU/Murmur --data-dir /ABSOLUTE/EXISTING/IDENTITY --plan-id PLAN_FROM_PREVIEW --json
 ```
 
 The folder must already exist. The writer uses its `.mcp.json` and
@@ -70,7 +78,9 @@ and removed separately before this mode can be configured; the refusal changes n
 This prevents a new project hook from appearing successful while old global hooks still
 wake other chats. After a preview that says `replace`, explicit `--replace` is required.
 
-`murmur status --json` reports `wake.readers.active`; doctor reports `wakeReaders`.
+From that same CLI, `status --data-dir /ABSOLUTE/EXISTING/IDENTITY --json`
+reports `wake.readers.active`; doctor reports `wakeReaders`. Keep the explicit
+Identity and any custom service name when checking status as well.
 On macOS/Linux this checks lock owners and the running drain's database argument.
 Unavailable inspection returns `null` with a reason, never a guessed zero. A live
 reader count does not prove a successful AI response.
@@ -110,4 +120,4 @@ The MCP server now returns static usage guidance in the optional `initialize.res
 
 The instructions contain no profile paths, keys or messages. They do not authorize sending messages or changing configuration. In particular, `send_message` writes local history; use `murmur_send` or `murmur_request` for an authorized message to a peer.
 
-The new instructions and UI hints are source changes pending a release. Website guidance and existing client setup do not require this new MCP field to work.
+The new instructions and UI hints are included in the published 2.12.1 review prerelease. The stable npm CLI remains 2.12.0; use the matching prerelease runtime to test the new MCP field. Website guidance and existing client setup do not require this field to work.

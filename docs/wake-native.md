@@ -287,6 +287,14 @@ silently is the failure this port exists to remove, so it does neither.
 
 ### Installed by `murmur clients configure --client claude-code`
 
+This section describes **global, per-session configuration without `--project-dir`**.
+For one mail conversation in Claude.app's Code tab, 2.12.1 offers the
+[dedicated-folder mode](desktop-assistants.md#one-dedicated-conversation-in-claudes-code-tab-2121-review-prerelease)
+with a shared cursor and lock. Use that mode for one reader per folder. It refuses
+an inherited global/parent hook before writing settings; merely adding a project
+hook does not disable the old global hook. Follow the linked guide to review the
+old connection and use the actual 2.12.1 runtime, rather than an older npm CLI.
+
 The CLI registers this drain as a Stop hook in `~/.claude/settings.json` (next to
 `~/.claude.json`) with `--db <profile>/murmur.db --max-seconds 28800`; a second run changes
 nothing, and a different Murmur wake hook is replaced only with `--replace`.
@@ -302,7 +310,7 @@ closed, that poller stays alive until its window ends, then exits.
 
 ### Cold start: what arrived while nothing was listening
 
-The cursor is per session. That is what makes a message wake every live session
+In the global configuration above, the cursor is per session. That makes a message wake every live session
 instead of only the first one to reach the hook — but it also means a brand-new
 session has no cursor of its own. The node drain starts such a session at the shared
 anchor below, so the Stop hook alone already reports what landed while no session was
