@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared broker, enforce remote TLS on existing profiles, or revoke live credentials.
 - **Turning on `ackSecurity.requireSigned`** — a rollout step, not a code step. Until every peer runs 2.5.0+ and the flag is set, unsigned ACKs are still accepted.
 
-## [2.12.1] - Unreleased
+## [2.12.1] - 2026-10-17 (review prerelease)
+
+GitHub review prerelease only; stable/Latest and npm installation remain on 2.12.0.
+See [acceptance scope and remaining checks](docs/releases/2.12.1.md#acceptance-and-publication).
 
 ### Added
 - **One explicit installation profile** (#168): a private, identity-bound descriptor
@@ -62,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Coordinated package set for 2.12.1.** The CLI follows product version 2.12.1;
   all twelve public libraries receive patch versions and internal dependency floors
   follow this set. MCP reports its package version 0.2.4. Direct third-party requirements and
-  the Node.js 22.13.0 minimum are unchanged. See [release preparation](docs/releases/2.12.1.md).
+  the Node.js 22.13.0 minimum are unchanged. See [review prerelease details](docs/releases/2.12.1.md).
 - **«Murmur Connect» is the project's full name** on the site (`<title>`, `og:site_name`, structured
   data, header), in the README, the repository description, the npm package descriptions and
   `server.json`. The app, the `murmur` command and the package names are unchanged; Murmur is the
