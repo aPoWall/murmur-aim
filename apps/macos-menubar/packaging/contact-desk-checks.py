@@ -19,6 +19,37 @@ class ContactDeskTests(unittest.TestCase):
     def test_unsafe_roster_rejected(self):
         with self.assertRaises(ValueError):Q.add_roster({'privacy':'owner-metadata','people':[]},{'privacy':'public'},{'privacy':'metadata-only'})
 
+    def test_fresh_private_contours_remove_stale_attention_before_projection(self):
+        def item(key, peer, source):
+            return {'id':key,'peer':peer,'kind':'owner','title':'Synthetic '+key,
+                    'next_action':'Review synthetic source','source_ids':[source],
+                    'conversation':'dm:synthetic','actionable':True,'alert':True}
+        allowed=item('ordinary','agent-demo','ordinary-source')
+        data={'privacy':'owner-metadata','people':[],
+              'attention':{'schema':1,'receipts_ok':True,
+                           'items':[allowed,item('private-peer','custom-private','peer-source'),
+                                    item('private-local','agent-demo','private-source')],
+                           'counts':{'owner':3},'actionable_count':3}}
+        share={'privacy':'metadata-only',
+               'private_contours':[{'id':'private','privacy':'status-only',
+                                    'peer_identity':'custom-private','local_identity':'local-private'}],
+               'messages':[{'id':'private-source','peer_identity':'agent-demo','local_identity':'local-private'}]}
+        result=Q.augment(data,{'privacy':'operator-only-metadata'},share)
+        self.assertEqual(result['attention']['items'],[allowed])
+        self.assertEqual(result['attention']['counts'],{'owner':1})
+        self.assertEqual(result['attention']['actionable_count'],1)
+        self.assertNotIn('Synthetic private',json.dumps(result))
+
+    def test_status_only_person_never_carries_attention(self):
+        data={'privacy':'owner-metadata',
+              'people':[{'id':'person:private','agents':['status-only-peer'],'contact_state':'status_only'}],
+              'attention':{'schema':1,'receipts_ok':True,'items':[
+                  {'id':'private','peer':'status-only-peer','kind':'owner','source_ids':[],
+                   'title':'Synthetic hidden title','actionable':True,'alert':True}]}}
+        result=Q.augment(data,{'privacy':'operator-only-metadata'},{'privacy':'metadata-only'})
+        self.assertEqual(result['attention']['items'],[])
+        self.assertNotIn('Synthetic hidden title',json.dumps(result))
+
     def test_history_exact_peer_store_dedup_and_no_bodies(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)

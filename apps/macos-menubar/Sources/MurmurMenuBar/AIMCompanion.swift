@@ -14,7 +14,7 @@ import MurmurTrayCore
     @Published var notificationAuthorization: UNAuthorizationStatus = .notDetermined
     @Published var previewConnected = false
     private var timer: Timer?
-    private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionAttentionSeen").map(Set.init))
+    private var notificationHistory = AIMCompanionNotificationHistory()
     @Published var localDashboard = UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
     /// The owner board comes from the edition; without one only the local development preview exists.
     static var board: String {
@@ -69,10 +69,9 @@ import MurmurTrayCore
                 snapshot = data; failed = false
                 guard data.isCurrent() else { return }
                 let keys = Set(data.attentionKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
-                let added = cursor.observe(keys)
-                // Only hashes are retained. Queue text and people are held in memory.
-                let retained = Array(cursor.seen ?? []).sorted()
-                UserDefaults.standard.set(Array(retained), forKey: "aimCompanionAttentionSeen")
+                // Each wire format establishes its own quiet baseline, even when the
+                // app is installed before the server starts publishing attention/1.
+                let added = notificationHistory.observe(keys, sharedAttention: data.attention != nil)
                 if notifications && !added.isEmpty {
                     refreshNotificationAuthorization()
                     let senders = data.incoming.filter { row in row.ids.contains { id in
@@ -176,8 +175,13 @@ struct AIMCompanionView: View {
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                     if let attention = data.attention {
                         AIMAttentionList(data: data, items: attention.items.filter(\.actionable))
-                        DisclosureGroup(L10n.text("Needs verification") + " · \(attention.items.filter { !$0.actionable }.count)") {
-                            AIMAttentionList(data: data, items: attention.items.filter { !$0.actionable })
+                        if !attention.peerWaits.isEmpty {
+                            DisclosureGroup(L10n.text("Waiting for people") + " · \(attention.peerWaits.count)") {
+                                AIMAttentionList(data: data, items: attention.peerWaits, title: "Waiting for people")
+                            }
+                        }
+                        DisclosureGroup(L10n.text("Needs verification") + " · \(attention.verificationItems.count)") {
+                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Needs verification")
                         }
                         if !attention.receipts_ok {
                             Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
