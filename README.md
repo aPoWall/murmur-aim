@@ -62,9 +62,9 @@ A **murmuration** is one of nature's most extraordinary phenomena — thousands 
 
 ---
 
-## Preparing v2.12.1
+## Review prerelease v2.12.1
 
-**This branch prepares 2.12.1; the published stable release remains 2.12.0.**
+**[2.12.1 is available as a GitHub review prerelease](https://github.com/alexfrmn/murmur/releases/tag/v2.12.1); stable and Latest remain 2.12.0.**
 The new release separates Claude Chat, the Code tab and Codex during connection,
 adds an existing-installation guide and prompt, supplies MCP usage instructions,
 and corrects Windows upgrade order and clipboard feedback. It detects Code inside
@@ -73,12 +73,12 @@ Homebrew Node paths stable, and removes machine diagnostics from personal unread
 The Mac app adds a read-only personal inbox, optional count-only notifications and
 actionable pairing errors. It also includes the
 post-2.12.0 fixes already on main, including per-contact diagnostics and clearer
-installer errors. See [CHANGELOG](CHANGELOG.md#2121---unreleased) and the
+installer errors. See [CHANGELOG](CHANGELOG.md#2121---2026-10-17-review-prerelease) and the
 [package versions, upgrade steps and release checks](docs/releases/2.12.1.md).
 
-Build this branch with `npm ci` and `npm run build` to test the candidate. Native
-desktop acceptance and exact-head review are still required before publishing.
-The stable install commands below intentionally select the already available 2.12.0.
+The prerelease assets come from reviewed source `dcfe8ccb6bf237998c2f39e1ddb9df951ce2e1f1` with required CI checks passed. A live Mac Claude Code round-trip passed with a temporary inbox-specific permission rule and authorization for one synthetic reply; automatic replies with default permissions are not established. Windows live installer/upgrade GUI acceptance and reboot remain unverified. Mac notifications and successful quarantined first-open also remain unverified; the observed first-open was blocked by Gatekeeper.
+
+Use the native or portable artifacts for prerelease review. The thirteen candidate npm versions remain unpublished; attached tarballs are review artifacts. The stable install commands below intentionally select the available 2.12.0.
 
 Optional [TLS and per-user broker credentials](docs/nats-transport-security.md)
 are also available in the candidate, with an explicit guarded migration command.
@@ -867,7 +867,7 @@ See [protocol-v1.md](docs/protocol-v1.md) for the full specification.
 
 *Security first — the shared broker still runs on one token*
 - [x] **Participant enrollment design** (#169) — separate client-generated NKeys, one-use expiring invitations, exact subject ACLs and durable revocation tombstones have a [validated reference](docs/participant-enrollment.md). An isolated real broker test revokes one participant while another keeps its connection. Runtime integration, TLS, JetStream/federation grants and production cutover remain separate; existing invitations still carry the configured shared token.
-- [x] **Compatible TLS/authentication preparation** (#153, 2.12.1 candidate) — explicit TLS verification, per-user credentials, guarded migration, restricted JetStream ACLs and a separate read-only dashboard role have [isolated tests and documented limits](docs/nats-transport-security.md). Existing remote plaintext profiles remain usable.
+- [x] **Compatible TLS/authentication preparation** (#153, 2.12.1 review prerelease) — explicit TLS verification, per-user credentials, guarded migration, restricted JetStream ACLs and a separate read-only dashboard role have [isolated tests and documented limits](docs/nats-transport-security.md). Existing remote plaintext profiles remain usable.
 - [ ] **Production TLS and credential cutover** — configure the deployment's certificate and peer roles, coordinate migration/rollback, then verify each live client before retiring shared credentials. The client update does not perform this operational change or implement automatic enrollment/revocation.
 - [ ] **Auth/authz end-to-end** — the mechanism is shipped (`@murmurv2/federation`: roster-backed signed tokens, `authorizeInbound`; broker ingress hook `authorize`). Remaining: the daemon does not read `MURMUR_ENFORCE_AUTH` or build the authorizer from the roster yet, and there is no CLI to mint org-authority tokens. Two small pieces: `murmur-daemon.mjs` wiring (default OFF) and `murmur-auth-token.mjs` (mint / verify), then provision tokens to the peers.
 - [ ] **Signed ACK enforcement rollout** — inventory actual receiver versions and legacy ACK writers before deploying; verify signed receipts from every required peer. Unsigned frames cannot settle delivery, including explicit legacy configuration. Production rollout remains separate from this code fix.
