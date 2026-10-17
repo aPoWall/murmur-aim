@@ -6,6 +6,7 @@ APP="$SOURCE/dist/Murmur AIM.app"
 python3 "$SOURCE/packaging/verify-runtime.py" "$RUNTIME"
 python3 "$SOURCE/packaging/verify-aim.py"
 python3 "$SOURCE/packaging/avatar-query-checks.py"
+python3 -B "$SOURCE/packaging/contact-desk-checks.py"
 swift build --package-path "$SOURCE" -c release
 BIN="$(swift build --package-path "$SOURCE" -c release --show-bin-path)"
 "$BIN/MurmurProbeChecks" "$SOURCE/../../contracts/setup/v1/fixtures"

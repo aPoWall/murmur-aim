@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Check packaged launcher binding and environment
         run: python3 apps/macos-menubar/packaging/launcher-checks.py
+      - name: Check owner-reader privacy boundaries
+        run: python3 -B apps/macos-menubar/packaging/contact-desk-checks.py
       - name: Install isolated test broker binary
         run: brew install nats-server
       - name: Build engine and check portable setup behavior

@@ -74,6 +74,9 @@ def augment(data, monitor, share):
     if data.get('privacy') != 'owner-metadata' or monitor.get('privacy') != 'operator-only-metadata' or share.get('privacy') != 'metadata-only':
         raise ValueError('safe_snapshot_unavailable')
     private = set(PRIVATE_PEERS)
+    for person in data.get('people', []):
+        if person.get('privacy') == 'status-only' or person.get('contact_state') == 'status_only':
+            private.update(person.get('agents', []))
     contours = []
     for c in share.get('private_contours', []):
         private.update([c.get('local_identity'), c.get('peer_identity')])
@@ -84,6 +87,28 @@ def augment(data, monitor, share):
             'privacy': 'status-only',
             **{k: c.get(k) for k in ['service_active', 'last_at', 'updated_at', 'inbound_count', 'outbound_count', 'failed_count', 'waiting_count']},
         })
+    # monitor.json can predate the current share-data privacy boundary. Apply the
+    # same fresh denylist to attention before any metadata leaves the owner host.
+    attention = data.get('attention')
+    if attention is not None:
+        if not isinstance(attention, dict) or not isinstance(attention.get('items'), list):
+            raise ValueError('safe_attention_unavailable')
+        private_sources = {m.get('id') for m in share.get('messages', []) if m.get('id')
+                           and (m.get('peer_identity') in private or m.get('local_identity') in private)}
+        items = []
+        for item in attention['items']:
+            if not isinstance(item, dict) or not isinstance(item.get('source_ids'), list):
+                raise ValueError('safe_attention_unavailable')
+            if item.get('peer') in private or any(mid in private_sources for mid in item['source_ids']):
+                continue
+            items.append(item)
+        attention = {**attention, 'items': items}
+        if 'counts' in attention:
+            attention['counts'] = {kind: sum(item.get('kind') == kind for item in items)
+                                   for kind in attention['counts']}
+        if 'actionable_count' in attention:
+            attention['actionable_count'] = sum(item.get('actionable') is True for item in items)
+        data['attention'] = attention
     topics = list(monitor.get('topics', []))
     covered = {t.get('source_id') for t in topics if t.get('source_id')}
     topics += [q for q in monitor.get('questions', []) if not q.get('source_id') or q.get('source_id') not in covered]

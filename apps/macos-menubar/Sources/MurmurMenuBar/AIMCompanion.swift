@@ -14,7 +14,7 @@ import MurmurTrayCore
     @Published var notificationAuthorization: UNAuthorizationStatus = .notDetermined
     @Published var previewConnected = false
     private var timer: Timer?
-    private var cursor = AIMCompanionCursor(seen: UserDefaults.standard.stringArray(forKey: "aimCompanionSeen").map(Set.init))
+    private var notificationHistory = AIMCompanionNotificationHistory()
     @Published var localDashboard = UserDefaults.standard.bool(forKey: "aimLocalDashboardPreview")
     /// The owner board comes from the edition; without one only the local development preview exists.
     static var board: String {
@@ -31,7 +31,7 @@ import MurmurTrayCore
     var badge: String {
         guard enabled else { return "" }
         guard current, let snapshot else { return " !" }
-        let count = snapshot.decision_count + snapshot.incoming.reduce(0) { $0 + $1.ids.count }
+        let count = snapshot.attentionCount
         return count > 0 ? " \(count)" : ""
     }
     func start() {
@@ -69,10 +69,9 @@ import MurmurTrayCore
                 snapshot = data; failed = false
                 guard data.isCurrent() else { return }
                 let keys = Set(data.attentionKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
-                let added = cursor.observe(keys)
-                // Only hashes are retained. Queue text and people are held in memory.
-                let retained = Array(cursor.seen ?? []).sorted()
-                UserDefaults.standard.set(Array(retained), forKey: "aimCompanionSeen")
+                // Each wire format establishes its own quiet baseline, even when the
+                // app is installed before the server starts publishing attention/1.
+                let added = notificationHistory.observe(keys, sharedAttention: data.attention != nil)
                 if notifications && !added.isEmpty {
                     refreshNotificationAuthorization()
                     let senders = data.incoming.filter { row in row.ids.contains { id in
@@ -80,7 +79,11 @@ import MurmurTrayCore
                         let hash = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
                         return added.contains(hash)
                     }}.map { row in data.people.first { $0.agents.contains(row.peer) }?.name ?? row.peer }
-                    notify(count: added.count, senders: Array(Set(senders)).sorted())
+                    let attentionSenders = (data.attention?.items ?? []).filter { item in
+                        let hash = SHA256.hash(data: Data(item.notificationKey.utf8)).map { String(format: "%02x", $0) }.joined()
+                        return added.contains(hash)
+                    }.map { item in data.people.first { $0.agents.contains(item.peer) }?.name ?? item.peer }
+                    notify(count: added.count, senders: Array(Set(senders + attentionSenders)).sorted())
                 }
             }
         }
@@ -106,7 +109,7 @@ import MurmurTrayCore
     private func notify(count: Int, senders: [String]) {
         let content = UNMutableNotificationContent()
         content.title = "Murmur AIM"
-        content.body = L10n.text("New messages or decisions to review") + ": \(count)" + (senders.isEmpty ? "" : " · " + senders.prefix(2).joined(separator: ", "))
+        content.body = L10n.text("Communication needs attention") + ": \(count)" + (senders.isEmpty ? "" : " · " + senders.prefix(2).joined(separator: ", "))
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { _ in }
     }
@@ -169,10 +172,28 @@ struct AIMCompanionView: View {
                     Text(L10n.text("Server overview unavailable. Check the network and the SSH alias. Retained observations are stale.")).foregroundStyle(AIMTheme.signal)
                 }
                 if let data = model.snapshot {
+                    Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
+                    if let attention = data.attention {
+                        AIMAttentionList(data: data, items: attention.items.filter(\.actionable))
+                        if !attention.peerWaits.isEmpty {
+                            DisclosureGroup(L10n.text("Waiting for people") + " · \(attention.peerWaits.count)") {
+                                AIMAttentionList(data: data, items: attention.peerWaits, title: "Waiting for people")
+                            }
+                        }
+                        DisclosureGroup(L10n.text("Needs verification") + " · \(attention.verificationItems.count)") {
+                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Needs verification")
+                        }
+                        if !attention.receipts_ok {
+                            Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+                        }
+                    }
+                    DisclosureGroup(L10n.text("Connection and access details")) {
                     Text("Murmur \(data.server_version) · " + L10n.text("Transport") + ": \(data.transport) · " + L10n.text("Codex service") + ": \(data.responder)").font(AIMTheme.meta)
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
+                    if data.attention == nil {
                     Text(L10n.text("Your action") + ": \(data.ownerQuestions.count) · " + L10n.text("Waiting for agents") + ": \(data.agentQuestions.count) · " + L10n.text("Waiting for people") + ": \(data.peerQuestions.count)").font(AIMTheme.heading)
                     Text(L10n.text("Open topics") + ": \(data.pending_count) · " + L10n.text("Needs verification") + ": \(data.verificationQuestions.count)").font(AIMTheme.meta)
+                    }
                     if data.budget.allowed != true || data.budget.fresh != true {
                         Text(L10n.text("Budget observation is separate from each contact’s responder. Check People for missing responders.")).foregroundStyle(AIMTheme.signal)
                         Text((data.budget.reason ?? "unknown") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)).font(AIMTheme.meta)
@@ -184,6 +205,8 @@ struct AIMCompanionView: View {
                             }
                         }
                     }
+                    }
+                    if data.attention == nil {
                     Divider()
                     TextField(L10n.text("Filter people and questions"), text: $query).textFieldStyle(.roundedBorder)
                     Picker(L10n.text("Answer queue"), selection: $queue) {
@@ -202,6 +225,7 @@ struct AIMCompanionView: View {
                     ForEach(Array(data.incoming.enumerated()), id: \.offset) { _, row in
                         let person = data.people.first { $0.agents.contains(row.peer) }
                         Text("\(person?.name ?? row.peer) · \(row.ids.count) · " + AIMCompanionModel.stamp(row.date)).font(AIMTheme.meta)
+                    }
                     }
                     if let contours = data.private_contours, !contours.isEmpty {
                         Divider()

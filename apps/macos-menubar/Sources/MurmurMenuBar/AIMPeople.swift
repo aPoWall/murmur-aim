@@ -58,6 +58,10 @@ struct AIMPeopleView: View {
                             }
                         }
                         Text((person.writable_agents ?? []).isEmpty ? L10n.text(person.contact_state == "status_only" ? "Private connection · status only" : "No connected sending route") : L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                        let attention = data.attentionItems(for: person)
+                        if !attention.isEmpty {
+                            AIMAttentionList(data: data, items: attention)
+                        }
                         if !person.agents.isEmpty {
                             DisclosureGroup(L10n.text("Connection and access details")) {
                                 ForEach(person.agents, id: \.self) { agent in

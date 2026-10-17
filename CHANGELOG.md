@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Shared attention queue in the optional Mac owner edition** (#309). Overview
+  and each person's card distinguish owner decisions, assistant work, delivery
+  failures, waiting for a person and verification. Older servers retain their
+  existing view until they provide the optional queue contract.
+
+### Fixed
+- Establish separate quiet notification baselines for legacy and shared queues,
+  including restarts and temporary server fallback, so an upgrade does not
+  announce an old backlog as new work.
+- Apply fresh private-contact and source boundaries to shared attention metadata
+  before displaying a stale server snapshot. The native consumer retains its
+  strict 200-item limit; the server must apply that limit after adding incidents.
+
 ### Pending
 - **Mandatory remote TLS and production credential cutover** remain a coordinated
   operational change. The compatible client preparation below does not switch the

@@ -819,3 +819,15 @@
 "First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection." = "First call murmur_peers on the selected connection and check that agentId is %@. If it differs, stop without reading messages or sending; use the correct connection.";
 
 "In your assistant, choose connection %@ and verify Identity %@ before reading or sending." = "In your assistant, choose connection %@ and verify Identity %@ before reading or sending.";
+
+"Communication needs attention" = "Communication needs attention";
+
+"No communication needs action." = "No communication needs action.";
+
+"Your reply or decision" = "Your reply or decision";
+
+"Assistant action needed" = "Assistant action needed";
+
+"Delivery failed" = "Delivery failed";
+
+"Reply evidence unavailable. Check the source before acting." = "Reply evidence unavailable. Check the source before acting.";
