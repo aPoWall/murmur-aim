@@ -1,5 +1,7 @@
 # Windows companion bundle
 
+For the **2.12.1 review prerelease**, use the [current upgrade checklist](../../../docs/releases/2.12.1.md#upgrade-without-replacing-an-identity) or [Russian guide](../../../docs/releases/2.12.1.ru.md#windows). The 2.9.0 → 2.10.0 section below is a historical portable-bundle migration; its filenames are not the current candidate downloads. Keep the existing Identity and service name.
+
 The installer asks before replacing an occupied Murmur shortcut, in the wizard's
 selected language. Declining keeps the shortcut and stops setup. Silent setup replaces selected
 shortcuts by default; `/SHORTCUTCONFLICT=fail` requests exit code 7 on a conflict.

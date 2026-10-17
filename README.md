@@ -80,6 +80,8 @@ The prerelease assets come from reviewed source `dcfe8ccb6bf237998c2f39e1ddb9df9
 
 Use the native or portable artifacts for prerelease review. The thirteen candidate npm versions remain unpublished; attached tarballs are review artifacts. The stable install commands below intentionally select the available 2.12.0.
 
+**Already using Murmur?** Read the [upgrade checklist and what changed](docs/releases/2.12.1.md#upgrade-without-replacing-an-identity), or the [short Russian guide for Mac and Windows](docs/releases/2.12.1.ru.md). Keep your existing Identity. A green connection indicator is not proof that your usual assistant can read and return a message.
+
 Optional [TLS and per-user broker credentials](docs/nats-transport-security.md)
 are also available in the candidate, with an explicit guarded migration command.
 Existing remote `nats://` profiles remain compatible. An explicit `tls://` endpoint
