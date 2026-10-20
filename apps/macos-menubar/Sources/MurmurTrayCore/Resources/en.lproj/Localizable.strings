@@ -845,3 +845,27 @@
 "Model reply verified" = "Model reply verified";
 
 "Yes" = "Yes";
+
+"See what needs your decision. Continue the work in your assistant's chat." = "See what needs your decision. Continue the work in your assistant's chat.";
+
+"Waiting for you" = "Waiting for you";
+
+"Other updates" = "Other updates";
+
+"Earlier conversations to review" = "Earlier conversations to review";
+
+"Continue in Codex" = "Continue in Codex";
+
+"Connection details" = "Connection details";
+
+"Connection settings" = "Connection settings";
+
+"Advanced preferences" = "Advanced preferences";
+
+"Incoming mode not observed" = "Incoming mode not observed";
+
+"Automatic technical replies" = "Automatic technical replies";
+
+"Only the message is shared by default. File access is managed separately." = "Only the message is shared by default. File access is managed separately.";
+
+"Choose a person to read the conversation or send a message through their agent." = "Choose a person to read the conversation or send a message through their agent.";

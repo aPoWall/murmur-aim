@@ -14,7 +14,7 @@ struct AIMPeopleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("People & agents")).font(AIMTheme.title)
-            Text(L10n.text("The team registry and your connected assistants. Access rules decide what can be sent.")).font(AIMTheme.meta)
+            Text(L10n.text("Choose a person to read the conversation or send a message through their agent.")).font(AIMTheme.meta)
             HStack {
                 TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
                 Toggle(L10n.text("Connected only"), isOn: $connectedOnly).toggleStyle(.checkbox)
@@ -42,10 +42,10 @@ struct AIMPeopleView: View {
                                 Button(L10n.text("History")) { historyPerson = person }.disabled(!model.enabled)
                             }
                             Button(L10n.text("Connection map")) { openBoard(person.id, section: "map") }
-                            if !(person.writable_agents ?? []).isEmpty {
-                                Button(L10n.text("Access & context")) { policyPerson = person }
-                            }
                             Menu(L10n.text("More")) {
+                                if !(person.writable_agents ?? []).isEmpty {
+                                    Button(L10n.text("Connection settings")) { policyPerson = person }
+                                }
                                 Button(L10n.text("History in dashboard")) { openBoard(person.id, section: "history") }
                                 if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
                                     Button("Telegram ↗") { NSWorkspace.shared.open(url) }
@@ -68,7 +68,7 @@ struct AIMPeopleView: View {
                                     if let policy = data.peer_policy?.peers[agent] {
                                         Text(agent + " · " + L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
                                         Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
-                                        Text(L10n.text(policy.reply_mode == "manual" ? "Manual review only" : "Verified technical replies")).font(AIMTheme.meta)
+                                        Text(L10n.text(policy.incomingLabelKey)).font(AIMTheme.meta)
                                         Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
                                         if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta) }
                                     }
@@ -109,9 +109,9 @@ struct AIMComposeView: View {
     @MurmurViewState private var attempted = false
     @MurmurViewState private var busy = false
     @MurmurViewState private var receipt: String?
-    init(person: AIMCompanionSnapshot.Person) {
+    init(person: AIMCompanionSnapshot.Person, initialPeer: String? = nil) {
         self.person = person
-        _peer = State(initialValue: person.writable_agents?.first ?? "")
+        _peer = State(initialValue: initialPeer.flatMap { person.writable_agents?.contains($0) == true ? $0 : nil } ?? person.writable_agents?.first ?? "")
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {

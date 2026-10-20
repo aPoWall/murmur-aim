@@ -135,6 +135,8 @@ func runAIMCompanionChecks() throws -> Int {
     let groupedAttention = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)).attention!
     try check(groupedAttention.peerWaits.map(\.kind) == ["peer"] && groupedAttention.verificationItems.map(\.kind) == ["verify"],
               "waiting for a peer stays separate from verification and actionable work")
+    try check(groupedAttention.yourTurn.map(\.kind) == ["owner"] && Set(groupedAttention.otherUpdates.map(\.kind)) == ["agent", "delivery"],
+              "technical failures and agent work never masquerade as owner decisions")
     var unknownItem = attentionItem; unknownItem["kind"] = "unknown"
     attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[unknownItem]]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)); throw CheckFailure(message: "unknown attention kind accepted") }
@@ -170,9 +172,13 @@ func runAIMCompanionChecks() throws -> Int {
     var policyEnvelope: [String: Any] = ["observed_at":"2026-10-20T05:00:00Z","peers":["agent-sample":oldPolicy]]
     let legacyPolicy = try JSONDecoder().decode(AIMPeerPolicySnapshot.self, from: JSONSerialization.data(withJSONObject: policyEnvelope))
     try check(legacyPolicy.peers["agent-sample"]?.reply_mode == nil, "older server policy remains readable")
+    try check(legacyPolicy.peers["agent-sample"]?.incomingLabelKey == "Incoming mode not observed" && legacyPolicy.peers["agent-sample"]?.canEditIncoming == false,
+              "a missing mode never promises auto replies or enables an unsafe save")
     var restricted = oldPolicy; restricted["reply_mode"] = "manual"
     policyEnvelope["peers"] = ["agent-sample":restricted]
     let manualPolicy = try JSONDecoder().decode(AIMPeerPolicySnapshot.self, from: JSONSerialization.data(withJSONObject: policyEnvelope))
     try check(manualPolicy.peers["agent-sample"]?.reply_mode == "manual", "manual admission restriction survives the native contract")
-    return 50
+    try check(manualPolicy.peers["agent-sample"]?.incomingLabelKey == "Manual review only" && manualPolicy.peers["agent-sample"]?.canEditIncoming == true,
+              "known manual mode remains explicit and editable")
+    return 53
 }

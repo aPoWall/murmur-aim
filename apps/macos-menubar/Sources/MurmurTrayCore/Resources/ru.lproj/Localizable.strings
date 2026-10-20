@@ -845,3 +845,27 @@
 "Model reply verified" = "Модельный ответ подтверждён";
 
 "Yes" = "Да";
+
+"See what needs your decision. Continue the work in your assistant's chat." = "Решения, которые ждут вас. Продолжайте работу в чате своего помощника.";
+
+"Waiting for you" = "Ждёт вас";
+
+"Other updates" = "Остальные события";
+
+"Earlier conversations to review" = "Предыдущие разговоры для сверки";
+
+"Continue in Codex" = "Продолжить в Codex";
+
+"Connection details" = "Проверить подключение";
+
+"Connection settings" = "Настройки подключения";
+
+"Advanced preferences" = "Дополнительные настройки";
+
+"Incoming mode not observed" = "Режим входящих не подтверждён";
+
+"Automatic technical replies" = "Автоответ на технические вопросы";
+
+"Only the message is shared by default. File access is managed separately." = "По умолчанию передаётся только сообщение. Доступ к файлам настраивается отдельно.";
+
+"Choose a person to read the conversation or send a message through their agent." = "Выберите человека, чтобы прочитать историю или написать его агенту.";

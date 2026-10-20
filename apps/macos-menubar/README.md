@@ -331,3 +331,18 @@ Native source acceptance на macOS 26.6.2 проверяет первое ок�
 Очередь содержит метаданные и ссылки на исходники; текст сообщения читается отдельно существующим owner reader по выбору пользователя, без отправки и отметки прочтения. Reader повторно применяет свежие приватные границы к устаревшим данным очереди, включая приватную локальную identity источника. Контракт допускает до 200 элементов и до 30 `source_ids` на элемент; дубликаты ID, неизвестные kinds и приватные контакты отклоняются. Сервер обязан соблюдать итоговый лимит после добавления инцидентов; превышение не превращается в частично успешный snapshot.
 
 The optional owner edition offers **Search tools** when `AIMBoardURL` is configured. It opens the owner's HTTPS board with `view=mesh&command=search`; the board owns source selection, session access and provenance. No message content travels in the URL. The existing native **Search messages** reader and local preview preference remain available. A stock edition has no owner search destination.
+
+## AIM companion: simpler attention desk (20 October 2026)
+
+The server desk uses two primary groups: **Waiting for you** contains only
+current owner decisions; **Other updates** contains delivery, responder and
+verification incidents. Earlier conversations remain available separately. A
+transport ACK or opening a conversation never closes an owner decision.
+
+A verified owner-chat binding opens the existing Codex task. Explicit messages
+remain available from People and from a matching ordinary attention item; the
+composer keeps that item's recipient selected. Per-contact Connection settings
+live under More. Sending and incoming handling stay visible in the sheet, while
+trust, tone and optional brief are advanced preferences. A missing incoming mode
+is unknown and disables saving, including on older servers. No runtime grants
+or defaults are changed by this presentation change.

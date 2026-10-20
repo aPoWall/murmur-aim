@@ -18,29 +18,32 @@ struct AIMPolicyView: View {
     @MurmurViewState private var trust = "review_required"
     @MurmurViewState private var context = "message_only"
     @MurmurViewState private var tone = "concise"
-    @MurmurViewState private var replyMode = "technical_only"
+    @MurmurViewState private var replyMode = "unknown"
     @MurmurViewState private var brief = ""
     @MurmurViewState private var status = ""
     @MurmurViewState private var busy = false
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("Access & context")).font(AIMTheme.title)
+            Text(L10n.text("Connection settings")).font(AIMTheme.title)
             Text(person.name).font(AIMTheme.heading)
             Picker(L10n.text("Recipient agent"), selection: $peer) {
                 ForEach(person.agents.filter { data?.peers[$0] != nil }, id: \.self) { Text($0).tag($0) }
             }.disabled(busy).help(L10n.text("Which agent's rules this sheet edits"))
             if let policy = data?.peers[peer] {
+                Toggle(L10n.text("Allow sending from this app"), isOn: $sendAllowed).help(L10n.text("Off: Write message refuses to send to this agent"))
+                Picker(L10n.text("Incoming handling"), selection: $replyMode) {
+                    if !policy.canEditIncoming { Text(L10n.text("Incoming mode not observed")).tag("unknown") }
+                    Text(L10n.text("Automatic technical replies")).tag("technical_only")
+                    Text(L10n.text("Manual review only")).tag("manual")
+                }.disabled(!policy.canEditIncoming).help(L10n.text("Restricts the existing responder; never grants files or starts a new route"))
+                Text(L10n.text("Only the message is shared by default. File access is managed separately.")).font(AIMTheme.meta)
+                DisclosureGroup(L10n.text("Advanced preferences")) {
                 Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
                 Text(policy.wake_status + " · " + (policy.wake_reason ?? "") + " · " + AIMCompanionModel.stamp(data?.observed_at)).font(AIMTheme.meta)
-                Toggle(L10n.text("Allow sending from this app"), isOn: $sendAllowed).help(L10n.text("Off: Write message refuses to send to this agent"))
                 Picker(L10n.text("Contact trust"), selection: $trust) {
                     Text(L10n.text("Review each request")).tag("review_required")
                     Text(L10n.text("Known contact · no extra permissions")).tag("trusted_contact")
                 }.help(L10n.text("How requests from this contact are reviewed; it grants no file access"))
-                Picker(L10n.text("Incoming handling"), selection: $replyMode) {
-                    Text(L10n.text("Verified technical replies")).tag("technical_only")
-                    Text(L10n.text("Manual review only")).tag("manual")
-                }.help(L10n.text("Restricts the existing responder; never grants files or starts a new route"))
                 Picker(L10n.text("Preferred tone"), selection: $tone) {
                     Text(L10n.text("Concise")).tag("concise"); Text(L10n.text("Friendly")).tag("friendly"); Text(L10n.text("Formal")).tag("formal")
                 }.help(L10n.text("The tone the companion prefers; your own text is never rewritten"))
@@ -49,14 +52,15 @@ struct AIMPolicyView: View {
                     Text(L10n.text("Allow this approved brief")).tag("approved_brief")
                 }.help(L10n.text("Message only, or a brief you approve here that a send may attach"))
                 if context == "approved_brief" { TextEditor(text: $brief).frame(height: 110).border(Color.gray.opacity(0.2)); Text("\(brief.count) / 4000").font(AIMTheme.meta) }
+                Text(L10n.text("Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Text(L10n.text("Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             if !status.isEmpty { Text(status) }
             HStack {
                 Button(L10n.text("Close")) { dismiss() }.keyboardShortcut(.cancelAction).help(L10n.text("Close without saving the rules")).disabled(busy)
                 Button(L10n.text("Reload")) { load() }.help(L10n.text("Read the rules from the server again; unsaved edits are dropped")).disabled(busy)
                 Spacer()
-                Button(L10n.text("Save rules")) { save() }.help(L10n.text("Save to the server; a newer revision there refuses the write")).disabled(busy || data?.peers[peer] == nil || brief.count > 4000)
+                Button(L10n.text("Save rules")) { save() }.help(L10n.text("Save to the server; a newer revision there refuses the write")).disabled(busy || data?.peers[peer]?.canEditIncoming != true || brief.count > 4000)
             }
         }.padding(24).frame(width: 650).font(AIMTheme.body).aimQuietButtonStyle()
             .task { load() }.onChange(of: peer) { _ in populate() }.onExitCommand { if !busy { dismiss() } }
@@ -64,7 +68,7 @@ struct AIMPolicyView: View {
     }
     private func populate() {
         guard let policy = data?.peers[peer] else { return }
-        replyMode = policy.reply_mode ?? "technical_only"; sendAllowed = policy.send_allowed; trust = policy.trust; tone = policy.tone; context = policy.context; brief = policy.brief ?? ""
+        replyMode = policy.reply_mode ?? "unknown"; sendAllowed = policy.send_allowed; trust = policy.trust; tone = policy.tone; context = policy.context; brief = policy.brief ?? ""
     }
     private func load() {
         busy = true
@@ -78,7 +82,8 @@ struct AIMPolicyView: View {
         }
     }
     private func save() {
-        guard let revision = data?.peers[peer]?.revision,
+        guard data?.peers[peer]?.canEditIncoming == true, ["manual", "technical_only"].contains(replyMode),
+              let revision = data?.peers[peer]?.revision,
               let payload = try? JSONSerialization.data(withJSONObject: ["action":"set", "peer":peer, "revision":revision, "policy":["send_allowed":sendAllowed,"trust":trust,"tone":tone,"reply_mode":replyMode,"context":context,"brief":context == "approved_brief" ? brief : ""]]) else { return }
         busy = true
         Task {
