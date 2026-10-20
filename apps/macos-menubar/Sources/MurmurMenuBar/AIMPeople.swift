@@ -43,9 +43,6 @@ struct AIMPeopleView: View {
                             }
                             Button(L10n.text("Connection map")) { openBoard(person.id, section: "map") }
                             Menu(L10n.text("More")) {
-                                if !(person.writable_agents ?? []).isEmpty {
-                                    Button(L10n.text("Connection settings")) { policyPerson = person }
-                                }
                                 Button(L10n.text("History in dashboard")) { openBoard(person.id, section: "history") }
                                 if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
                                     Button("Telegram ↗") { NSWorkspace.shared.open(url) }
@@ -64,6 +61,9 @@ struct AIMPeopleView: View {
                         }
                         if !person.agents.isEmpty {
                             DisclosureGroup(L10n.text("Connection and access details")) {
+                                if !(person.writable_agents ?? []).isEmpty {
+                                    Button(L10n.text("Connection settings")) { policyPerson = person }
+                                }
                                 ForEach(person.agents, id: \.self) { agent in
                                     if let policy = data.peer_policy?.peers[agent] {
                                         Text(agent + " · " + L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)

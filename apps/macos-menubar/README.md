@@ -342,7 +342,7 @@ transport ACK or opening a conversation never closes an owner decision.
 A verified owner-chat binding opens the existing Codex task. Explicit messages
 remain available from People and from a matching ordinary attention item; the
 composer keeps that item's recipient selected. Per-contact Connection settings
-live under More. Sending and incoming handling stay visible in the sheet, while
+live under the contact's Connection and access details disclosure. Sending and incoming handling stay visible in the sheet, while
 trust, tone and optional brief are advanced preferences. A missing incoming mode
 is unknown and disables saving, including on older servers. No runtime grants
 or defaults are changed by this presentation change.
