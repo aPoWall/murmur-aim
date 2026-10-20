@@ -142,8 +142,8 @@ func runAIMCompanionChecks() throws -> Int {
                                "writable_agents":["agent-other", "agent-demo"]]]
     let contacts = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: contactObject))
     let contact = contacts.people[0]
-    try check(contacts.contactAttention(for: contact).map(\.kind) == ["owner", "delivery", "agent", "peer", "verify"],
-              "a compact contact prioritizes decisions and delivery before waiting and historical review")
+    try check(contacts.contactAttention(for: contact).map(\.kind) == ["owner", "delivery", "agent"],
+              "a compact contact prioritizes actionable work without counting waiting or historical review")
     try check(contacts.communicationPeer(for: contact) == "agent-demo", "Read follows the displayed work even when another agent is listed first")
     let privateEdition = AIMEditionConfig(info: ["AIMShellEdition":1, "AIMPrivatePeers":["agent-demo"]])
     try check(contacts.communicationPeer(for: contact, config: privateEdition) == nil

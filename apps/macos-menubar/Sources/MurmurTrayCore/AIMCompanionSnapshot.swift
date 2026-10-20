@@ -184,11 +184,11 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public func attentionItems(for person: Person) -> [Attention.Item] {
         (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }
     }
-    /// One contact's current work, with owner decisions first and historical review last.
+    /// One contact's actionable work. Historical review never inflates this summary.
     /// Private/status-only contacts never acquire conversation actions from this projection.
     public func contactAttention(for person: Person, config: AIMEditionConfig = .current) -> [Attention.Item] {
         guard communicationPeer(for: person, config: config) != nil else { return [] }
-        return (attention?.items ?? []).filter { person.agents.contains($0.peer) }.sorted {
+        return (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }.sorted {
             let lhs = Self.contactPriority($0), rhs = Self.contactPriority($1)
             if lhs != rhs { return lhs < rhs }
             if $0.date != $1.date { return ($0.date ?? "") > ($1.date ?? "") }
