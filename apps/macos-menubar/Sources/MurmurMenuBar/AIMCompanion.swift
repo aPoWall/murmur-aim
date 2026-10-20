@@ -189,7 +189,7 @@ struct AIMCompanionView: View {
                             }
                         }
                         DisclosureGroup(L10n.text("Earlier conversations to review") + " · \(attention.verificationItems.count)") {
-                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Needs verification")
+                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Earlier conversations to review")
                         }
                         if !attention.receipts_ok {
                             Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
