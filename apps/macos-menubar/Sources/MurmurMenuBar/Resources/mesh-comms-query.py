@@ -85,7 +85,7 @@ def augment(data, monitor, share):
         contours.append({
             'id': c.get('id'), 'name': c.get('peer_label') or 'Private connection',
             'privacy': 'status-only',
-            **{k: c.get(k) for k in ['service_active', 'last_at', 'updated_at', 'inbound_count', 'outbound_count', 'failed_count', 'waiting_count']},
+            **{k: c.get(k) for k in ['service_active', 'last_at', 'updated_at', 'inbound_count', 'outbound_count', 'failed_count', 'waiting_count', 'handler_configured', 'handler_service_active', 'last_wake_status', 'model_reply_verified', 'reply_delivery', 'last_model_reply_at']},
         })
     # monitor.json can predate the current share-data privacy boundary. Apply the
     # same fresh denylist to attention before any metadata leaves the owner host.

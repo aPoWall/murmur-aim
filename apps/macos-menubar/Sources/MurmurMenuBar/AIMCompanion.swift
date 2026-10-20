@@ -132,7 +132,10 @@ import MurmurTrayCore
         case false: state = L10n.text("Inactive at last check")
         case nil: state = L10n.text("Service unobserved")
         }
-        return state + " · " + L10n.text("Status checked") + ": " + stamp(contour.updated_at)
+        let handler = L10n.text("Responder configured") + ": " + L10n.text(contour.handler_configured == true ? "Yes" : "Not observed")
+            + " · " + L10n.text("Model reply verified") + ": " + L10n.text(contour.model_reply_verified == true ? "Yes" : "Not observed")
+            + " · " + L10n.text("Last wake") + ": " + (contour.last_wake_status ?? L10n.text("Not observed"))
+        return handler + " · " + state + " · " + L10n.text("Status checked") + ": " + stamp(contour.updated_at)
             + " · " + L10n.text("Last message") + ": " + stamp(contour.last_at)
     }
 }
@@ -146,7 +149,7 @@ struct AIMCompanionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
-            Text(L10n.text("People, incoming requests and decisions. Open a linked owner chat when one is verified.")).fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("See what needs your decision. Continue the work in your assistant's chat.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }.help(L10n.text("Open the private mesh dashboard in the browser"))
                 Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }.help(L10n.text("Open the message history of the mesh in the dashboard"))
@@ -174,14 +177,19 @@ struct AIMCompanionView: View {
                 if let data = model.snapshot {
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                     if let attention = data.attention {
-                        AIMAttentionList(data: data, items: attention.items.filter(\.actionable))
+                        AIMAttentionList(data: data, items: attention.yourTurn, title: "Waiting for you")
+                        if !attention.otherUpdates.isEmpty {
+                            DisclosureGroup(L10n.text("Other updates") + " · \(attention.otherUpdates.count)") {
+                                AIMAttentionList(data: data, items: attention.otherUpdates, title: "Other updates")
+                            }
+                        }
                         if !attention.peerWaits.isEmpty {
                             DisclosureGroup(L10n.text("Waiting for people") + " · \(attention.peerWaits.count)") {
                                 AIMAttentionList(data: data, items: attention.peerWaits, title: "Waiting for people")
                             }
                         }
-                        DisclosureGroup(L10n.text("Needs verification") + " · \(attention.verificationItems.count)") {
-                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Needs verification")
+                        DisclosureGroup(L10n.text("Earlier conversations to review") + " · \(attention.verificationItems.count)") {
+                            AIMAttentionList(data: data, items: attention.verificationItems, title: "Earlier conversations to review")
                         }
                         if !attention.receipts_ok {
                             Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)

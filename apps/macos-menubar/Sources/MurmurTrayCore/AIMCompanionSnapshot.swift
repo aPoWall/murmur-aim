@@ -82,6 +82,8 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let items: [Item]
         public var peerWaits: [Item] { items.filter { !$0.actionable && $0.kind == "peer" } }
         public var verificationItems: [Item] { items.filter { !$0.actionable && $0.kind != "peer" } }
+        public var yourTurn: [Item] { items.filter { $0.actionable && $0.kind == "owner" } }
+        public var otherUpdates: [Item] { items.filter { $0.actionable && $0.kind != "owner" } }
     }
     public struct Budget: Decodable, Sendable {
         public let allowed: Bool?
@@ -100,6 +102,12 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let outbound_count: Int?
         public let failed_count: Int?
         public let waiting_count: Int?
+        public let handler_configured: Bool?
+        public let handler_service_active: Bool?
+        public let last_wake_status: String?
+        public let model_reply_verified: Bool?
+        public let reply_delivery: String?
+        public let last_model_reply_at: String?
     }
     public struct OwnerThread: Decodable, Sendable {
         public let title: String
@@ -226,9 +234,18 @@ public struct AIMPeerPolicySnapshot: Decodable, Sendable {
         public let context: String
         public let brief: String?
         public let tone: String
+        public let reply_mode: String?
         public let responder: String
         public let wake_status: String
         public let wake_reason: String?
+        public var incomingLabelKey: String {
+            switch reply_mode {
+            case "manual": return "Manual review only"
+            case "technical_only": return "Automatic technical replies"
+            default: return "Incoming mode not observed"
+            }
+        }
+        public var canEditIncoming: Bool { ["manual", "technical_only"].contains(reply_mode ?? "") }
     }
     public let observed_at: String
     public let peers: [String: Policy]

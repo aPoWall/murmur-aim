@@ -609,7 +609,7 @@
 "Shared context" = "Shared context";
 "Only the written message" = "Only the written message";
 "Allow this approved brief" = "Allow this approved brief";
-"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Sending and incoming handling are separate rules. Incoming handling restricts the configured responder. A brief requires an explicit attachment choice. Contact trust and tone are preferences. Vault access and Telegram routing require separate grants.";
 "Reload" = "Reload";
 "Save rules" = "Save rules";
 "Could not load rules. Nothing changed." = "Could not load rules. Nothing changed.";
@@ -831,3 +831,41 @@
 "Delivery failed" = "Delivery failed";
 
 "Reply evidence unavailable. Check the source before acting." = "Reply evidence unavailable. Check the source before acting.";
+
+"Incoming handling" = "Incoming handling";
+
+"Verified technical replies" = "Verified technical replies";
+
+"Manual review only" = "Manual review only";
+
+"Restricts the existing responder; never grants files or starts a new route" = "Restricts the existing responder; never grants files or starts a new route";
+
+"Responder configured" = "Responder configured";
+
+"Model reply verified" = "Model reply verified";
+
+"Yes" = "Yes";
+
+"See what needs your decision. Continue the work in your assistant's chat." = "See what needs your decision. Continue the work in your assistant's chat.";
+
+"Waiting for you" = "Waiting for you";
+
+"Other updates" = "Other updates";
+
+"Earlier conversations to review" = "Earlier conversations to review";
+
+"Continue in Codex" = "Continue in Codex";
+
+"Connection details" = "Connection details";
+
+"Connection settings" = "Connection settings";
+
+"Advanced preferences" = "Advanced preferences";
+
+"Incoming mode not observed" = "Incoming mode not observed";
+
+"Automatic technical replies" = "Automatic technical replies";
+
+"Only the message is shared by default. File access is managed separately." = "Only the message is shared by default. File access is managed separately.";
+
+"Choose a person to read the conversation or send a message through their assistant." = "Choose a person to read the conversation or send a message through their assistant.";

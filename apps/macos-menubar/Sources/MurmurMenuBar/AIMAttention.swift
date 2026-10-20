@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import MurmurTrayCore
 
@@ -8,6 +9,7 @@ struct AIMAttentionList: View {
     var title = "Communication needs attention"
     @MurmurViewState private var expanded = false
     @MurmurViewState private var selectedItem: AIMCompanionSnapshot.Attention.Item?
+    @MurmurViewState private var composeItem: AIMCompanionSnapshot.Attention.Item?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -23,8 +25,18 @@ struct AIMAttentionList: View {
                     Text(item.title).font(AIMTheme.heading)
                     Text((data.people.first { $0.agents.contains(item.peer) }?.name ?? item.peer)).font(AIMTheme.meta)
                     Text(item.next_action).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
-                    if data.people.contains(where: { $0.agents.contains(item.peer) }) {
-                        Button(L10n.text("Read conversation")) { selectedItem = item }
+                    HStack {
+                        if let owner = data.ownerThread(for: item.peer), let url = owner.verifiedURL {
+                            Button(L10n.text("Continue in Codex")) { NSWorkspace.shared.open(url) }
+                        }
+                        if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
+                            Button(L10n.text("History")) { selectedItem = item }
+                            if (person.writable_agents ?? []).contains(item.peer) {
+                                Button(L10n.text("Write message")) { composeItem = item }.disabled(!data.isCurrent())
+                            }
+                        } else {
+                            Button(L10n.text("Connection details")) { AIMCompanionModel.open("?view=mesh&section=sources") }
+                        }
                     }
                 }.padding(10).background(AIMTheme.muted.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 8))
             }
@@ -34,6 +46,11 @@ struct AIMAttentionList: View {
         }
         .sheet(item: $selectedItem) { item in
             AIMMessageSearchView(enabled: true, people: data.people, historyPeer: item.peer)
+        }
+        .sheet(item: $composeItem) { item in
+            if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
+                AIMComposeView(person: person, initialPeer: item.peer)
+            }
         }
     }
 }

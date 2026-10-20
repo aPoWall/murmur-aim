@@ -609,7 +609,7 @@
 "Shared context" = "Передаваемый контекст";
 "Only the written message" = "Только написанное сообщение";
 "Allow this approved brief" = "Разрешить этот бриф";
-"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Правила действуют для явной отправки из приложения. Бриф прикладывается отдельно. Права волтов, Telegram и существующие AI-обработчики управляются отдельно. Тональность – предпочтение; ручной текст не меняется.";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Отправка и разбор входящих настраиваются отдельно. Режим разбора ограничивает настроенный обработчик. Бриф требует явного выбора при отправке. Доверие и тон – предпочтения. Доступ к волту и маршруты Telegram требуют отдельных разрешений.";
 "Reload" = "Перечитать";
 "Save rules" = "Сохранить правила";
 "Could not load rules. Nothing changed." = "Не удалось прочитать правила. Ничего не изменено.";
@@ -831,3 +831,41 @@
 "Delivery failed" = "Сбой доставки";
 
 "Reply evidence unavailable. Check the source before acting." = "Журнал ответов недоступен. Сначала проверьте исходник.";
+
+"Incoming handling" = "Разбор входящих";
+
+"Verified technical replies" = "Проверенные технические ответы";
+
+"Manual review only" = "Только ручной разбор";
+
+"Restricts the existing responder; never grants files or starts a new route" = "Ограничивает существующий обработчик; не открывает файлы и не создаёт новый маршрут";
+
+"Responder configured" = "Обработчик настроен";
+
+"Model reply verified" = "Модельный ответ подтверждён";
+
+"Yes" = "Да";
+
+"See what needs your decision. Continue the work in your assistant's chat." = "Решения, которые ждут вас. Продолжайте работу в чате своего помощника.";
+
+"Waiting for you" = "Ждёт вас";
+
+"Other updates" = "Остальные события";
+
+"Earlier conversations to review" = "Предыдущие разговоры для сверки";
+
+"Continue in Codex" = "Продолжить в Codex";
+
+"Connection details" = "Проверить подключение";
+
+"Connection settings" = "Настройки подключения";
+
+"Advanced preferences" = "Дополнительные настройки";
+
+"Incoming mode not observed" = "Режим входящих не подтверждён";
+
+"Automatic technical replies" = "Автоответ на технические вопросы";
+
+"Only the message is shared by default. File access is managed separately." = "По умолчанию передаётся только сообщение. Доступ к файлам настраивается отдельно.";
+
+"Choose a person to read the conversation or send a message through their assistant." = "Выберите человека, чтобы прочитать историю или написать его помощнику.";

@@ -75,6 +75,11 @@ struct AIMHomeView: View {
 
     private var firstRun: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if model.companion.enabled {
+                Text(AIMEditionConfig.current.serverLabel).font(AIMTheme.meta)
+                Button(L10n.text("Your communication desk")) { navigation.select("Overview") }
+                Divider()
+            }
             Text(L10n.text("Connect your AI assistants")).font(AIMTheme.title)
             Text(L10n.text("Murmur lets an assistant in Claude Code or Codex send work to another assistant and get a reply."))
                 .fixedSize(horizontal: false, vertical: true)
