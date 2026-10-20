@@ -940,7 +940,7 @@
 
 "Your incoming handler not observed" = "Your incoming handler not observed";
 
-"Their runtime / model" = "Their runtime / model";
+"Their runtime / model" = "Their assistant app / model";
 
 "Codex · server session" = "Codex · server session";
 
@@ -958,9 +958,9 @@
 
 "Handler failed" = "Handler failed";
 
-"Wake muted" = "Wake muted";
+"Wake muted" = "Wake-up paused";
 
-"Wake needs attention" = "Wake needs attention";
+"Wake needs attention" = "Wake-up needs attention";
 
 "Stored · no automatic handler" = "Stored · no automatic handler";
 
