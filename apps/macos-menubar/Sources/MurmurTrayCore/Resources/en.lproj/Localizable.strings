@@ -869,3 +869,10 @@
 "Only the message is shared by default. File access is managed separately." = "Only the message is shared by default. File access is managed separately.";
 
 "Choose a person to read the conversation or send a message through their assistant." = "Choose a person to read the conversation or send a message through their assistant.";
+
+/* Compact contact actions. */
+"Write" = "Write";
+"Read" = "Read";
+"Continue" = "Continue";
+"Conversation and access details" = "Conversation and access details";
+"Team directory" = "Team directory";

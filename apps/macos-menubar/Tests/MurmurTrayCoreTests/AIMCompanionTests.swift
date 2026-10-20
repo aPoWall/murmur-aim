@@ -137,6 +137,26 @@ func runAIMCompanionChecks() throws -> Int {
               "waiting for a peer stays separate from verification and actionable work")
     try check(groupedAttention.yourTurn.map(\.kind) == ["owner"] && Set(groupedAttention.otherUpdates.map(\.kind)) == ["agent", "delivery"],
               "technical failures and agent work never masquerade as owner decisions")
+    var contactObject = attentionObject
+    contactObject["people"] = [["id":"person:demo", "name":"Synthetic contact", "agents":["agent-other", "agent-demo"],
+                               "writable_agents":["agent-other", "agent-demo"]]]
+    let contacts = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: contactObject))
+    let contact = contacts.people[0]
+    try check(contacts.contactAttention(for: contact).map(\.kind) == ["owner", "delivery", "agent"],
+              "a compact contact prioritizes actionable work without counting waiting or historical review")
+    try check(contacts.communicationPeer(for: contact) == "agent-demo", "Read follows the displayed work even when another agent is listed first")
+    let privateEdition = AIMEditionConfig(info: ["AIMShellEdition":1, "AIMPrivatePeers":["agent-demo"]])
+    try check(contacts.communicationPeer(for: contact, config: privateEdition) == nil
+              && contacts.contactAttention(for: contact, config: privateEdition).isEmpty,
+              "private bindings suppress contact conversation summaries and actions")
+    contactObject["attention"] = ["schema":1, "receipts_ok":true, "items":[]]
+    let quietContacts = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: contactObject))
+    try check(quietContacts.communicationPeer(for: quietContacts.people[0]) == "agent-other",
+              "a contact without attention keeps an explicit history route")
+    contactObject["people"] = [["id":"person:demo", "name":"Synthetic contact", "agents":["agent-demo"], "contact_state":"status_only"]]
+    let statusContacts = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: contactObject))
+    try check(statusContacts.communicationPeer(for: statusContacts.people[0]) == nil,
+              "status-only contacts never open a conversation reader")
     var unknownItem = attentionItem; unknownItem["kind"] = "unknown"
     attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[unknownItem]]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)); throw CheckFailure(message: "unknown attention kind accepted") }
@@ -180,5 +200,5 @@ func runAIMCompanionChecks() throws -> Int {
     try check(manualPolicy.peers["agent-sample"]?.reply_mode == "manual", "manual admission restriction survives the native contract")
     try check(manualPolicy.peers["agent-sample"]?.incomingLabelKey == "Manual review only" && manualPolicy.peers["agent-sample"]?.canEditIncoming == true,
               "known manual mode remains explicit and editable")
-    return 53
+    return 58
 }
