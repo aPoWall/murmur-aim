@@ -869,3 +869,10 @@
 "Only the message is shared by default. File access is managed separately." = "По умолчанию передаётся только сообщение. Доступ к файлам настраивается отдельно.";
 
 "Choose a person to read the conversation or send a message through their assistant." = "Выберите человека, чтобы прочитать историю или написать его помощнику.";
+
+/* Compact contact actions. */
+"Write" = "Написать";
+"Read" = "Читать";
+"Continue" = "Продолжить";
+"Conversation and access details" = "Переписка и доступ";
+"Team directory" = "Люди команды";

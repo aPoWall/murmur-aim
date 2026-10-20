@@ -13,7 +13,13 @@ struct AIMPeopleView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("People & agents")).font(AIMTheme.title)
+            HStack {
+                Text(L10n.text("People & agents")).font(AIMTheme.title)
+                Spacer()
+                if let url = teamDirectoryURL {
+                    Button(L10n.text("Team directory")) { NSWorkspace.shared.open(url) }
+                }
+            }
             Text(L10n.text("Choose a person to read the conversation or send a message through their assistant.")).font(AIMTheme.meta)
             HStack {
                 TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
@@ -26,56 +32,11 @@ struct AIMPeopleView: View {
                 }
                 Text("\(rows.count) / \(data.people.count) " + L10n.text("contacts") + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                 ForEach(rows) { person in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top, spacing: 12) {
-                            AIMPersonAvatar(person: person, imageReadEnabled: !model.previewConnected)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(person.name).font(AIMTheme.heading)
-                                Text([person.nickname, person.role].compactMap { $0 }.joined(separator: " · ")).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
-                                Text(person.agents.map { person.agent_labels?[$0] ?? $0 }.joined(separator: " · ")).font(AIMTheme.meta)
-                            }.frame(maxWidth: .infinity, alignment: .leading)
-                            Button(L10n.text("Write message")) { recipient = person }
-                                .disabled(!model.current || (person.writable_agents ?? []).isEmpty)
-                        }
-                        HStack(spacing: 10) {
-                            if !person.agents.isEmpty, person.contact_state != "status_only", AIMEditionConfig.current.privatePeers.intersection(person.agents).isEmpty {
-                                Button(L10n.text("History")) { historyPerson = person }.disabled(!model.enabled)
-                            }
-                            Button(L10n.text("Connection map")) { openBoard(person.id, section: "map") }
-                            Menu(L10n.text("More")) {
-                                Button(L10n.text("History in dashboard")) { openBoard(person.id, section: "history") }
-                                if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
-                                    Button("Telegram ↗") { NSWorkspace.shared.open(url) }
-                                }
-                                ForEach(person.agents, id: \.self) { agent in
-                                    if let owner = data.ownerThread(for: agent), let url = owner.verifiedURL {
-                                        Button(L10n.text("Open owner chat") + " · " + owner.title) { NSWorkspace.shared.open(url) }
-                                    }
-                                }
-                            }
-                        }
-                        Text((person.writable_agents ?? []).isEmpty ? L10n.text(person.contact_state == "status_only" ? "Private connection · status only" : "No connected sending route") : L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
-                        let attention = data.attentionItems(for: person)
-                        if !attention.isEmpty {
-                            AIMAttentionList(data: data, items: attention)
-                        }
-                        if !person.agents.isEmpty {
-                            DisclosureGroup(L10n.text("Connection and access details")) {
-                                if !(person.writable_agents ?? []).isEmpty {
-                                    Button(L10n.text("Connection settings")) { policyPerson = person }
-                                }
-                                ForEach(person.agents, id: \.self) { agent in
-                                    if let policy = data.peer_policy?.peers[agent] {
-                                        Text(agent + " · " + L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
-                                        Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
-                                        Text(L10n.text(policy.incomingLabelKey)).font(AIMTheme.meta)
-                                        Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
-                                        if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta) }
-                                    }
-                                }
-                            }
-                        }
-                    }.padding(.vertical, 8)
+                    AIMContactRow(data: data, person: person, current: model.current,
+                                  enabled: model.enabled, imageReadEnabled: !model.previewConnected,
+                                  write: { recipient = person }, read: { historyPerson = person },
+                                  settings: { policyPerson = person },
+                                  openBoard: { section in openBoard(person.id, section: section) })
                     Divider()
                 }
                 if rows.isEmpty { Text(L10n.text("No contacts match these filters.")) }
@@ -84,16 +45,125 @@ struct AIMPeopleView: View {
                 Text(L10n.text("Connect your server in Settings to load people."))
             }
         }
-        .sheet(item: $recipient) { person in AIMComposeView(person: person) }
+        .sheet(item: $recipient) { person in
+            AIMComposeView(person: person, initialPeer: model.snapshot?.communicationPeer(for: person))
+        }
         .sheet(item: $policyPerson) { person in AIMPolicyView(person: person) }
         .sheet(item: $historyPerson) { person in
-            AIMMessageSearchView(enabled: model.enabled, people: model.snapshot?.people ?? [], historyPeer: person.agents.first)
+            if let data = model.snapshot, let peer = data.communicationPeer(for: person) {
+                AIMMessageSearchView(enabled: model.enabled, people: data.people, historyPeer: peer)
+            }
         }
+    }
+    private var teamDirectoryURL: URL? {
+        guard let board = AIMEditionConfig.current.boardURL,
+              board.user == nil, board.password == nil,
+              var parts = URLComponents(url: board, resolvingAgainstBaseURL: false) else { return nil }
+        parts.query = nil
+        parts.fragment = nil
+        return parts.url?.appendingPathComponent("team")
     }
     private func openBoard(_ actor: String, section: String) {
         guard var parts = URLComponents(string: AIMCompanionModel.board) else { return }
         parts.queryItems = [.init(name: "view", value: "mesh"), .init(name: "section", value: section), .init(name: "actor", value: actor)]
         if let url = parts.url { NSWorkspace.shared.open(url) }
+    }
+}
+
+/// A contact stays scannable; full evidence and policy controls open in place.
+private struct AIMContactRow: View {
+    let data: AIMCompanionSnapshot
+    let person: AIMCompanionSnapshot.Person
+    let current: Bool
+    let enabled: Bool
+    let imageReadEnabled: Bool
+    let write: () -> Void
+    let read: () -> Void
+    let settings: () -> Void
+    let openBoard: (String) -> Void
+
+    private var peer: String? { data.communicationPeer(for: person) }
+    private var attention: [AIMCompanionSnapshot.Attention.Item] { data.contactAttention(for: person) }
+    private var owner: AIMCompanionSnapshot.OwnerThread? {
+        guard let peer else { return nil }
+        return data.ownerThread(for: peer)
+    }
+    private var relationship: String {
+        let agent = peer.flatMap { person.agent_labels?[$0] } ?? person.agents.first.flatMap { person.agent_labels?[$0] }
+        return [person.role, person.nickname, agent].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                AIMPersonAvatar(person: person, imageReadEnabled: imageReadEnabled)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(person.name).font(AIMTheme.heading).lineLimit(1)
+                    if !relationship.isEmpty {
+                        Text(relationship).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).lineLimit(2)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    Button(L10n.text("Write"), action: write)
+                        .disabled(!current || peer == nil || (person.writable_agents ?? []).isEmpty)
+                        .help(L10n.text("Write message"))
+                    Button(L10n.text("Read"), action: read)
+                        .disabled(!enabled || peer == nil)
+                        .help(L10n.text("Read conversation"))
+                    if let owner, let url = owner.verifiedURL {
+                        Button(L10n.text("Continue")) { NSWorkspace.shared.open(url) }
+                            .help(L10n.text("Open owner chat") + " · " + owner.title)
+                            .disabled(!current)
+                    }
+                }
+            }
+            if let item = attention.first {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(L10n.text(item.kindLabelKey)).foregroundStyle(item.actionable ? AIMTheme.signal : AIMTheme.muted)
+                    if attention.count > 1 { Text("+\(attention.count - 1)").foregroundStyle(AIMTheme.muted) }
+                    Spacer()
+                    Text(AIMCompanionModel.stamp(item.date)).foregroundStyle(AIMTheme.muted)
+                }.font(AIMTheme.meta)
+                Text(item.title).font(AIMTheme.body).lineLimit(2)
+            } else {
+                Text(peer == nil && !person.agents.isEmpty ? L10n.text("Private connection · status only") :
+                        ((person.writable_agents ?? []).isEmpty ? L10n.text("No connected sending route") :
+                            L10n.text("Last incoming") + " · " + AIMCompanionModel.stamp(person.last_at)))
+                    .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).lineLimit(1)
+            }
+            DisclosureGroup(L10n.text("Conversation and access details")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    if !attention.isEmpty { AIMAttentionList(data: data, items: attention) }
+                    HStack {
+                        Button(L10n.text("Connection map")) { openBoard("map") }
+                        if peer != nil {
+                            Button(L10n.text("History in dashboard")) { openBoard("history") }
+                        }
+                        if let nick = person.nickname, nick.hasPrefix("@"), let url = URL(string: "https://t.me/" + String(nick.dropFirst())) {
+                            Button("Telegram ↗") { NSWorkspace.shared.open(url) }
+                        }
+                    }
+                    if peer != nil && !(person.writable_agents ?? []).isEmpty {
+                        Button(L10n.text("Connection settings"), action: settings)
+                    }
+                    ForEach(person.agents, id: \.self) { agent in
+                        Text(person.agent_labels?[agent].map { $0 + " · " + agent } ?? agent).font(AIMTheme.meta)
+                        if peer != nil, let linkedOwner = data.ownerThread(for: agent), let url = linkedOwner.verifiedURL {
+                            Button(L10n.text("Open owner chat") + " · " + linkedOwner.title) { NSWorkspace.shared.open(url) }.disabled(!current)
+                        }
+                        if let policy = data.peer_policy?.peers[agent] {
+                            Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
+                            Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
+                            Text(L10n.text(policy.incomingLabelKey)).font(AIMTheme.meta)
+                            Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
+                            if let reason = policy.wake_reason {
+                                Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta)
+                            }
+                        }
+                    }
+                }.padding(.top, 8)
+            }.font(AIMTheme.meta)
+        }.padding(.vertical, 10)
     }
 }
 

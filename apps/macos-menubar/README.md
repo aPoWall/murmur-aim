@@ -334,6 +334,13 @@ The optional owner edition offers **Search tools** when `AIMBoardURL` is configu
 
 ## AIM companion: simpler attention desk (20 October 2026)
 
+The People tab uses compact contact rows with role, assistant and the highest-priority
+current item. Write, Read and a verified Continue action stay visible; full conversation
+and access details expand in place. For multi-assistant contacts, Read and Continue use
+the assistant associated with the displayed item. Private/status-only contacts expose
+no conversation actions. Team directory opens the configured HTTPS board's `team` route;
+it carries no local preview address or authentication token.
+
 The server desk uses two primary groups: **Waiting for you** contains only
 current owner decisions; **Other updates** contains delivery, responder and
 verification incidents. Earlier conversations remain available separately. A

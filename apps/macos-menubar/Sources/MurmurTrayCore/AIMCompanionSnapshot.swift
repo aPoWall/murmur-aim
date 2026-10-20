@@ -184,6 +184,31 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public func attentionItems(for person: Person) -> [Attention.Item] {
         (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }
     }
+    /// One contact's current work, with owner decisions first and historical review last.
+    /// Private/status-only contacts never acquire conversation actions from this projection.
+    public func contactAttention(for person: Person, config: AIMEditionConfig = .current) -> [Attention.Item] {
+        guard communicationPeer(for: person, config: config) != nil else { return [] }
+        return (attention?.items ?? []).filter { person.agents.contains($0.peer) }.sorted {
+            let lhs = Self.contactPriority($0), rhs = Self.contactPriority($1)
+            if lhs != rhs { return lhs < rhs }
+            if $0.date != $1.date { return ($0.date ?? "") > ($1.date ?? "") }
+            return $0.id < $1.id
+        }
+    }
+    /// The Read button follows the displayed conversation for a multi-agent contact.
+    public func communicationPeer(for person: Person, config: AIMEditionConfig = .current) -> String? {
+        guard person.contact_state != "status_only", config.privatePeers.intersection(person.agents).isEmpty else { return nil }
+        return (attention?.items ?? []).filter { person.agents.contains($0.peer) }.min {
+            let lhs = Self.contactPriority($0), rhs = Self.contactPriority($1)
+            if lhs != rhs { return lhs < rhs }
+            if $0.date != $1.date { return ($0.date ?? "") > ($1.date ?? "") }
+            return $0.id < $1.id
+        }?.peer ?? person.agents.first
+    }
+    private static func contactPriority(_ item: Attention.Item) -> Int {
+        if item.actionable { return ["owner": 0, "delivery": 1, "agent": 2][item.kind] ?? 3 }
+        return item.kind == "peer" ? 4 : 5
+    }
     public var ownerQuestions: [Question] { questions.filter(\.needsOwner) }
     public var agentQuestions: [Question] { questions.filter(\.waitingForAgent) }
     public var peerQuestions: [Question] { questions.filter(\.waitingForPeer) }
