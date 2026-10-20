@@ -27,9 +27,10 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         /// A portrait is shown only for a person the edition lists, never for a private-contour binding.
         public var approvedPhoto: String? { approvedPhoto(in: .current) }
         public func approvedPhoto(in config: AIMEditionConfig) -> String? {
+            let privatePeers = config.privatePeers.union(["shaper-viola", "agent-viola-alex"])
             guard id.hasPrefix("person:"), config.avatarPeople.contains(String(id.dropFirst(7))),
-                  photo_privacy == "owner-approved-avatar", !agents.isEmpty,
-                  agents.allSatisfy({ !config.privatePeers.contains($0) }),
+                  photo_privacy == "owner-approved-avatar", contact_state != "status_only",
+                  agents.allSatisfy({ !privatePeers.contains($0) }),
                   let photo, photo == "/mesh-comms-avatar-" + id.dropFirst(7) + ".jpg"
             else { return nil }
             return photo
@@ -100,6 +101,11 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let observed_at: String?
         public let fresh: Bool?
     }
+    public struct FlowSource: Decodable, Sendable {
+        public let store: String
+        public let ok: Bool?
+        public let observed_at: String?
+    }
     public struct PrivateContour: Decodable, Identifiable, Sendable {
         public let id: String
         public let name: String
@@ -134,6 +140,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public let snapshot_at: String?
     public let fresh: Bool
     public let people: [Person]
+    public let flow_sources: [FlowSource]?
     public let pending_count: Int
     public let decision_count: Int
     public let questions: [Question]
@@ -220,7 +227,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     }
     /// The Read button follows the displayed conversation for a multi-agent contact.
     public func communicationPeer(for person: Person, config: AIMEditionConfig = .current) -> String? {
-        guard person.contact_state != "status_only", config.privatePeers.intersection(person.agents).isEmpty else { return nil }
+        guard !isStatusOnly(person, config: config) else { return nil }
         return (attention?.items ?? []).filter { person.agents.contains($0.peer) }.min {
             let lhs = Self.contactPriority($0), rhs = Self.contactPriority($1)
             if lhs != rhs { return lhs < rhs }

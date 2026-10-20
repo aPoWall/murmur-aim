@@ -108,6 +108,10 @@ func expectGateFailure(_ name: String, _ body: () throws -> Void) throws {
 @main
 struct ProbeChecks {
     static func main() throws {
+        if CommandLine.arguments.contains("--companion-only") {
+            print("Scoped companion: \(try runAIMCompanionChecks()) checks passed")
+            return
+        }
         if CommandLine.arguments.contains("--control-only") {
             let directory = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "../../contracts/setup/v1/fixtures")
             print("Scoped profile controls: \(try runControlChecks(fixtures: directory)) checks passed")

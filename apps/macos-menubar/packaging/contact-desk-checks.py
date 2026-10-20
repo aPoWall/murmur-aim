@@ -6,6 +6,47 @@ spec=importlib.util.spec_from_file_location('reader',Path(__file__).resolve().pa
 Q=importlib.util.module_from_spec(spec);spec.loader.exec_module(Q)
 
 class ContactDeskTests(unittest.TestCase):
+    def test_current_roster_unions_eight_external_contacts_including_unbound(self):
+        linked=['anca','vasiliev','dan','ira','mykhailo','kirill_oleinichenko']
+        data={'privacy':'owner-metadata','people':[
+            {'id':'person:'+pid,'agents':['agent-'+pid],'writable_agents':['agent-'+pid]} for pid in linked]}
+        current=linked+['olya','ilia','alex']
+        people={'privacy':'operator_metadata_only_tailnet','people':[
+            {'id':'person:'+pid,'name':'Synthetic '+pid,'history':False} for pid in current],
+            'bindings':[{'person':'person:alex','agent':'shaper-viola'}]}
+        result=Q.add_roster(data,people,{'privacy':'metadata-only'})
+        self.assertEqual({p['id'] for p in result['people']},{'person:'+pid for pid in linked+['olya','ilia']})
+        for row in result['people'][-2:]:
+            self.assertEqual((row['agents'],row['writable_agents'],row['contact_state']),([],[],'unlinked'))
+        result=Q.add_flows(result,{'privacy':'metadata-only','sources':[]})
+        for row in result['people'][-2:]:self.assertEqual(row['flows'],{})
+
+    def test_flow_source_receipts_are_content_free_and_additive(self):
+        data={'privacy':'owner-metadata','people':[]}
+        share={'privacy':'metadata-only','sources':[
+            {'store':'ordinary','ok':False,'observed_at':'2026-10-20T12:00:00Z','error':'PRIVATE ERROR','path':'/private/path'},
+            {'store':'second','ok':'unknown','observed_at':'PRIVATE TIME'},
+            {'store':'../private','ok':True}], 'truncated':False}
+        result=Q.add_flows(data,share)
+        self.assertEqual(result['flow_sources'],[
+            {'store':'ordinary','ok':False,'observed_at':'2026-10-20T12:00:00Z'},
+            {'store':'second','ok':None}])
+        self.assertNotIn('PRIVATE',json.dumps(result))
+        self.assertNotIn('/private',json.dumps(result))
+
+    def test_flow_sources_preserve_unknown_zero_and_private_boundary(self):
+        data={'privacy':'owner-metadata','people':[
+            {'id':'person:ordinary','agents':['agent-demo']},
+            {'id':'person:private','agents':['shaper-viola'],'contact_state':'status_only'}]}
+        share={'privacy':'metadata-only','ts':'2026-10-20T12:00:00Z','sources':[{'store':'ordinary','ok':False}],'messages':[],'truncated':False}
+        result=Q.add_flows(data,share)
+        self.assertIsNone(result['people'][0]['flows']['agent-demo']['inbound_count'])
+        self.assertNotIn('flows',result['people'][1])
+        share['sources'][0]['ok']=True
+        result=Q.add_flows(data,share)
+        self.assertEqual(result['people'][0]['flows']['agent-demo']['inbound_count'],0)
+        self.assertNotIn('flows',result['people'][1])
+
     def test_full_directory_keeps_quiet_contacts_without_grants(self):
         data={'privacy':'owner-metadata','people':[{'id':'person:connected','agents':['agent-demo'],'writable_agents':['agent-demo']}]}
         people={'privacy':'operator_metadata_only_tailnet','observed_at':'2026-10-11T12:00:00Z','people':[{'id':'person:connected'},{'id':'person:quiet','name':'Quiet'},{'id':'person:former','history':True},{'id':'person:private','name':'Hidden'}], 'bindings':[{'person':'person:private','agent':'custom-private'}]}

@@ -177,6 +177,15 @@ def add_flows(data, share, now=None):
     for contour in share.get('private_contours', []):
         private.update((contour.get('local_identity'), contour.get('peer_identity')))
     sources = share.get('sources') or []
+    # Content-free source receipts only. Raw errors, paths and private-contour
+    # counters never enter the native companion projection.
+    data['flow_sources'] = [
+        {**{'store': source['store'], 'ok': source.get('ok') if isinstance(source.get('ok'), bool) else None},
+         **({'observed_at': source['observed_at']} if isinstance(source.get('observed_at'), str)
+            and re.fullmatch(r'\d{4}-\d{2}-\d{2}T[0-9:.+Z-]{8,30}', source['observed_at']) else {})}
+        for source in sources[:20] if isinstance(source, dict)
+        and isinstance(source.get('store'), str) and re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,62}', source['store'])
+    ]
     complete = bool(sources) and all(s.get('ok') is True for s in sources) and share.get('truncated') is False
     rows, seen = {}, set()
     for message in share.get('messages', []):
@@ -255,7 +264,7 @@ def add_avatars(data, people, share):
             share.get('privacy') != 'metadata-only' or data.get('privacy') != 'owner-metadata' or
             not photo or p.get('photo') != photo or p.get('history') or
             p.get('privacy') in {'private', 'status-only'} or person.get('id') in private_people or
-            not person.get('agents') or any(peer in private for peer in person['agents'])):
+            person.get('contact_state') == 'status_only' or any(peer in private for peer in person.get('agents', []))):
             continue
         person.update(photo=photo, photo_privacy='owner-approved-avatar',
                       photo_note=p.get('photo_note') if isinstance(p.get('photo_note'), str) else None)

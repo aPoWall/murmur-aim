@@ -35,6 +35,15 @@ class AvatarTests(unittest.TestCase):
         self.assertEqual((row['photo'],row['photo_note'],row['photo_privacy']),
                          (self.photo,'Unconfirmed synthetic portrait','owner-approved-avatar'))
 
+    def test_approved_current_unbound_portrait_has_no_message_route(self):
+        self.data['people'][0].update(agents=[], writable_agents=[], contact_state='unlinked')
+        self.people['bindings']=[]
+        row=self.project()['people'][0]
+        self.assertEqual(row['photo'],self.photo)
+        self.assertEqual(row['writable_agents'],[])
+        self.data['people'][0]['contact_state']='status_only'
+        self.assertNotIn('photo',self.project()['people'][0])
+
     def test_absent_url_wrong_person_and_traversal_references_are_dropped(self):
         for photo in [None,'https://example.com/a.jpg','/mesh-comms-avatar-dan.jpg','/mesh-comms-avatar-../demo.jpg']:
             self.people['people'][0]['photo'] = photo

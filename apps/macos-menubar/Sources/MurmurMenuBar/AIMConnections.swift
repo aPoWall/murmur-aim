@@ -2,116 +2,230 @@ import AppKit
 import SwiftUI
 import MurmurTrayCore
 
-/// Relationship view of observed bindings and work; it never infers human presence.
+/// A compact human → assistant → owner exchange, using observed routes and policy.
 struct AIMConnectionsView: View {
     @ObservedObject var model: AIMCompanionModel
     let openDesk: () -> Void
     let openPeople: () -> Void
     @MurmurViewState private var query = ""
+    @MurmurViewState private var recipient: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var historyPerson: AIMCompanionSnapshot.Person?
+    @MurmurViewState private var policyPerson: AIMCompanionSnapshot.Person?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(L10n.text("People → assistants → your desk")).font(AIMTheme.title)
-            Text(L10n.text("Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online.")).font(AIMTheme.meta)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Button(L10n.text("Read or write to a person"), action: openPeople)
-                Button(L10n.text("Open communication desk"), action: openDesk)
+                Text(L10n.text("People → assistants → SHAPER")).font(AIMTheme.title)
                 Spacer()
                 Button(L10n.text("Dashboard")) { AIMCompanionModel.open("?view=mesh&section=map") }
             }
             if let data = model.snapshot {
-                if !model.current { Text(L10n.text("Retained observation · refresh before acting")).foregroundStyle(AIMTheme.signal) }
-                Text(AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
-                if data.attention != nil {
-                    HStack(alignment: .top, spacing: 20) {
-                        summary("Your reply or decision", data.ownerAttentionCount)
-                        summary("Assistant action needed", data.attention!.otherUpdates.filter { $0.kind == "agent" }.count)
-                        summary("Delivery failed", data.attention!.otherUpdates.filter { $0.kind == "delivery" }.count)
-                        summary("Needs verification", data.attention!.items.filter { $0.actionable && $0.kind == "verify" }.count)
-                    }
-                } else { Text(L10n.text("Work classification not observed")).font(AIMTheme.meta) }
-                TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
-                HStack(spacing: 12) {
-                    column("Person", width: 142)
-                    Text("→").accessibilityHidden(true)
-                    column("Assistant", width: 212)
-                    Text("→").accessibilityHidden(true)
-                    column("Your communication desk", width: 230)
-                }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
-                Divider()
+                if !model.current {
+                    Text(L10n.text("Retained observation · refresh before acting")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+                }
+                HStack {
+                    TextField(L10n.text("Name, nickname or agent"), text: $query).textFieldStyle(.roundedBorder)
+                    Button(L10n.text("Your communication desk"), action: openDesk)
+                    Button(L10n.text("People & agents"), action: openPeople)
+                }
                 let people = data.people.filter { person in
                     query.isEmpty || ([person.name, person.nickname ?? ""] + person.agents + Array((person.agent_labels ?? [:]).values))
                         .joined(separator: " ").localizedCaseInsensitiveContains(query)
                 }
-                ForEach(people) { person in
-                    connection(person, data: data)
-                    Divider()
+                HStack {
+                    Text("\(people.count) / \(data.people.count) " + L10n.text("contacts"))
+                    Spacer()
+                    Text(AIMCompanionModel.stamp(data.snapshot_at))
+                }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                DisclosureGroup(sourceTitle(data)) {
+                    if let sources = data.flow_sources, !sources.isEmpty {
+                        ForEach(Array(sources.enumerated()), id: \.offset) { _, source in
+                            Text(source.store + " · " + L10n.text(source.ok == true ? "Read succeeded" : (source.ok == false ? "Read failed" : "Not observed")) + " · " + AIMCompanionModel.stamp(source.observed_at))
+                                .foregroundStyle(source.ok == false ? AIMTheme.signal : AIMTheme.muted)
+                        }
+                    } else { Text(L10n.text("Source receipts not observed")).foregroundStyle(AIMTheme.muted) }
+                }.font(AIMTheme.meta)
+                HStack(spacing: 8) {
+                    Text(L10n.text("Person")).frame(width: 184, alignment: .leading)
+                    Text("→").accessibilityHidden(true).frame(width: 12)
+                    Text(L10n.text("Their assistant")).frame(width: 148, alignment: .leading)
+                    Text("→").accessibilityHidden(true).frame(width: 12)
+                    Text(L10n.text("SHAPER · you")).frame(maxWidth: .infinity, alignment: .leading)
+                }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                Divider()
+                VStack(spacing: 0) {
+                    ForEach(people) { person in
+                        AIMConnectionRow(data: data, person: person, current: model.current,
+                                         enabled: model.enabled, imageReadEnabled: !model.previewConnected,
+                                         write: { recipient = person }, read: { historyPerson = person },
+                                         settings: { policyPerson = person })
+                        Divider()
+                    }
                 }
                 if people.isEmpty { Text(L10n.text("No contacts match these filters.")) }
+                Text(L10n.text("Counts cover retained server and Mac snapshots. Delivery, incoming handling and a person's availability are separate observations."))
+                    .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(L10n.text("Connect your server in Settings to load people."))
             }
         }
+        .sheet(item: $recipient) { person in
+            AIMComposeView(person: person, initialPeer: model.snapshot?.firstAllowedConnection(for: person, current: model.current))
+        }
+        .sheet(item: $historyPerson) { person in
+            if let data = model.snapshot, let peer = data.communicationPeer(for: person) {
+                AIMMessageSearchView(enabled: model.enabled, people: data.people, historyPeer: peer)
+            }
+        }
+        .sheet(item: $policyPerson) { person in AIMPolicyView(person: person) }
     }
-    private func column(_ key: String, width: CGFloat) -> some View {
-        Text(L10n.text(key)).frame(width: width, alignment: .leading)
+    private func sourceTitle(_ data: AIMCompanionSnapshot) -> String {
+        let sources = data.flow_sources ?? []
+        let state = sources.isEmpty ? "Not observed" : (sources.contains { $0.ok == false } ? "Read failed" :
+            (sources.allSatisfy { $0.ok == true } ? "Read succeeded" : "Not observed"))
+        return L10n.text("Message source receipts") + " · " + L10n.text(state)
     }
-    private func summary(_ key: String, _ count: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(String(count)).font(AIMTheme.title)
-            Text(L10n.text(key)).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
-        }.frame(maxWidth: .infinity, alignment: .leading)
+}
+
+private struct AIMConnectionRow: View {
+    let data: AIMCompanionSnapshot
+    let person: AIMCompanionSnapshot.Person
+    let current: Bool
+    let enabled: Bool
+    let imageReadEnabled: Bool
+    let write: () -> Void
+    let read: () -> Void
+    let settings: () -> Void
+    @MurmurViewState private var expanded = false
+
+    private var statusOnly: Bool { data.isStatusOnly(person) }
+    private var sending: AIMConnectionSending { data.connectionSending(for: person, current: current) }
+    private var singleAgent: String? { person.agents.count == 1 ? person.agents.first : nil }
+    private var sharingLabel: String {
+        let keys = person.agents.compactMap { data.peer_policy?.peers[$0]?.sharingLabelKey }
+        guard keys.count == person.agents.count, let first = keys.first else { return "Sharing policy not observed" }
+        return keys.allSatisfy { $0 == first } ? first : "Sharing varies by assistant"
     }
-    private func connection(_ person: AIMCompanionSnapshot.Person, data: AIMCompanionSnapshot) -> some View {
-        let privateLine = person.contact_state == "status_only" || (!person.agents.isEmpty && data.communicationPeer(for: person) == nil)
-        let work = privateLine ? [] : (data.attention?.items ?? []).filter { person.agents.contains($0.peer) }
-        return HStack(alignment: .top, spacing: 12) {
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { expanded.toggle() } label: {
+                HStack(alignment: .top, spacing: 8) {
+                    personCell.frame(width: 184, alignment: .leading)
+                    Text("→").foregroundStyle(AIMTheme.muted).frame(width: 12).accessibilityHidden(true)
+                    assistantCell.frame(width: 148, alignment: .leading)
+                    Text("→").foregroundStyle(AIMTheme.muted).frame(width: 12).accessibilityHidden(true)
+                    exchangeCell.frame(maxWidth: .infinity, alignment: .leading)
+                }.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(L10n.text(expanded ? "Hide connection details" : "Show connection details"))
+            .accessibilityLabel(person.name + " · " + person.agents.map { person.agent_labels?[$0] ?? $0 }.joined(separator: ", ") + " · " + L10n.text(sending.labelKey))
+            .accessibilityValue(L10n.text(expanded ? "Expanded" : "Collapsed"))
+            if expanded { details.padding(.leading, 50) }
+        }.padding(.vertical, 8)
+    }
+
+    private var personCell: some View {
+        HStack(alignment: .top, spacing: 10) {
+            AIMPersonAvatar(person: person, imageReadEnabled: imageReadEnabled)
             VStack(alignment: .leading, spacing: 4) {
-                Text(person.name).font(AIMTheme.heading)
-                if let nickname = person.nickname { Text(nickname).font(AIMTheme.meta) }
-                Text(L10n.text(privateLine ? "Status only" : (person.agents.isEmpty ? "Assistant not observed" : (person.contact_state == "connected" ? "Connected" : "Observed binding")))).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
-            }.frame(width: 142, alignment: .leading)
-            Text("→").foregroundStyle(AIMTheme.muted).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 8) {
-                if person.agents.isEmpty { Text(L10n.text("Assistant not observed")) }
-                ForEach(person.agents, id: \.self) { agent in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(person.agent_labels?[agent] ?? agent).font(AIMTheme.heading)
-                        if !privateLine {
-                            if let policy = data.peer_policy?.peers[agent] {
-                                Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder))
-                                Text(L10n.text("Last wake") + ": " + policy.wake_status)
-                            } else { Text(L10n.text("Responder not observed")) }
-                            if let flow = person.flows?[agent] {
-                                Text(L10n.text("Assistant → desk") + ": " + (flow.inbound_count.map { String($0) } ?? L10n.text("Not observed")))
-                                Text(L10n.text("Desk → assistant") + ": " + (flow.outbound_count.map { String($0) } ?? L10n.text("Not observed")))
-                                Text(L10n.text(flow.scope == "partial_retained_snapshot" ? "Partial retained message counts" :
-                                    (flow.scope == "retained_snapshot" ? "Retained message counts" : "Traffic scope not observed"))).foregroundStyle(AIMTheme.muted)
-                                if let observed = flow.source_at { Text(L10n.text("Status checked") + ": " + AIMCompanionModel.stamp(observed)).foregroundStyle(AIMTheme.muted) }
-                            } else { Text(L10n.text("Traffic counts not observed")) }
-                        } else { Text(L10n.text("Status only")) }
-                    }.font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
-                }
-            }.frame(width: 212, alignment: .leading)
-            Text("→").foregroundStyle(AIMTheme.muted).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                if privateLine { Text(L10n.text("Status only")) }
-                else if person.agents.isEmpty { Text(L10n.text("Assistant not observed")) }
-                else if data.attention == nil { Text(L10n.text("Work classification not observed")) }
-                else {
-                    workCount("Your reply or decision", work.filter { $0.actionable && $0.kind == "owner" }.count)
-                    workCount("Assistant action needed", work.filter { $0.actionable && $0.kind == "agent" }.count)
-                    workCount("Delivery failed", work.filter { $0.actionable && $0.kind == "delivery" }.count)
-                    workCount("Waiting for people", work.filter { !$0.actionable && $0.kind == "peer" }.count)
-                    workCount("Needs verification", work.filter { $0.actionable && $0.kind == "verify" }.count)
-                    let retained = work.filter { !$0.actionable && $0.kind != "peer" }.count
-                    if retained > 0 { workCount("Retained review candidates", retained) }
-                }
-            }.font(AIMTheme.meta).frame(width: 230, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-        }.padding(.vertical, 4)
+                Text(person.name).font(AIMTheme.heading).fixedSize(horizontal: false, vertical: true)
+                if let nickname = person.nickname { Text(nickname).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).lineLimit(1) }
+                HStack(spacing: 4) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 8)).accessibilityHidden(true)
+                    Text(L10n.text("Details")).font(AIMTheme.meta)
+                }.foregroundStyle(AIMTheme.muted)
+            }
+        }
     }
-    private func workCount(_ key: String, _ count: Int) -> some View {
-        Text(L10n.text(key) + ": \(count)").foregroundStyle(count > 0 ? AIMTheme.ink : AIMTheme.muted)
+    private var assistantCell: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if person.agents.isEmpty {
+                Text(L10n.text(person.contact_state == "unlinked" ? "No connected assistant" : "Assistant not observed")).font(AIMTheme.meta)
+            }
+            ForEach(person.agents, id: \.self) { agent in
+                Text(person.agent_labels?[agent] ?? agent).font(AIMTheme.heading).fixedSize(horizontal: false, vertical: true)
+            }
+            Text(L10n.text(statusOnly ? "Private connection · status only" : "Observed binding"))
+                .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    private var exchangeCell: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(L10n.text(sending.labelKey)).font(AIMTheme.heading)
+                .foregroundStyle(sending == .blocked ? AIMTheme.signal : AIMTheme.ink)
+            if !statusOnly {
+                if !person.agents.isEmpty {
+                    Text(L10n.text(sharingLabel)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.text("From them → you") + ": " + personCount(inbound: true))
+                        Text(L10n.text("You → them") + ": " + personCount(inbound: false))
+                    }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                }
+            }
+        }.fixedSize(horizontal: false, vertical: true)
+    }
+    private func personCount(inbound: Bool) -> String {
+        let observation = data.connectionCount(for: person, inbound: inbound)
+        guard let count = observation.count else { return L10n.text("Not observed") }
+        return (observation.partial ? "≥ " : "") + String(count)
+    }
+    private func traffic(_ flow: AIMCompanionSnapshot.Person.Flow?) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(L10n.text("From them → you") + ": " + count(flow, inbound: true))
+            Text(L10n.text("You → them") + ": " + count(flow, inbound: false))
+        }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+    }
+    private func count(_ flow: AIMCompanionSnapshot.Person.Flow?, inbound: Bool) -> String {
+        guard let value = flow?.observedCount(inbound: inbound) else { return L10n.text("Not observed") }
+        return (flow?.scope == "partial_retained_snapshot" ? "≥ " : "") + String(value)
+    }
+
+    @ViewBuilder private var details: some View {
+        if statusOnly {
+            Text(L10n.text("Private connection · status only")).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Button(L10n.text("Write"), action: write).disabled(sending != .allowed)
+                        .help(L10n.text("Write message"))
+                    Button(L10n.text("Read"), action: read).disabled(!enabled || data.communicationPeer(for: person) == nil)
+                        .help(L10n.text("Read conversation"))
+                    if !(person.writable_agents ?? []).isEmpty {
+                        Button(L10n.text("Connection settings"), action: settings)
+                    }
+                }
+                ForEach(person.agents, id: \.self) { agent in agentDetails(agent) }
+                Text(L10n.text("A brief is attached only when selected for that send. Contact trust and incoming handling grant no vault or file access."))
+                    .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
+                if let attention = data.attention, attention.receipts_ok {
+                    let items = attention.items.filter { person.agents.contains($0.peer) && $0.actionable }
+                    Text(L10n.text("Your reply or decision") + ": \(items.filter { $0.kind == "owner" }.count) · " +
+                         L10n.text("Assistant action needed") + ": \(items.filter { $0.kind == "agent" }.count) · " +
+                         L10n.text("Delivery failed") + ": \(items.filter { $0.kind == "delivery" }.count)")
+                        .font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
+                } else { Text(L10n.text("Work classification not observed")).font(AIMTheme.meta) }
+            }
+        }
+    }
+    private func agentDetails(_ agent: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text((person.agent_labels?[agent] ?? agent) + " · " + L10n.text(data.connectionSending(for: person, agent: agent, current: current).labelKey)).font(AIMTheme.heading)
+            if let policy = data.peer_policy?.peers[agent] {
+                Text(L10n.text("Your responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder))
+                Text(L10n.text("Incoming handling") + ": " + L10n.text(policy.incomingLabelKey))
+                Text(L10n.text(policy.sharingLabelKey))
+                Text(L10n.text("Last wake") + ": " + policy.wake_status)
+                Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).foregroundStyle(AIMTheme.muted)
+            } else { Text(L10n.text("Responder not observed")) }
+            if let flow = person.flows?[agent] {
+                if singleAgent == nil { traffic(flow) }
+                Text(L10n.text(flow.scope == "retained_snapshot" ? "Retained message counts" :
+                    (flow.scope == "partial_retained_snapshot" ? "Partial retained message counts" : "Traffic scope not observed")))
+                    .foregroundStyle(AIMTheme.muted)
+                Text(L10n.text("Status checked") + " · " + AIMCompanionModel.stamp(flow.source_at)).foregroundStyle(AIMTheme.muted)
+            } else { Text(L10n.text("Traffic counts not observed")).foregroundStyle(AIMTheme.muted) }
+        }.font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
     }
 }
