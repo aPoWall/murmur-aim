@@ -609,7 +609,7 @@
 "Shared context" = "Shared context";
 "Only the written message" = "Only the written message";
 "Allow this approved brief" = "Allow this approved brief";
-"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged.";
+"Rules apply to explicit companion sends. A brief requires a separate attachment choice. Vault permissions, Telegram and existing AI responders are managed separately. Tone is a preference; manual text is unchanged." = "Sending and incoming handling are separate rules. Incoming handling restricts the configured responder. A brief requires an explicit attachment choice. Contact trust and tone are preferences. Vault access and Telegram routing require separate grants.";
 "Reload" = "Reload";
 "Save rules" = "Save rules";
 "Could not load rules. Nothing changed." = "Could not load rules. Nothing changed.";
