@@ -85,6 +85,9 @@ struct AIMQuietButtonStyle: ButtonStyle {
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
     @Published var hotkeyRecording = false
+    struct PageRequest { let id = UUID(); let page: String }
+    @Published var pageRequest: PageRequest?
+    func requestPage(_ page: String) { pageRequest = PageRequest(page: page) }
     /// The delegate re-registers the Carbon key when the field stores a new combination.
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
     var onStateChange: (() -> Void)?
@@ -186,9 +189,10 @@ struct AIMTabsBridge: NSViewRepresentable {
     func makeNSView(context: Context) -> AIMTabStrip {
         AIMTabStrip(tabs: [.init(id: "Overview", title: L10n.text("Overview").lowercased(), hint: L10n.text("The server desk: incoming requests, decisions and questions")),
                           .init(id: "People", title: L10n.text("People").lowercased(), hint: L10n.text("The roster: people, their agents and the last wake outcome")),
+                          .init(id: "Connections", title: L10n.text("Connection flow").lowercased(), hint: L10n.text("People, assistants and the work reaching your desk")),
                           .init(id: "Home", title: L10n.text("Local").lowercased(), hint: L10n.text("This Mac: the local profile, invitations and the service")),
                           .init(id: "Help", title: L10n.text("Help").lowercased(), hint: L10n.text("How the companion, delivery and replies work"))],
-                    selected: page, width: 708, tabWidth: 100, onSelect: { page = $0 })
+                    selected: page, width: 708, tabWidth: 116, onSelect: { page = $0 })
     }
     func updateNSView(_ view: AIMTabStrip, context: Context) { view.select(page) }
 }
@@ -381,8 +385,8 @@ struct AIMKeyboardBridge: NSViewRepresentable {
                 c.onSettings?(); return nil
             }
             guard flags.isEmpty, !(window.firstResponder is NSTextView), !(window.firstResponder is NSTextField),
-                  let digit = Int(event.charactersIgnoringModifiers ?? ""), (1...4).contains(digit) else { return event }
-            c.onTab?(["Overview", "People", "Home", "Help"][digit - 1])
+                  let digit = Int(event.charactersIgnoringModifiers ?? ""), (1...5).contains(digit) else { return event }
+            c.onTab?(["Overview", "People", "Connections", "Home", "Help"][digit - 1])
             return nil
         }
         return view

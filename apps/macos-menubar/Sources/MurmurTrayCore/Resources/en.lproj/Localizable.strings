@@ -876,3 +876,35 @@
 "Continue" = "Continue";
 "Conversation and access details" = "Conversation and access details";
 "Team directory" = "Team directory";
+
+/* Observed person / assistant routes and notification scopes. */
+"Assistant" = "Assistant";
+"Assistant and delivery issues" = "Assistant and delivery issues";
+"Assistant not observed" = "Assistant not observed";
+"Assistant → desk" = "Assistant → desk";
+"Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online." = "Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online.";
+"Desk → assistant" = "Desk → assistant";
+"Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write." = "Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write.";
+"Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline." = "Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline.";
+"Notify about assistant and delivery issues" = "Notify about assistant and delivery issues";
+"Notify about your replies and decisions" = "Notify about your replies and decisions";
+"Observed binding" = "Observed binding";
+"Open communication desk" = "Open communication desk";
+"Open the window: overview, people, connections, local and help" = "Open the window: overview, people, connections, local and help";
+"People → assistants → your desk" = "People → assistants → your desk";
+"People, assistants and the work reaching your desk" = "People, assistants and the work reaching your desk";
+"Person" = "Person";
+"Read or write to a person" = "Read or write to a person";
+"Responder not observed" = "Responder not observed";
+"Retained message counts" = "Retained message counts";
+"Retained observation · refresh before acting" = "Retained observation · refresh before acting";
+"Status only" = "Status only";
+"Traffic counts not observed" = "Traffic counts not observed";
+"Work classification not observed" = "Work classification not observed";
+"Technical issues and verification" = "Technical issues and verification";
+"Notify about technical issues and verification" = "Notify about technical issues and verification";
+"Retained review candidates" = "Retained review candidates";
+"Partial retained message counts" = "Partial retained message counts";
+"Traffic scope not observed" = "Traffic scope not observed";
+"Connection flow" = "Connections";
+"Connected" = "Connected";

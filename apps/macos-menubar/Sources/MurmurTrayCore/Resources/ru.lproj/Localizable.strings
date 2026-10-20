@@ -876,3 +876,35 @@
 "Continue" = "Продолжить";
 "Conversation and access details" = "Переписка и доступ";
 "Team directory" = "Люди команды";
+
+/* Observed person / assistant routes and notification scopes. */
+"Assistant" = "Помощник";
+"Assistant and delivery issues" = "Задачи помощника и ошибки доставки";
+"Assistant not observed" = "Помощник не наблюдался";
+"Assistant → desk" = "Помощник → мой стол";
+"Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online." = "Связи показывают, кому принадлежит помощник. Счётчики показывают, чей ход; присутствие человека в сети не подтверждено.";
+"Desk → assistant" = "Мой стол → помощник";
+"Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write." = "Клавиши 1–5: обзор, люди, связи, локально, помощь. Связи показывают человека → помощника → ваш стол; чтение и отправка доступны в разделе «Люди».";
+"Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline." = "Кнопки уведомления открывают нужный раздел. При включении категории прежние события остаются без уведомлений.";
+"Notify about assistant and delivery issues" = "Уведомлять о задачах помощника и ошибках доставки";
+"Notify about your replies and decisions" = "Уведомлять, когда нужны мой ответ или решение";
+"Observed binding" = "Наблюдаемая связь";
+"Open communication desk" = "Открыть стол коммуникаций";
+"Open the window: overview, people, connections, local and help" = "Открыть окно: обзор, люди, связи, локально и помощь";
+"People → assistants → your desk" = "Люди → помощники → ваш стол";
+"People, assistants and the work reaching your desk" = "Люди, помощники и работа, которая попадает к вам";
+"Person" = "Человек";
+"Read or write to a person" = "Прочитать или написать человеку";
+"Responder not observed" = "Отвечающий помощник не наблюдался";
+"Retained message counts" = "Сообщения в сохранённом срезе";
+"Retained observation · refresh before acting" = "Сохранённое наблюдение · обновите перед действием";
+"Status only" = "Только состояние";
+"Traffic counts not observed" = "Счётчики сообщений не наблюдались";
+"Work classification not observed" = "Классификация задач не наблюдалась";
+"Technical issues and verification" = "Технические проблемы и проверка";
+"Notify about technical issues and verification" = "Уведомлять о технических проблемах и проверке";
+"Retained review candidates" = "Сохранённые кандидаты на разбор";
+"Partial retained message counts" = "Сообщения в неполном срезе";
+"Traffic scope not observed" = "Область счётчиков не наблюдалась";
+"Connection flow" = "Связи";
+"Connected" = "Подключён";

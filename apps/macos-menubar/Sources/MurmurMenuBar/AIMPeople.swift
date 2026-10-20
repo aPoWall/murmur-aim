@@ -56,12 +56,7 @@ struct AIMPeopleView: View {
         }
     }
     private var teamDirectoryURL: URL? {
-        guard let board = AIMEditionConfig.current.boardURL,
-              board.user == nil, board.password == nil,
-              var parts = URLComponents(url: board, resolvingAgainstBaseURL: false) else { return nil }
-        parts.query = nil
-        parts.fragment = nil
-        return parts.url?.appendingPathComponent("team")
+        AIMEditionConfig.current.teamDirectoryURL
     }
     private func openBoard(_ actor: String, section: String) {
         guard var parts = URLComponents(string: AIMCompanionModel.board) else { return }

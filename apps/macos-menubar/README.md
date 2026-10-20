@@ -353,3 +353,15 @@ live under the contact's Connection and access details disclosure. Sending and i
 trust, tone and optional brief are advanced preferences. A missing incoming mode
 is unknown and disables saving, including on older servers. No runtime grants
 or defaults are changed by this presentation change.
+
+The **Connections** tab shows person → assistant → communication desk. Each
+assistant has separate inbound/outbound counts from the retained server and Mac
+snapshots, a source timestamp and the observed responder outcome. Partial source
+counts are labelled; an unavailable direction stays unknown. The counts describe
+the retained snapshot and do not establish a person's online presence.
+
+Number keys select Overview (1), People (2), Connections (3), Local (4) and Help
+(5). The menu mark keeps its width and adds an attention dot; its context menu
+separates owner decisions from assistant issues and verification. Settings expose
+independent notification category switches. Notifications contain names and
+counts and open the corresponding desk or connections page, without message text.

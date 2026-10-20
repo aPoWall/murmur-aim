@@ -19,6 +19,17 @@ func runAIMCompanionChecks() throws -> Int {
     object["people"] = [["id":"person:sample", "name":"Sample", "agents":["agent-sample"], "nickname":"@sample_handle", "agent_labels":["agent-sample":"sample label"], "writable_agents":["agent-sample"]]]
     let people = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)).people
     try check(people.first?.nickname == "@sample_handle" && people.first?.writable_agents == ["agent-sample"], "exact recipient and nickname survive decoding")
+    try check(people.first?.flows == nil, "an older roster leaves traffic unknown")
+    var flowPerson = (object["people"] as! [[String: Any]])[0]
+    flowPerson["flows"] = ["agent-sample": ["inbound_count": 0, "outbound_count": 7, "scope": "retained snapshot", "source_at": "2026-09-29T17:00:00Z"]]
+    object["people"] = [flowPerson]
+    let flow = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)).people[0].flows!["agent-sample"]!
+    try check(flow.inbound_count == 0 && flow.outbound_count == 7 && flow.last_at == nil, "directional counts preserve measured zero and unknown date")
+    flowPerson["flows"] = ["agent-sample": ["inbound_count": -1]]
+    object["people"] = [flowPerson]
+    do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "negative traffic accepted") }
+    catch is CocoaError {}
+    flowPerson.removeValue(forKey: "flows"); object["people"] = [flowPerson]
     object["privacy"] = "public"
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe projection accepted") }
     catch is CocoaError {} 
@@ -91,6 +102,13 @@ func runAIMCompanionChecks() throws -> Int {
     // Edition configuration: a stock build has none, and nothing unsafe survives validation.
     let searchEdition = AIMEditionConfig(info: ["AIMShellEdition": 1, "AIMBoardURL": "https://example.com/desk/?command=old&view=old&lab=test#stale"])
     try check(searchEdition.sharedSearchURL?.absoluteString == "https://example.com/desk/?lab=test&view=mesh&command=search", "owner search preserves mount and replaces routing")
+    try check(searchEdition.teamDirectoryURL?.absoluteString == "https://example.com/desk/team", "team directory keeps the HTTPS board mount and removes query and fragment")
+    var changedBoard = searchEdition
+    changedBoard.boardURL = URL(string: "http://example.com/desk/")
+    try check(changedBoard.teamDirectoryURL == nil && changedBoard.sharedSearchURL == nil,
+              "directory and search refuse an HTTP URL even after public config mutation")
+    changedBoard.boardURL = URL(string: "https://user:password@example.com/desk/?token=secret#old")
+    try check(changedBoard.teamDirectoryURL == nil, "team directory never opens a credential-bearing URL")
     try check(AIMEditionConfig().sharedSearchURL == nil, "stock has no owner search destination")
     try check(AIMEditionConfig(info: ["AIMShellEdition": 1, "AIMBoardURL": "http://example.com"]).sharedSearchURL == nil, "owner search requires HTTPS")
     try check(AIMEditionConfig(info: ["AIMShellEdition": 1, "AIMBoardURL": "https://user:password@example.com"]).sharedSearchURL == nil, "owner search does not expose credentials in URL")
@@ -137,6 +155,22 @@ func runAIMCompanionChecks() throws -> Int {
               "waiting for a peer stays separate from verification and actionable work")
     try check(groupedAttention.yourTurn.map(\.kind) == ["owner"] && Set(groupedAttention.otherUpdates.map(\.kind)) == ["agent", "delivery"],
               "technical failures and agent work never masquerade as owner decisions")
+    let groupedSnapshot = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject))
+    try check(groupedSnapshot.ownerAttentionCount == 1 && groupedSnapshot.technicalAttentionCount == 2,
+              "menu separates owner decisions from technical work")
+    try check(groupedSnapshot.notificationKeys(owner: true, technical: false) == Set(classifiedAttentionItems.filter { $0["kind"] as? String == "owner" }.map { "attention:\($0["id"]!):owner:source-demo" }),
+              "owner-only notifications exclude assistant and delivery issues")
+    try check(groupedSnapshot.notificationKeys(owner: false, technical: true).isDisjoint(with: groupedSnapshot.notificationKeys(owner: true, technical: false)),
+              "technical notification scope does not include owner decisions")
+    try check(groupedSnapshot.notificationKeys(owner: false, technical: false).isEmpty,
+              "turning both categories off emits no notification keys")
+    var recentVerification = attentionItem
+    recentVerification["kind"] = "verify"; recentVerification["id"] = "unreviewed_inbound:synthetic"
+    let verificationObject = attentionObject.merging(["attention": ["schema": 1, "receipts_ok": true, "items": [recentVerification]]]) { _, new in new }
+    let verificationSnapshot = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: verificationObject))
+    try check(verificationSnapshot.ownerAttentionCount == 0 && verificationSnapshot.technicalAttentionCount == 1
+              && verificationSnapshot.notificationKeys(owner: false, technical: true).count == 1,
+              "recent unclassified incoming can alert for verification without becoming an owner obligation")
     var contactObject = attentionObject
     contactObject["people"] = [["id":"person:demo", "name":"Synthetic contact", "agents":["agent-other", "agent-demo"],
                                "writable_agents":["agent-other", "agent-demo"]]]
@@ -200,5 +234,5 @@ func runAIMCompanionChecks() throws -> Int {
     try check(manualPolicy.peers["agent-sample"]?.reply_mode == "manual", "manual admission restriction survives the native contract")
     try check(manualPolicy.peers["agent-sample"]?.incomingLabelKey == "Manual review only" && manualPolicy.peers["agent-sample"]?.canEditIncoming == true,
               "known manual mode remains explicit and editable")
-    return 58
+    return 69
 }

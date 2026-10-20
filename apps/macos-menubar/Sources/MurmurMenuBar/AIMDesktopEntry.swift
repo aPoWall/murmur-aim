@@ -19,6 +19,15 @@ private final class CommandMenuItem: NSMenuItem {
     @objc private func invoke() { command() }
 }
 
+/// A separate signal preserves the system-adaptive template mark in either menu-bar appearance.
+private final class AIMAttentionDot: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.systemRed.setFill()
+        NSBezierPath(ovalIn: bounds).fill()
+    }
+}
+
 /// App delegate of the companion edition; `MurmurMenuBarApp` selects it only when the edition is stamped.
 @MainActor
 final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
@@ -26,6 +35,7 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     private var item: NSStatusItem?
     private var window: NSWindow?
     private var observation: AnyCancellable?
+    private var attentionDot: AIMAttentionDot?
     /// Rules 49, 50: one family combination, ⌥⌘U by default, recorded in settings.
     private lazy var shortcut = FamilyHotkeyRegistrar(signature: 0x4D75726D) { [weak self] in self?.toggleWindow(reason: .hotkey) }
 
@@ -60,6 +70,12 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
         UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().setNotificationCategories([
+            UNNotificationCategory(identifier: "aim.communication", actions: [
+                UNNotificationAction(identifier: "aim.desk", title: L10n.text("Open communication desk"), options: [.foreground]),
+                UNNotificationAction(identifier: "aim.connections", title: L10n.text("Connection flow"), options: [.foreground])
+            ], intentIdentifiers: [], options: [])
+        ])
         AIMMenuPresence.prepare(screenWidth: Double(NSScreen.screens.map { $0.frame.width }.max() ?? 1440))
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         // Preserve the preference written by the previous single MenuBarExtra.
@@ -70,6 +86,13 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         item.button?.target = self
         item.button?.action = #selector(statusButtonClicked)
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        if let button = item.button {
+            let dot = AIMAttentionDot(frame: NSRect(x: button.bounds.maxX - 6, y: button.bounds.maxY - 6, width: 5, height: 5))
+            dot.autoresizingMask = [.minXMargin, .minYMargin]
+            dot.setAccessibilityHidden(true)
+            button.addSubview(dot)
+            attentionDot = dot
+        }
         observation = model.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshStatusItem() }
         }
@@ -105,18 +128,28 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        Task { @MainActor in self.showWindow(); completionHandler() }
+        guard response.actionIdentifier != UNNotificationDismissActionIdentifier else { completionHandler(); return }
+        let requested = response.notification.request.content.userInfo["aimPage"] as? String
+        let page = response.actionIdentifier == "aim.connections" ? "Connections"
+            : (response.actionIdentifier == "aim.desk" ? "Overview" : (requested == "Connections" ? "Connections" : "Overview"))
+        Task { @MainActor in
+            self.showWindow()
+            AIMWindowState.shared.requestPage(page)
+            self.model.companion.refresh()
+            completionHandler()
+        }
     }
 
     private func refreshStatusItem() {
         item?.button?.image = AIMAppMarkView.image(.murmur, size: 18, mono: true)
+        attentionDot?.isHidden = !model.companion.current || (model.companion.snapshot?.attentionCount ?? 0) == 0
         // Stable mark-only width keeps counters from displacing the menu entrance; details remain in the tooltip/panel.
         item?.button?.title = ""
         let combo = AIMWindowState.shared.hotkey
         let entrance = model.shortcutAvailable && combo != nil ? L10n.text("Open Murmur: %@", combo!.display)
             : L10n.text("Shortcut unavailable. Open Murmur from Finder.")
         item?.button?.toolTip = "Murmur AIM · " + AIMTheme.version + "\n" + model.accessibleStatus + "\n" + model.companion.badge + "\n" + entrance
-        item?.button?.setAccessibilityLabel("Murmur AIM · " + model.accessibleStatus)
+        item?.button?.setAccessibilityLabel("Murmur AIM · " + model.accessibleStatus + " · " + model.companion.badge)
     }
 
     @objc private func statusButtonClicked() {
@@ -192,7 +225,17 @@ final class AIMAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         func add(_ title: String, enabled: Bool = true, tip: String? = nil, action: @escaping () -> Void) {
             menu.addItem(CommandMenuItem(title, enabled: enabled, tip: tip, command: action))
         }
-        add(L10n.text("Open Murmur"), tip: L10n.text("Open the window: overview, people, local and help")) { [weak self] in self?.showWindow() }
+        add(L10n.text("Open Murmur"), tip: L10n.text("Open the window: overview, people, connections, local and help")) { [weak self] in self?.showWindow() }
+        if model.companion.enabled {
+            let snapshot = model.companion.current ? model.companion.snapshot : nil
+            add(L10n.text("Your reply or decision") + ": " + (snapshot.map { String($0.ownerAttentionCount) } ?? L10n.text("Not observed"))) { [weak self] in
+                self?.showWindow(); AIMWindowState.shared.requestPage("Overview")
+            }
+            add(L10n.text("Technical issues and verification") + ": " + (snapshot.map { String($0.technicalAttentionCount) } ?? L10n.text("Not observed"))) { [weak self] in
+                self?.showWindow(); AIMWindowState.shared.requestPage("Connections")
+            }
+            menu.addItem(.separator())
+        }
         if model.profile != nil || model.isDemo {
             add(model.verdict.reason) { [weak self] in self?.showWindow() }
             menu.addItem(.separator())

@@ -12,6 +12,8 @@ import MurmurTrayCore
     @Published var notificationDenied = false
     @Published var requestingNotifications = false
     @Published var notificationAuthorization: UNAuthorizationStatus = .notDetermined
+    @Published var notifyOwner = UserDefaults.standard.object(forKey: "aimNotifyOwner") as? Bool ?? true
+    @Published var notifyTechnical = UserDefaults.standard.object(forKey: "aimNotifyTechnical") as? Bool ?? true
     @Published var previewConnected = false
     private var timer: Timer?
     private var notificationHistory = AIMCompanionNotificationHistory()
@@ -30,9 +32,13 @@ import MurmurTrayCore
     var current: Bool { !failed && snapshot?.isCurrent() == true }
     var badge: String {
         guard enabled else { return "" }
-        guard current, let snapshot else { return " !" }
-        let count = snapshot.attentionCount
-        return count > 0 ? " \(count)" : ""
+        guard current, let snapshot else { return L10n.text("Not observed") }
+        return L10n.text("Your reply or decision") + ": \(snapshot.ownerAttentionCount) · "
+            + L10n.text("Technical issues and verification") + ": \(snapshot.technicalAttentionCount)"
+    }
+    func setNotificationScope(owner: Bool? = nil, technical: Bool? = nil) {
+        if let owner { notifyOwner = owner; UserDefaults.standard.set(owner, forKey: "aimNotifyOwner") }
+        if let technical { notifyTechnical = technical; UserDefaults.standard.set(technical, forKey: "aimNotifyTechnical") }
     }
     func start() {
         refreshNotificationAuthorization()
@@ -72,18 +78,36 @@ import MurmurTrayCore
                 // Each wire format establishes its own quiet baseline, even when the
                 // app is installed before the server starts publishing attention/1.
                 let added = notificationHistory.observe(keys, sharedAttention: data.attention != nil)
-                if notifications && !added.isEmpty {
+                let selectedKeys = data.notificationKeys(owner: notifyOwner, technical: notifyTechnical)
+                let selectedHashes = Set(selectedKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
+                let selectedAdded = added.intersection(selectedHashes)
+                if notifications && !selectedAdded.isEmpty {
                     refreshNotificationAuthorization()
                     let senders = data.incoming.filter { row in row.ids.contains { id in
                         let key = "message:\(row.peer):\(id)"
                         let hash = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
-                        return added.contains(hash)
+                        return selectedAdded.contains(hash)
                     }}.map { row in data.people.first { $0.agents.contains(row.peer) }?.name ?? row.peer }
                     let attentionSenders = (data.attention?.items ?? []).filter { item in
                         let hash = SHA256.hash(data: Data(item.notificationKey.utf8)).map { String(format: "%02x", $0) }.joined()
-                        return added.contains(hash)
+                        return selectedAdded.contains(hash)
                     }.map { item in data.people.first { $0.agents.contains(item.peer) }?.name ?? item.peer }
-                    notify(count: added.count, senders: Array(Set(senders + attentionSenders)).sorted())
+                    let ownerKeys = data.notificationKeys(owner: true, technical: false)
+                    let ownerHashes = Set(ownerKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
+                    let ownerCount = selectedAdded.intersection(ownerHashes).count
+                    let counts: [(String, Int)]
+                    if let attention = data.attention {
+                        counts = ["owner", "agent", "delivery", "verify", "peer"].compactMap { kind in
+                            let matches = attention.items.filter { item in
+                                guard item.kind == kind else { return false }
+                                let hash = SHA256.hash(data: Data(item.notificationKey.utf8)).map { String(format: "%02x", $0) }.joined()
+                                return selectedAdded.contains(hash)
+                            }
+                            return matches.first.map { ($0.kindLabelKey, matches.count) }
+                        }
+                    } else { counts = [("Communication needs attention", selectedAdded.count)] }
+                    notify(ownerCount: ownerCount, counts: counts,
+                           senders: Array(Set(senders + attentionSenders)).sorted())
                 }
             }
         }
@@ -106,10 +130,13 @@ import MurmurTrayCore
             }
         }
     }
-    private func notify(count: Int, senders: [String]) {
+    private func notify(ownerCount: Int, counts: [(String, Int)], senders: [String]) {
         let content = UNMutableNotificationContent()
         content.title = "Murmur AIM"
-        content.body = L10n.text("Communication needs attention") + ": \(count)" + (senders.isEmpty ? "" : " · " + senders.prefix(2).joined(separator: ", "))
+        let summary = counts.map { L10n.text($0.0) + ": \($0.1)" }.joined(separator: " · ")
+        content.body = summary + (senders.isEmpty ? "" : " · " + senders.prefix(2).joined(separator: ", "))
+        content.categoryIdentifier = "aim.communication"
+        content.userInfo = ["aimPage": ownerCount > 0 ? "Overview" : "Connections"]
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { _ in }
     }
@@ -295,6 +322,9 @@ struct AIMCompanionSettings: View {
                 Button(model.requestingNotifications ? L10n.text("Waiting for macOS permission…") : (model.notifications ? L10n.text("Disable notifications") : L10n.text("Enable notifications"))) { model.toggleNotifications() }.help(L10n.text("macOS notifications with sender names and counts, never the message text")).disabled(model.requestingNotifications)
             }
             if model.notificationDenied { Text(L10n.text("Allow Murmur AIM notifications in macOS System Settings.")).foregroundStyle(AIMTheme.signal) }
+            Toggle(L10n.text("Notify about your replies and decisions"), isOn: Binding(get: { model.notifyOwner }, set: { model.setNotificationScope(owner: $0) }))
+            Toggle(L10n.text("Notify about technical issues and verification"), isOn: Binding(get: { model.notifyTechnical }, set: { model.setNotificationScope(technical: $0) }))
+            Text(L10n.text("Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline.")).font(AIMTheme.meta)
             Toggle(L10n.text("Local dashboard preview on this Mac"), isOn: Binding(get: { model.localDashboard }, set: { model.setLocalDashboard($0) }))
             Text(AIMCompanionModel.board).font(AIMTheme.meta).textSelection(.enabled)
             Text(L10n.text("Dates use this Mac's timezone") + " · " + TimeZone.current.identifier).font(AIMTheme.meta)
@@ -308,6 +338,7 @@ struct AIMCompanionHelp: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.text("How these tools work together")).font(AIMTheme.title)
+            Text(L10n.text("Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write.")).font(AIMTheme.meta)
             Text(L10n.text("Mac app: overview, messages and shortcuts. Server: encrypted delivery and native WakeMonitor. Dashboard: history and sources. Each linked owner chat handles its own follow-up."))
             Text(L10n.text("Claude and local Codex profiles remain separate connections. Opening a window does not transfer conversation context or change the server responder."))
             Text(L10n.text("Task archive (formerly Recovery) is a dated dispatcher snapshot. It does not restart tasks or confirm their current status."))
