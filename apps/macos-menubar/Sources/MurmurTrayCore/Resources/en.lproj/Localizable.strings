@@ -933,3 +933,39 @@
 "Source receipts not observed" = "Source receipts not observed";
 "Sharing varies by assistant" = "Sharing varies by assistant";
 "No connected assistant" = "No connected assistant";
+
+"Your incoming handler · configured" = "Your incoming handler · configured";
+
+"Your handler model" = "Your handler model";
+
+"Your incoming handler not observed" = "Your incoming handler not observed";
+
+"Their runtime / model" = "Their runtime / model";
+
+"Codex · server session" = "Codex · server session";
+
+"Local handler" = "Local handler";
+
+"Incoming handler paused" = "Incoming handler paused";
+
+"Handler type not observed" = "Handler type not observed";
+
+"Waiting for handler" = "Waiting for handler";
+
+"In progress" = "In progress";
+
+"Handler completed" = "Handler completed";
+
+"Handler failed" = "Handler failed";
+
+"Wake muted" = "Wake muted";
+
+"Wake needs attention" = "Wake needs attention";
+
+"Stored · no automatic handler" = "Stored · no automatic handler";
+
+"Incoming: their assistant → your Murmur inbox → your configured handler." = "Incoming: their assistant → your Murmur inbox → your configured handler.";
+
+"Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route." = "Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route.";
+
+"Read the exchange to check replies; transport delivery and assistant work have separate outcomes." = "Read the exchange to check replies; transport delivery and assistant work have separate outcomes.";

@@ -209,16 +209,47 @@ private struct AIMConnectionRow: View {
             }
         }
     }
+    /// These modes describe our handler for this peer's incoming messages.
+    /// They contain no evidence about the peer's runtime or selected model.
+    private func incomingHandlerKey(_ mode: String) -> String {
+        switch mode {
+        case "codex_app_server": return "Codex · server session"
+        case "stateless", "stateful": return "Local handler"
+        case "disabled": return "Incoming handler paused"
+        case "none": return "Not assigned · manual reply needed"
+        default: return "Handler type not observed"
+        }
+    }
+    private func wakeKey(_ state: String) -> String {
+        switch state {
+        case "pending": return "Waiting for handler"
+        case "inflight": return "In progress"
+        case "handled": return "Handler completed"
+        case "failed": return "Handler failed"
+        case "muted": return "Wake muted"
+        case "dlq": return "Wake needs attention"
+        case "stored-only": return "Stored · no automatic handler"
+        default: return "Not observed"
+        }
+    }
     private func agentDetails(_ agent: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text((person.agent_labels?[agent] ?? agent) + " · " + L10n.text(data.connectionSending(for: person, agent: agent, current: current).labelKey)).font(AIMTheme.heading)
             if let policy = data.peer_policy?.peers[agent] {
-                Text(L10n.text("Your responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder))
+                Text(L10n.text("Your incoming handler · configured") + ": " + L10n.text(incomingHandlerKey(policy.responder)))
+                Text(L10n.text("Your handler model") + ": " + L10n.text("Not observed")).foregroundStyle(AIMTheme.muted)
                 Text(L10n.text("Incoming handling") + ": " + L10n.text(policy.incomingLabelKey))
                 Text(L10n.text(policy.sharingLabelKey))
-                Text(L10n.text("Last wake") + ": " + policy.wake_status)
+                Text(L10n.text("Last wake") + ": " + L10n.text(wakeKey(policy.wake_status)))
                 Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).foregroundStyle(AIMTheme.muted)
-            } else { Text(L10n.text("Responder not observed")) }
+            } else { Text(L10n.text("Your incoming handler not observed")) }
+            Text(L10n.text("Their runtime / model") + ": " + L10n.text("Not observed")).foregroundStyle(AIMTheme.muted)
+            Text(L10n.text("Incoming: their assistant → your Murmur inbox → your configured handler."))
+                .foregroundStyle(AIMTheme.muted)
+            Text(L10n.text("Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route."))
+                .foregroundStyle(AIMTheme.muted)
+            Text(L10n.text("Read the exchange to check replies; transport delivery and assistant work have separate outcomes."))
+                .foregroundStyle(AIMTheme.muted)
             if let flow = person.flows?[agent] {
                 if singleAgent == nil { traffic(flow) }
                 Text(L10n.text(flow.scope == "retained_snapshot" ? "Retained message counts" :

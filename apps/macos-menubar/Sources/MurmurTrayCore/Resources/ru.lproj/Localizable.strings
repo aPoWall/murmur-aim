@@ -933,3 +933,39 @@
 "Source receipts not observed" = "Результаты чтения источников не получены";
 "Sharing varies by assistant" = "Контекст зависит от помощника";
 "No connected assistant" = "Нет подключённого помощника";
+
+"Your incoming handler · configured" = "Ваш обработчик входящих · настроен";
+
+"Your handler model" = "Модель вашего обработчика";
+
+"Your incoming handler not observed" = "Ваш обработчик входящих не наблюдался";
+
+"Their runtime / model" = "Среда / модель собеседника";
+
+"Codex · server session" = "Codex · серверная сессия";
+
+"Local handler" = "Локальный обработчик";
+
+"Incoming handler paused" = "Обработчик входящих приостановлен";
+
+"Handler type not observed" = "Тип обработчика не наблюдался";
+
+"Waiting for handler" = "Ожидает обработчика";
+
+"In progress" = "В работе";
+
+"Handler completed" = "Обработчик завершил работу";
+
+"Handler failed" = "Ошибка обработчика";
+
+"Wake muted" = "Пробуждение заглушено";
+
+"Wake needs attention" = "Пробуждение требует внимания";
+
+"Stored · no automatic handler" = "Сохранено · автообработчик отсутствует";
+
+"Incoming: their assistant → your Murmur inbox → your configured handler." = "Входящие: помощник собеседника → ваш ящик Murmur → ваш настроенный обработчик.";
+
+"Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route." = "Исходящие: это приложение → Murmur → ящик собеседника. Его помощник работает через своё подключение.";
+
+"Read the exchange to check replies; transport delivery and assistant work have separate outcomes." = "Проверьте ответы в переписке. Доставка сообщения и работа помощника имеют отдельные результаты.";

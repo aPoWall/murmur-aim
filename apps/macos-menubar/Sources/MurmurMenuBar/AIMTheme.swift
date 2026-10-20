@@ -161,10 +161,11 @@ struct AIMHeaderBridge: NSViewRepresentable {
     let status: String
     func makeNSView(context: Context) -> AIMAppHeader {
         let pin = AIMPinButton(pinned: AIMWindowState.shared.pinned) { value in AIMWindowState.shared.setPinned(value) }
-        let header = AIMAppHeader(mark: .murmur, name: "MURMUR AIM", status: status,
+        let header = AIMAppHeader(mark: .murmur, name: "mur·mur", status: status,
                                  version: AIMTheme.version, width: 708,
                                  onSettings: onSettings, pin: pin,
                                  onClose: { AIMWindowState.shared.close(.closeButton) })
+        applyWordmark(to: header)
         header.closeButton?.toolTip = "close the window \u{00B7} esc or \u{2318}W"
         header.settingsButton?.toolTip = "settings: theme, the global key, the server companion and the local service"
         // N1 family character in the header; flat family mark remains in the menu bar.
@@ -178,7 +179,17 @@ struct AIMHeaderBridge: NSViewRepresentable {
         header.markView.setAccessibilityLabel("Murmur AIM")
         return header
     }
+    private func applyWordmark(to header: AIMAppHeader) {
+        let wordmark = NSMutableAttributedString(string: "mur·mur", attributes: [
+            .font: header.nameLabel.font ?? NSFont.monospacedSystemFont(ofSize: AIMAppShellStyle.titleSize, weight: .semibold),
+            .foregroundColor: AIMAppShellStyle.ink,
+        ])
+        wordmark.addAttribute(.foregroundColor, value: AIMAppShellStyle.signal, range: NSRange(location: 3, length: 1))
+        header.nameLabel.attributedStringValue = wordmark
+        header.nameLabel.setAccessibilityLabel("mur·mur")
+    }
     func updateNSView(_ view: AIMAppHeader, context: Context) {
+        applyWordmark(to: view)
         view.setStatus(status)
         view.pinButton?.setPinned(AIMWindowState.shared.pinned)
     }
