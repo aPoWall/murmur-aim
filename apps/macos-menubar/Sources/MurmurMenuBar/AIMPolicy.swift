@@ -18,6 +18,7 @@ struct AIMPolicyView: View {
     @MurmurViewState private var trust = "review_required"
     @MurmurViewState private var context = "message_only"
     @MurmurViewState private var tone = "concise"
+    @MurmurViewState private var replyMode = "technical_only"
     @MurmurViewState private var brief = ""
     @MurmurViewState private var status = ""
     @MurmurViewState private var busy = false
@@ -36,6 +37,10 @@ struct AIMPolicyView: View {
                     Text(L10n.text("Review each request")).tag("review_required")
                     Text(L10n.text("Known contact · no extra permissions")).tag("trusted_contact")
                 }.help(L10n.text("How requests from this contact are reviewed; it grants no file access"))
+                Picker(L10n.text("Incoming handling"), selection: $replyMode) {
+                    Text(L10n.text("Verified technical replies")).tag("technical_only")
+                    Text(L10n.text("Manual review only")).tag("manual")
+                }.help(L10n.text("Restricts the existing responder; never grants files or starts a new route"))
                 Picker(L10n.text("Preferred tone"), selection: $tone) {
                     Text(L10n.text("Concise")).tag("concise"); Text(L10n.text("Friendly")).tag("friendly"); Text(L10n.text("Formal")).tag("formal")
                 }.help(L10n.text("The tone the companion prefers; your own text is never rewritten"))
@@ -59,7 +64,7 @@ struct AIMPolicyView: View {
     }
     private func populate() {
         guard let policy = data?.peers[peer] else { return }
-        sendAllowed = policy.send_allowed; trust = policy.trust; tone = policy.tone; context = policy.context; brief = policy.brief ?? ""
+        replyMode = policy.reply_mode ?? "technical_only"; sendAllowed = policy.send_allowed; trust = policy.trust; tone = policy.tone; context = policy.context; brief = policy.brief ?? ""
     }
     private func load() {
         busy = true
@@ -74,7 +79,7 @@ struct AIMPolicyView: View {
     }
     private func save() {
         guard let revision = data?.peers[peer]?.revision,
-              let payload = try? JSONSerialization.data(withJSONObject: ["action":"set", "peer":peer, "revision":revision, "policy":["send_allowed":sendAllowed,"trust":trust,"tone":tone,"context":context,"brief":context == "approved_brief" ? brief : ""]]) else { return }
+              let payload = try? JSONSerialization.data(withJSONObject: ["action":"set", "peer":peer, "revision":revision, "policy":["send_allowed":sendAllowed,"trust":trust,"tone":tone,"reply_mode":replyMode,"context":context,"brief":context == "approved_brief" ? brief : ""]]) else { return }
         busy = true
         Task {
             let result = await Task.detached { Result { try AIMPolicyTransport.save(payload) } }.value

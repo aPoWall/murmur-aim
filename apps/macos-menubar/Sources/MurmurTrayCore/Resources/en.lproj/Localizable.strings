@@ -831,3 +831,17 @@
 "Delivery failed" = "Delivery failed";
 
 "Reply evidence unavailable. Check the source before acting." = "Reply evidence unavailable. Check the source before acting.";
+
+"Incoming handling" = "Incoming handling";
+
+"Verified technical replies" = "Verified technical replies";
+
+"Manual review only" = "Manual review only";
+
+"Restricts the existing responder; never grants files or starts a new route" = "Restricts the existing responder; never grants files or starts a new route";
+
+"Responder configured" = "Responder configured";
+
+"Model reply verified" = "Model reply verified";
+
+"Yes" = "Yes";

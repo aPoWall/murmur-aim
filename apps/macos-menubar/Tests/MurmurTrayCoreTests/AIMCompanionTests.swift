@@ -166,5 +166,13 @@ func runAIMCompanionChecks() throws -> Int {
     }]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: attentionObject)); throw CheckFailure(message: "oversized attention accepted") }
     catch is CocoaError {}
-    return 48
+    let oldPolicy: [String: Any] = ["revision":0,"send_allowed":true,"trust":"review_required","context":"message_only","tone":"concise","responder":"codex_app_server","wake_status":"unknown"]
+    var policyEnvelope: [String: Any] = ["observed_at":"2026-10-20T05:00:00Z","peers":["agent-sample":oldPolicy]]
+    let legacyPolicy = try JSONDecoder().decode(AIMPeerPolicySnapshot.self, from: JSONSerialization.data(withJSONObject: policyEnvelope))
+    try check(legacyPolicy.peers["agent-sample"]?.reply_mode == nil, "older server policy remains readable")
+    var restricted = oldPolicy; restricted["reply_mode"] = "manual"
+    policyEnvelope["peers"] = ["agent-sample":restricted]
+    let manualPolicy = try JSONDecoder().decode(AIMPeerPolicySnapshot.self, from: JSONSerialization.data(withJSONObject: policyEnvelope))
+    try check(manualPolicy.peers["agent-sample"]?.reply_mode == "manual", "manual admission restriction survives the native contract")
+    return 50
 }

@@ -68,6 +68,7 @@ struct AIMPeopleView: View {
                                     if let policy = data.peer_policy?.peers[agent] {
                                         Text(agent + " · " + L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
                                         Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
+                                        Text(L10n.text(policy.reply_mode == "manual" ? "Manual review only" : "Verified technical replies")).font(AIMTheme.meta)
                                         Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
                                         if let reason = policy.wake_reason { Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta) }
                                     }

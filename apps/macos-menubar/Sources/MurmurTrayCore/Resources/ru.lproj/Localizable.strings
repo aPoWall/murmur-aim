@@ -831,3 +831,17 @@
 "Delivery failed" = "Сбой доставки";
 
 "Reply evidence unavailable. Check the source before acting." = "Журнал ответов недоступен. Сначала проверьте исходник.";
+
+"Incoming handling" = "Разбор входящих";
+
+"Verified technical replies" = "Проверенные технические ответы";
+
+"Manual review only" = "Только ручной разбор";
+
+"Restricts the existing responder; never grants files or starts a new route" = "Ограничивает существующий обработчик; не открывает файлы и не создаёт новый маршрут";
+
+"Responder configured" = "Обработчик настроен";
+
+"Model reply verified" = "Модельный ответ подтверждён";
+
+"Yes" = "Да";

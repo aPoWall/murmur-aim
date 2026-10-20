@@ -132,7 +132,10 @@ import MurmurTrayCore
         case false: state = L10n.text("Inactive at last check")
         case nil: state = L10n.text("Service unobserved")
         }
-        return state + " · " + L10n.text("Status checked") + ": " + stamp(contour.updated_at)
+        let handler = L10n.text("Responder configured") + ": " + L10n.text(contour.handler_configured == true ? "Yes" : "Not observed")
+            + " · " + L10n.text("Model reply verified") + ": " + L10n.text(contour.model_reply_verified == true ? "Yes" : "Not observed")
+            + " · " + L10n.text("Last wake") + ": " + (contour.last_wake_status ?? L10n.text("Not observed"))
+        return handler + " · " + state + " · " + L10n.text("Status checked") + ": " + stamp(contour.updated_at)
             + " · " + L10n.text("Last message") + ": " + stamp(contour.last_at)
     }
 }

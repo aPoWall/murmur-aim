@@ -100,6 +100,10 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let outbound_count: Int?
         public let failed_count: Int?
         public let waiting_count: Int?
+        public let handler_configured: Bool?
+        public let handler_service_active: Bool?
+        public let last_wake_status: String?
+        public let model_reply_verified: Bool?
     }
     public struct OwnerThread: Decodable, Sendable {
         public let title: String
@@ -226,6 +230,7 @@ public struct AIMPeerPolicySnapshot: Decodable, Sendable {
         public let context: String
         public let brief: String?
         public let tone: String
+        public let reply_mode: String?
         public let responder: String
         public let wake_status: String
         public let wake_reason: String?
