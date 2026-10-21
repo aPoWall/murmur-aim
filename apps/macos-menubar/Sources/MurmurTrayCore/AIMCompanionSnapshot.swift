@@ -3,6 +3,13 @@ import Foundation
 /// Owner-only projection of existing server observations. Never carries message bodies or keys.
 public struct AIMCompanionSnapshot: Decodable, Sendable {
     public struct Person: Decodable, Identifiable, Sendable {
+        public struct Flow: Decodable, Sendable {
+            public let inbound_count: Int?
+            public let outbound_count: Int?
+            public let last_at: String?
+            public let source_at: String?
+            public let scope: String?
+        }
         public let id: String
         public let name: String
         public let agents: [String]
@@ -15,12 +22,15 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let photo: String?
         public let photo_note: String?
         public let photo_privacy: String?
+        public let flows: [String: Flow]?
+        public let flow_window: String?
         /// A portrait is shown only for a person the edition lists, never for a private-contour binding.
         public var approvedPhoto: String? { approvedPhoto(in: .current) }
         public func approvedPhoto(in config: AIMEditionConfig) -> String? {
+            let privatePeers = config.privatePeers.union(["shaper-viola", "agent-viola-alex"])
             guard id.hasPrefix("person:"), config.avatarPeople.contains(String(id.dropFirst(7))),
-                  photo_privacy == "owner-approved-avatar", !agents.isEmpty,
-                  agents.allSatisfy({ !config.privatePeers.contains($0) }),
+                  photo_privacy == "owner-approved-avatar", contact_state != "status_only",
+                  agents.allSatisfy({ !privatePeers.contains($0) }),
                   let photo, photo == "/mesh-comms-avatar-" + id.dropFirst(7) + ".jpg"
             else { return nil }
             return photo
@@ -91,6 +101,11 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let observed_at: String?
         public let fresh: Bool?
     }
+    public struct FlowSource: Decodable, Sendable {
+        public let store: String
+        public let ok: Bool?
+        public let observed_at: String?
+    }
     public struct PrivateContour: Decodable, Identifiable, Sendable {
         public let id: String
         public let name: String
@@ -125,6 +140,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public let snapshot_at: String?
     public let fresh: Bool
     public let people: [Person]
+    public let flow_sources: [FlowSource]?
     public let pending_count: Int
     public let decision_count: Int
     public let questions: [Question]
@@ -146,6 +162,13 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
               value.pending_count >= 0, value.decision_count >= 0,
               value.decision_count <= value.pending_count,
               (value.private_contours ?? []).allSatisfy({ $0.privacy == "status-only" }),
+              value.people.allSatisfy({ person in
+                  (person.flows ?? [:]).allSatisfy { agent, flow in
+                      person.agents.contains(agent)
+                          && (flow.inbound_count.map { $0 >= 0 } ?? true)
+                          && (flow.outbound_count.map { $0 >= 0 } ?? true)
+                  }
+              }),
               (value.owner_threads ?? [:]).values.allSatisfy({ $0.verifiedURL != nil })
         else { throw CocoaError(.fileReadCorruptFile) }
         if let attention = value.attention {
@@ -181,6 +204,13 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         attention.map { $0.items.filter(\.actionable).count }
             ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count })
     }
+    /// The owner's decisions and transport/assistant work have separate entrances.
+    public var ownerAttentionCount: Int { attention?.yourTurn.count ?? decision_count }
+    public var technicalAttentionCount: Int { attention?.otherUpdates.count ?? agentQuestions.count }
+    public func notificationKeys(owner: Bool, technical: Bool) -> Set<String> {
+        guard let attention else { return owner ? attentionKeys : [] }
+        return Set(attention.items.filter { $0.alert && $0.actionable && ($0.kind == "owner" ? owner : technical) }.map(\.notificationKey))
+    }
     public func attentionItems(for person: Person) -> [Attention.Item] {
         (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }
     }
@@ -197,7 +227,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     }
     /// The Read button follows the displayed conversation for a multi-agent contact.
     public func communicationPeer(for person: Person, config: AIMEditionConfig = .current) -> String? {
-        guard person.contact_state != "status_only", config.privatePeers.intersection(person.agents).isEmpty else { return nil }
+        guard !isStatusOnly(person, config: config) else { return nil }
         return (attention?.items ?? []).filter { person.agents.contains($0.peer) }.min {
             let lhs = Self.contactPriority($0), rhs = Self.contactPriority($1)
             if lhs != rhs { return lhs < rhs }

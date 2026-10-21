@@ -61,7 +61,7 @@ import MurmurTrayCore
             publishedInExpectedAppearance = NSApp.effectiveAppearance.name == AIMThemePolicy.appearance(expected)!.name
         }
         defer { observation.cancel() }
-        for page in ["Overview", "People", "Home", "Settings"] {
+        for page in ["Overview", "People", "Connections", "Home", "Settings"] {
             let host = NSHostingView(rootView: AIMHomeView(model: model, initialPage: page))
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 740, height: 700),
                                   styleMask: [.borderless], backing: .buffered, defer: false)

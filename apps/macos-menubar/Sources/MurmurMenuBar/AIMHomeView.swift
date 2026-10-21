@@ -19,7 +19,7 @@ struct AIMHomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AIMHeaderBridge(onSettings: { navigation.openSettings() }, status: model.isDemo ? "preview · synthetic data" : (["Overview", "People"].contains(page) ? AIMEditionConfig.current.serverLabel : (model.agentID ?? "encrypted agent connections")))
+            AIMHeaderBridge(onSettings: { navigation.openSettings() }, status: model.isDemo ? "preview · synthetic data" : (["Overview", "People", "Connections"].contains(page) ? AIMEditionConfig.current.serverLabel : (model.agentID ?? "encrypted agent connections")))
                 .frame(width: 708, height: 40).padding(16)
             AIMTabsBridge(page: pageBinding).frame(width: 708, height: 40).padding(.horizontal, 16)
             Divider()
@@ -29,6 +29,8 @@ struct AIMHomeView: View {
                         AIMCompanionView(model: model.companion)
                     } else if page == "People" {
                         AIMPeopleView(model: model.companion)
+                    } else if page == "Connections" {
+                        AIMConnectionsView(model: model.companion, openDesk: { navigation.select("Overview") }, openPeople: { navigation.select("People") })
                     } else if page == "Help" {
                         AIMCompanionHelp()
                         MurmurHelpView()
@@ -54,7 +56,7 @@ struct AIMHomeView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             }
             Divider()
-            AIMFooterBridge(keys: window.keysLine, status: model.isDemo ? "preview" : (["Overview", "People"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
+            AIMFooterBridge(keys: window.keysLine, status: model.isDemo ? "preview" : (["Overview", "People", "Connections"].contains(page) ? L10n.text("Server overview · 60s refresh") : (model.profile == nil ? "choose a connection" : "local profile · 15s refresh")))
                 .frame(width: 708, height: 30).padding(.horizontal, 16)
         }.font(AIMTheme.body).foregroundStyle(AIMTheme.ink).background(AIMTheme.canvas)
             .preferredColorScheme(window.theme == .dark ? .dark : .light)
@@ -65,6 +67,7 @@ struct AIMHomeView: View {
             .sheet(isPresented: $model.showCreateProfileSheet, onDismiss: { model.ownProfileSheetDismissed() }) { CreateProfileSheet(model: model) }
             .sheet(isPresented: $model.showPairingSheet, onDismiss: { model.clearPairing() }) { PairingSheet(model: model) }
             .onChange(of: model.profile) { _ in showingNewConnection = false; entry = "welcome" }
+            .onReceive(window.$pageRequest) { request in if let request { navigation.select(request.page) } }
     }
 
     private func handleEscape() {

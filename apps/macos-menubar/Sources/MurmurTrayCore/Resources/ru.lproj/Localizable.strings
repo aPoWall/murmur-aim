@@ -876,3 +876,96 @@
 "Continue" = "Продолжить";
 "Conversation and access details" = "Переписка и доступ";
 "Team directory" = "Люди команды";
+
+/* Observed person / assistant routes and notification scopes. */
+"Assistant" = "Помощник";
+"Assistant and delivery issues" = "Задачи помощника и ошибки доставки";
+"Assistant not observed" = "Помощник не наблюдался";
+"Assistant → desk" = "Помощник → мой стол";
+"Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online." = "Связи показывают, кому принадлежит помощник. Счётчики показывают, чей ход; присутствие человека в сети не подтверждено.";
+"Desk → assistant" = "Мой стол → помощник";
+"Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write." = "Клавиши 1–5: обзор, люди, связи, локально, помощь. Связи показывают человека → помощника → ваш стол; чтение и отправка доступны в разделе «Люди».";
+"Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline." = "Кнопки уведомления открывают нужный раздел. При включении категории прежние события остаются без уведомлений.";
+"Notify about assistant and delivery issues" = "Уведомлять о задачах помощника и ошибках доставки";
+"Notify about your replies and decisions" = "Уведомлять, когда нужны мой ответ или решение";
+"Observed binding" = "Наблюдаемая связь";
+"Open communication desk" = "Открыть стол коммуникаций";
+"Open the window: overview, people, connections, local and help" = "Открыть окно: обзор, люди, связи, локально и помощь";
+"People → assistants → your desk" = "Люди → помощники → ваш стол";
+"People, assistants and the work reaching your desk" = "Люди, помощники и работа, которая попадает к вам";
+"Person" = "Человек";
+"Read or write to a person" = "Прочитать или написать человеку";
+"Responder not observed" = "Отвечающий помощник не наблюдался";
+"Retained message counts" = "Сообщения в сохранённом срезе";
+"Retained observation · refresh before acting" = "Сохранённое наблюдение · обновите перед действием";
+"Status only" = "Только состояние";
+"Traffic counts not observed" = "Счётчики сообщений не наблюдались";
+"Work classification not observed" = "Классификация задач не наблюдалась";
+"Technical issues and verification" = "Технические проблемы и проверка";
+"Notify about technical issues and verification" = "Уведомлять о технических проблемах и проверке";
+"Retained review candidates" = "Сохранённые кандидаты на разбор";
+"Partial retained message counts" = "Сообщения в неполном срезе";
+"Traffic scope not observed" = "Область счётчиков не наблюдалась";
+"Connection flow" = "Связи";
+"Connected" = "Подключён";
+
+"People → assistants → SHAPER" = "Люди → помощники → SHAPER";
+"Their assistant" = "Их помощник";
+"SHAPER · you" = "SHAPER · вы";
+"Send allowed" = "Отправка разрешена";
+"Send blocked" = "Отправка запрещена";
+"Send permission unknown" = "Разрешение на отправку не проверено";
+"Written message only" = "Только написанное сообщение";
+"Approved brief · choose per send" = "Одобренный бриф · выбор при отправке";
+"Sharing policy not observed" = "Правила передачи контекста не проверены";
+"From them → you" = "От них → вам";
+"You → them" = "От вас → им";
+"Hide connection details" = "Скрыть подробности подключения";
+"Show connection details" = "Показать подробности подключения";
+"Details" = "Подробности";
+"Your responder" = "Ваш ответчик";
+"A brief is attached only when selected for that send. Contact trust and incoming handling grant no vault or file access." = "Бриф прикладывается по отдельному выбору при отправке. Доверие к контакту и обработка входящих не дают доступа к волту и файлам.";
+"Counts cover retained server and Mac snapshots. Delivery, incoming handling and a person's availability are separate observations." = "Счётчики охватывают сохранённые снимки сервера и Mac. Доставка, обработка входящих и доступность человека проверяются отдельно.";
+"Only this written message is shared. An approved brief needs a separate choice for this send; vault and file access are managed separately." = "Передаётся только написанное сообщение. Одобренный бриф нужно отдельно выбрать для этой отправки; доступ к волту и файлам настраивается отдельно.";
+"Message source receipts" = "Результаты чтения источников";
+"Read succeeded" = "Чтение успешно";
+"Read failed" = "Ошибка чтения";
+"Source receipts not observed" = "Результаты чтения источников не получены";
+"Sharing varies by assistant" = "Контекст зависит от помощника";
+"No connected assistant" = "Нет подключённого помощника";
+
+"Your incoming handler · configured" = "Ваш обработчик входящих · настроен";
+
+"Your handler model" = "Модель вашего обработчика";
+
+"Your incoming handler not observed" = "Ваш обработчик входящих не наблюдался";
+
+"Their runtime / model" = "Среда / модель собеседника";
+
+"Codex · server session" = "Codex · серверная сессия";
+
+"Local handler" = "Локальный обработчик";
+
+"Incoming handler paused" = "Обработчик входящих приостановлен";
+
+"Handler type not observed" = "Тип обработчика не наблюдался";
+
+"Waiting for handler" = "Ожидает обработчика";
+
+"In progress" = "В работе";
+
+"Handler completed" = "Обработчик завершил работу";
+
+"Handler failed" = "Ошибка обработчика";
+
+"Wake muted" = "Пробуждение заглушено";
+
+"Wake needs attention" = "Пробуждение требует внимания";
+
+"Stored · no automatic handler" = "Сохранено · автообработчик отсутствует";
+
+"Incoming: their assistant → your Murmur inbox → your configured handler." = "Входящие: помощник собеседника → ваш ящик Murmur → ваш настроенный обработчик.";
+
+"Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route." = "Исходящие: это приложение → Murmur → ящик собеседника. Его помощник работает через своё подключение.";
+
+"Read the exchange to check replies; transport delivery and assistant work have separate outcomes." = "Проверьте ответы в переписке. Доставка сообщения и работа помощника имеют отдельные результаты.";

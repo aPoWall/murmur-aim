@@ -46,7 +46,7 @@ struct AIMPeopleView: View {
             }
         }
         .sheet(item: $recipient) { person in
-            AIMComposeView(person: person, initialPeer: model.snapshot?.communicationPeer(for: person))
+            AIMComposeView(person: person, initialPeer: model.snapshot?.firstAllowedConnection(for: person, current: model.current))
         }
         .sheet(item: $policyPerson) { person in AIMPolicyView(person: person) }
         .sheet(item: $historyPerson) { person in
@@ -56,12 +56,7 @@ struct AIMPeopleView: View {
         }
     }
     private var teamDirectoryURL: URL? {
-        guard let board = AIMEditionConfig.current.boardURL,
-              board.user == nil, board.password == nil,
-              var parts = URLComponents(url: board, resolvingAgainstBaseURL: false) else { return nil }
-        parts.query = nil
-        parts.fragment = nil
-        return parts.url?.appendingPathComponent("team")
+        AIMEditionConfig.current.teamDirectoryURL
     }
     private func openBoard(_ actor: String, section: String) {
         guard var parts = URLComponents(string: AIMCompanionModel.board) else { return }
@@ -105,7 +100,7 @@ private struct AIMContactRow: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
                     Button(L10n.text("Write"), action: write)
-                        .disabled(!current || peer == nil || (person.writable_agents ?? []).isEmpty)
+                        .disabled(data.connectionSending(for: person, current: current) != .allowed)
                         .help(L10n.text("Write message"))
                     Button(L10n.text("Read"), action: read)
                         .disabled(!enabled || peer == nil)
@@ -117,6 +112,14 @@ private struct AIMContactRow: View {
                     }
                 }
             }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                let sending = data.connectionSending(for: person, current: current)
+                Text(L10n.text(sending.labelKey)).foregroundStyle(sending == .blocked ? AIMTheme.signal : AIMTheme.ink)
+                if sending != .statusOnly, person.agents.count == 1 {
+                    Text(L10n.text(data.peer_policy?.peers[person.agents[0]]?.sharingLabelKey ?? "Sharing policy not observed"))
+                        .foregroundStyle(AIMTheme.muted)
+                }
+            }.font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             if let item = attention.first {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(L10n.text(item.kindLabelKey)).foregroundStyle(item.actionable ? AIMTheme.signal : AIMTheme.muted)
@@ -151,9 +154,9 @@ private struct AIMContactRow: View {
                         if peer != nil, let linkedOwner = data.ownerThread(for: agent), let url = linkedOwner.verifiedURL {
                             Button(L10n.text("Open owner chat") + " · " + linkedOwner.title) { NSWorkspace.shared.open(url) }.disabled(!current)
                         }
-                        if let policy = data.peer_policy?.peers[agent] {
+                        if peer != nil, let policy = data.peer_policy?.peers[agent] {
                             Text(L10n.text("Responder") + ": " + (policy.responder == "none" ? L10n.text("Not assigned · manual reply needed") : policy.responder)).font(AIMTheme.meta)
-                            Text(L10n.text("Companion sending") + ": " + L10n.text(policy.send_allowed ? "Allowed" : "Disabled") + " · " + policy.context + " · " + policy.trust).font(AIMTheme.meta)
+                            Text(L10n.text(data.connectionSending(for: person, agent: agent, current: current).labelKey) + " · " + L10n.text(policy.sharingLabelKey)).font(AIMTheme.meta)
                             Text(L10n.text(policy.incomingLabelKey)).font(AIMTheme.meta)
                             Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
                             if let reason = policy.wake_reason {
@@ -193,6 +196,8 @@ struct AIMComposeView: View {
                 }
             }.disabled(attempted).help(L10n.text("Which agent of this person receives the message"))
             Text(L10n.text("From your identity · encrypted Murmur delivery")).font(AIMTheme.meta)
+            Text(L10n.text("Only this written message is shared. An approved brief needs a separate choice for this send; vault and file access are managed separately."))
+                .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
             TextEditor(text: $message).font(AIMTheme.body).frame(height: 180).border(Color.gray.opacity(0.25)).disabled(attempted)
             Text("\(message.count) / 8000").font(AIMTheme.meta)
             if selectedPolicy?.context == "approved_brief" {

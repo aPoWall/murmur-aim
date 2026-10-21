@@ -117,10 +117,13 @@ struct AIMPersonAvatar: View {
         view.cacheDisplay(in: view.bounds, to: rendered)
         let color = rendered.colorAt(x: rendered.pixelsWide / 2, y: rendered.pixelsHigh / 2)!.usingColorSpace(.deviceRGB)!
         need(color.blueComponent > color.redComponent + 0.2, "approved fixture renders the photograph branch")
+        reads = 0
+        need(AIMAvatarLoader.load(person(["agents": []]), config: config, exchange: load) != nil && reads == 1,
+             "explicitly approved unlinked person keeps a portrait without granting a route")
         for changes: [String: Any] in [
             ["photo": NSNull()], ["photo":"https://example.com/p.jpg"], ["photo":"/mesh-comms-avatar-dan.jpg"],
             ["photo":"/mesh-comms-avatar-../demo.jpg"], ["photo_privacy":"status-only"],
-            ["photo_privacy":NSNull()], ["agents":["agent-private-demo"]], ["agents":[]],
+            ["photo_privacy":NSNull()], ["agents":["agent-private-demo"]], ["contact_state":"status_only"],
             ["id":"private:demo"], ["id":"person:unknown"]] {
             reads = 0
             need(AIMAvatarLoader.load(person(changes), config: config, exchange: load) == nil && reads == 0,

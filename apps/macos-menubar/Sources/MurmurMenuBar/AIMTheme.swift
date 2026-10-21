@@ -85,6 +85,9 @@ struct AIMQuietButtonStyle: ButtonStyle {
     @Published var hotkeyAvailable = true
     @Published var hotkeyLine = ""
     @Published var hotkeyRecording = false
+    struct PageRequest { let id = UUID(); let page: String }
+    @Published var pageRequest: PageRequest?
+    func requestPage(_ page: String) { pageRequest = PageRequest(page: page) }
     /// The delegate re-registers the Carbon key when the field stores a new combination.
     var onHotkeyChange: ((FamilyHotkey?) -> Void)?
     var onStateChange: (() -> Void)?
@@ -158,10 +161,11 @@ struct AIMHeaderBridge: NSViewRepresentable {
     let status: String
     func makeNSView(context: Context) -> AIMAppHeader {
         let pin = AIMPinButton(pinned: AIMWindowState.shared.pinned) { value in AIMWindowState.shared.setPinned(value) }
-        let header = AIMAppHeader(mark: .murmur, name: "MURMUR AIM", status: status,
+        let header = AIMAppHeader(mark: .murmur, name: "mur·mur", status: status,
                                  version: AIMTheme.version, width: 708,
                                  onSettings: onSettings, pin: pin,
                                  onClose: { AIMWindowState.shared.close(.closeButton) })
+        applyWordmark(to: header)
         header.closeButton?.toolTip = "close the window \u{00B7} esc or \u{2318}W"
         header.settingsButton?.toolTip = "settings: theme, the global key, the server companion and the local service"
         // N1 family character in the header; flat family mark remains in the menu bar.
@@ -175,7 +179,17 @@ struct AIMHeaderBridge: NSViewRepresentable {
         header.markView.setAccessibilityLabel("Murmur AIM")
         return header
     }
+    private func applyWordmark(to header: AIMAppHeader) {
+        let wordmark = NSMutableAttributedString(string: "mur·mur", attributes: [
+            .font: header.nameLabel.font ?? NSFont.monospacedSystemFont(ofSize: AIMAppShellStyle.titleSize, weight: .semibold),
+            .foregroundColor: AIMAppShellStyle.ink,
+        ])
+        wordmark.addAttribute(.foregroundColor, value: AIMAppShellStyle.signal, range: NSRange(location: 3, length: 1))
+        header.nameLabel.attributedStringValue = wordmark
+        header.nameLabel.setAccessibilityLabel("mur·mur")
+    }
     func updateNSView(_ view: AIMAppHeader, context: Context) {
+        applyWordmark(to: view)
         view.setStatus(status)
         view.pinButton?.setPinned(AIMWindowState.shared.pinned)
     }
@@ -186,9 +200,10 @@ struct AIMTabsBridge: NSViewRepresentable {
     func makeNSView(context: Context) -> AIMTabStrip {
         AIMTabStrip(tabs: [.init(id: "Overview", title: L10n.text("Overview").lowercased(), hint: L10n.text("The server desk: incoming requests, decisions and questions")),
                           .init(id: "People", title: L10n.text("People").lowercased(), hint: L10n.text("The roster: people, their agents and the last wake outcome")),
+                          .init(id: "Connections", title: L10n.text("Connection flow").lowercased(), hint: L10n.text("People, assistants and the work reaching your desk")),
                           .init(id: "Home", title: L10n.text("Local").lowercased(), hint: L10n.text("This Mac: the local profile, invitations and the service")),
                           .init(id: "Help", title: L10n.text("Help").lowercased(), hint: L10n.text("How the companion, delivery and replies work"))],
-                    selected: page, width: 708, tabWidth: 100, onSelect: { page = $0 })
+                    selected: page, width: 708, tabWidth: 116, onSelect: { page = $0 })
     }
     func updateNSView(_ view: AIMTabStrip, context: Context) { view.select(page) }
 }
@@ -381,8 +396,8 @@ struct AIMKeyboardBridge: NSViewRepresentable {
                 c.onSettings?(); return nil
             }
             guard flags.isEmpty, !(window.firstResponder is NSTextView), !(window.firstResponder is NSTextField),
-                  let digit = Int(event.charactersIgnoringModifiers ?? ""), (1...4).contains(digit) else { return event }
-            c.onTab?(["Overview", "People", "Home", "Help"][digit - 1])
+                  let digit = Int(event.charactersIgnoringModifiers ?? ""), (1...5).contains(digit) else { return event }
+            c.onTab?(["Overview", "People", "Connections", "Home", "Help"][digit - 1])
             return nil
         }
         return view

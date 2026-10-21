@@ -14,6 +14,7 @@ import json
 import re
 import sys
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 def _setting(name, pattern, default=''):
@@ -159,6 +160,71 @@ def add_roster(data, people, share):
     return data
 
 
+def add_flows(data, share, now=None):
+    """Same retained-message counts as the owner graph, never a claim of liveness.
+
+    A protocol ID can occur in multiple store snapshots. The graph deduplicates
+    by ID, local identity, peer identity and direction, so the companion does too.
+    Missing/failed sources cannot establish an observed zero.
+    """
+    if data.get('privacy') != 'owner-metadata' or share.get('privacy') != 'metadata-only':
+        raise ValueError('safe_snapshot_unavailable')
+    now = now or datetime.now(timezone.utc)
+    private = set(PRIVATE_PEERS) | set(share.get('retired_identities', []))
+    for person in data.get('people', []):
+        if person.get('privacy') == 'status-only' or person.get('contact_state') == 'status_only':
+            private.update(person.get('agents', []))
+    for contour in share.get('private_contours', []):
+        private.update((contour.get('local_identity'), contour.get('peer_identity')))
+    sources = share.get('sources') or []
+    # Content-free source receipts only. Raw errors, paths and private-contour
+    # counters never enter the native companion projection.
+    data['flow_sources'] = [
+        {**{'store': source['store'], 'ok': source.get('ok') if isinstance(source.get('ok'), bool) else None},
+         **({'observed_at': source['observed_at']} if isinstance(source.get('observed_at'), str)
+            and re.fullmatch(r'\d{4}-\d{2}-\d{2}T[0-9:.+Z-]{8,30}', source['observed_at']) else {})}
+        for source in sources[:20] if isinstance(source, dict)
+        and isinstance(source.get('store'), str) and re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,62}', source['store'])
+    ]
+    complete = bool(sources) and all(s.get('ok') is True for s in sources) and share.get('truncated') is False
+    rows, seen = {}, set()
+    for message in share.get('messages', []):
+        peer, local, direction = (message.get(k) for k in ('peer_identity', 'local_identity', 'direction'))
+        if peer in private or local in private or not peer or not local or not message.get('id') or direction not in {'inbound', 'outbound'}:
+            continue
+        try:
+            at = datetime.fromisoformat(message.get('date', '').replace('Z', '+00:00'))
+            if at.tzinfo is None or at > now:
+                continue
+        except (TypeError, ValueError, AttributeError):
+            continue
+        key = (message['id'], local, peer, direction)
+        if key in seen:
+            continue
+        seen.add(key)
+        row = rows.setdefault(peer, {'inbound_count': 0, 'outbound_count': 0, 'last_at': None})
+        row[direction + '_count'] += 1
+        if row['last_at'] is None or at > datetime.fromisoformat(row['last_at'].replace('Z', '+00:00')):
+            row['last_at'] = message['date']
+    scope = 'retained_snapshot' if complete else 'partial_retained_snapshot'
+    if not complete:
+        for row in rows.values():
+            for key in ('inbound_count', 'outbound_count'):
+                if row[key] == 0:
+                    row[key] = None
+    for person in data.get('people', []):
+        person.pop('flows', None)
+        person.pop('flow_window', None)
+        if person.get('privacy') == 'status-only' or any(a in private for a in person.get('agents', [])):
+            continue
+        person['flows'] = {peer: {**rows.get(peer, {'inbound_count': 0 if complete else None,
+                                                  'outbound_count': 0 if complete else None, 'last_at': None}),
+                                  'source_at': share.get('ts'), 'scope': scope}
+                           for peer in person.get('agents', [])}
+        person['flow_window'] = 'Retained messages in the server and Mac snapshots' + ('' if complete else ' · partial source')
+    return data
+
+
 def contact_history(peer, root, stores):
     """Bounded metadata-only contact journal; bodies still require exact on-demand read."""
     if not isinstance(peer, str) or not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,62}', peer):
@@ -198,7 +264,7 @@ def add_avatars(data, people, share):
             share.get('privacy') != 'metadata-only' or data.get('privacy') != 'owner-metadata' or
             not photo or p.get('photo') != photo or p.get('history') or
             p.get('privacy') in {'private', 'status-only'} or person.get('id') in private_people or
-            not person.get('agents') or any(peer in private for peer in person['agents'])):
+            person.get('contact_state') == 'status_only' or any(peer in private for peer in person.get('agents', []))):
             continue
         person.update(photo=photo, photo_privacy='owner-approved-avatar',
                       photo_note=p.get('photo_note') if isinstance(p.get('photo_note'), str) else None)
@@ -246,6 +312,7 @@ def dispatch(request, root=ROOT):
         people = json.loads((root/'people-data.json').read_text())
         data = add_roster(data, people, share)
         data = add_avatars(data, people, share)
+        data = add_flows(data, share)
         # Expose fixed diagnostic codes only. Raw runner errors and session paths
         # stay on the server. A failed wake is separate from transport delivery.
         db_path = Path.home()/DATABASE if DATABASE else None

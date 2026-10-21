@@ -876,3 +876,96 @@
 "Continue" = "Continue";
 "Conversation and access details" = "Conversation and access details";
 "Team directory" = "Team directory";
+
+/* Observed person / assistant routes and notification scopes. */
+"Assistant" = "Assistant";
+"Assistant and delivery issues" = "Assistant and delivery issues";
+"Assistant not observed" = "Assistant not observed";
+"Assistant → desk" = "Assistant → desk";
+"Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online." = "Bindings show who owns each assistant. Work counts show who needs to act; they do not prove a person is online.";
+"Desk → assistant" = "Desk → assistant";
+"Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write." = "Keys 1–5: overview, people, connections, local, help. Connections shows person → assistant → your desk; open People to read or write.";
+"Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline." = "Notification actions open the relevant desk. Turning a category on keeps the existing silent baseline.";
+"Notify about assistant and delivery issues" = "Notify about assistant and delivery issues";
+"Notify about your replies and decisions" = "Notify about your replies and decisions";
+"Observed binding" = "Observed binding";
+"Open communication desk" = "Open communication desk";
+"Open the window: overview, people, connections, local and help" = "Open the window: overview, people, connections, local and help";
+"People → assistants → your desk" = "People → assistants → your desk";
+"People, assistants and the work reaching your desk" = "People, assistants and the work reaching your desk";
+"Person" = "Person";
+"Read or write to a person" = "Read or write to a person";
+"Responder not observed" = "Responder not observed";
+"Retained message counts" = "Retained message counts";
+"Retained observation · refresh before acting" = "Retained observation · refresh before acting";
+"Status only" = "Status only";
+"Traffic counts not observed" = "Traffic counts not observed";
+"Work classification not observed" = "Work classification not observed";
+"Technical issues and verification" = "Technical issues and verification";
+"Notify about technical issues and verification" = "Notify about technical issues and verification";
+"Retained review candidates" = "Retained review candidates";
+"Partial retained message counts" = "Partial retained message counts";
+"Traffic scope not observed" = "Traffic scope not observed";
+"Connection flow" = "Connections";
+"Connected" = "Connected";
+
+"People → assistants → SHAPER" = "People → assistants → SHAPER";
+"Their assistant" = "Their assistant";
+"SHAPER · you" = "SHAPER · you";
+"Send allowed" = "Send allowed";
+"Send blocked" = "Send blocked";
+"Send permission unknown" = "Send permission unknown";
+"Written message only" = "Written message only";
+"Approved brief · choose per send" = "Approved brief · choose per send";
+"Sharing policy not observed" = "Sharing policy not observed";
+"From them → you" = "From them → you";
+"You → them" = "You → them";
+"Hide connection details" = "Hide connection details";
+"Show connection details" = "Show connection details";
+"Details" = "Details";
+"Your responder" = "Your responder";
+"A brief is attached only when selected for that send. Contact trust and incoming handling grant no vault or file access." = "A brief is attached only when selected for that send. Contact trust and incoming handling grant no vault or file access.";
+"Counts cover retained server and Mac snapshots. Delivery, incoming handling and a person's availability are separate observations." = "Counts cover retained server and Mac snapshots. Delivery, incoming handling and a person's availability are separate observations.";
+"Only this written message is shared. An approved brief needs a separate choice for this send; vault and file access are managed separately." = "Only this written message is shared. An approved brief needs a separate choice for this send; vault and file access are managed separately.";
+"Message source receipts" = "Message source receipts";
+"Read succeeded" = "Read succeeded";
+"Read failed" = "Read failed";
+"Source receipts not observed" = "Source receipts not observed";
+"Sharing varies by assistant" = "Sharing varies by assistant";
+"No connected assistant" = "No connected assistant";
+
+"Your incoming handler · configured" = "Your incoming handler · configured";
+
+"Your handler model" = "Your handler model";
+
+"Your incoming handler not observed" = "Your incoming handler not observed";
+
+"Their runtime / model" = "Their assistant app / model";
+
+"Codex · server session" = "Codex · server session";
+
+"Local handler" = "Local handler";
+
+"Incoming handler paused" = "Incoming handler paused";
+
+"Handler type not observed" = "Handler type not observed";
+
+"Waiting for handler" = "Waiting for handler";
+
+"In progress" = "In progress";
+
+"Handler completed" = "Handler completed";
+
+"Handler failed" = "Handler failed";
+
+"Wake muted" = "Wake-up paused";
+
+"Wake needs attention" = "Wake-up needs attention";
+
+"Stored · no automatic handler" = "Stored · no automatic handler";
+
+"Incoming: their assistant → your Murmur inbox → your configured handler." = "Incoming: their assistant → your Murmur inbox → your configured handler.";
+
+"Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route." = "Outgoing: this app → Murmur → their inbox. Their assistant uses their own connected route.";
+
+"Read the exchange to check replies; transport delivery and assistant work have separate outcomes." = "Read the exchange to check replies; transport delivery and assistant work have separate outcomes.";

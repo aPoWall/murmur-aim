@@ -31,12 +31,23 @@ public struct AIMEditionConfig: Sendable, Equatable {
 
     /// Shared search always uses the configured owner board; local preview settings stay unchanged.
     public var sharedSearchURL: URL? {
-        guard isEnabled, let boardURL, boardURL.user == nil, boardURL.password == nil,
+        guard isEnabled, let boardURL, boardURL.scheme == "https", boardURL.host != nil,
+              boardURL.user == nil, boardURL.password == nil,
               var parts = URLComponents(url: boardURL, resolvingAgainstBaseURL: false) else { return nil }
         parts.queryItems = (parts.queryItems ?? []).filter { !["view", "command"].contains($0.name) }
             + [URLQueryItem(name: "view", value: "mesh"), URLQueryItem(name: "command", value: "search")]
         parts.fragment = nil
         return parts.url
+    }
+
+    /// The remote directory shares the configured HTTPS board's mount and access boundary.
+    public var teamDirectoryURL: URL? {
+        guard isEnabled, let boardURL, boardURL.scheme == "https", boardURL.host != nil,
+              boardURL.user == nil, boardURL.password == nil,
+              var parts = URLComponents(url: boardURL, resolvingAgainstBaseURL: false) else { return nil }
+        parts.query = nil
+        parts.fragment = nil
+        return parts.url?.appendingPathComponent("team")
     }
 
 
