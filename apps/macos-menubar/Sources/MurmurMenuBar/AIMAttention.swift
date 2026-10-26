@@ -15,37 +15,22 @@ struct AIMAttentionList: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.text(title) + " · \(items.count)").font(AIMTheme.heading)
             if items.isEmpty { Text(L10n.text("No communication needs action.")).font(AIMTheme.meta) }
-            ForEach(Array(items.prefix(expanded ? 200 : 3))) { item in
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .top) {
-                        Text(L10n.text(item.kindLabelKey)).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
-                        Spacer()
-                        Text(AIMCompanionModel.stamp(item.date)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
-                    }
-                    Text(item.title).font(AIMTheme.heading)
-                    Text((data.people.first { $0.agents.contains(item.peer) }?.name ?? item.peer)).font(AIMTheme.meta)
-                    Text(item.next_action).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        if let owner = data.ownerThread(for: item.peer), let url = owner.verifiedURL {
-                            Button(L10n.text("Continue in Codex")) { NSWorkspace.shared.open(url) }
-                        }
-                        if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
-                            Button(L10n.text("History")) { selectedItem = item }
-                            if (person.writable_agents ?? []).contains(item.peer) {
-                                Button(L10n.text("Write message")) { composeItem = item }.disabled(!data.isCurrent())
-                            }
-                        } else {
-                            Button(L10n.text("Connection details")) { AIMCompanionModel.open("?view=mesh&section=sources") }
-                        }
-                    }
-                }.padding(10).background(AIMTheme.muted.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 8))
+            if items.allSatisfy({ $0.kind == "owner" }) {
+                let ordered = AIMCompanionSnapshot.Attention.peerGroups(items).flatMap(\.items)
+                let shown = Array(ordered.prefix(expanded ? 200 : 3))
+                ForEach(AIMCompanionSnapshot.Attention.peerGroups(shown)) { group in
+                    Text(data.participantLabel(for: group.peer)).font(AIMTheme.heading)
+                    ForEach(group.items) { item in attentionCard(item) }
+                }
+            } else {
+                ForEach(Array(items.prefix(expanded ? 200 : 3))) { item in attentionCard(item) }
             }
             if items.count > 3 {
                 Button(L10n.text(expanded ? "Show fewer questions" : "Show more questions")) { expanded.toggle() }
             }
         }
         .sheet(item: $selectedItem) { item in
-            AIMMessageSearchView(enabled: true, people: data.people, historyPeer: item.peer)
+            AIMMessageSearchView(enabled: true, people: data.people, historyPeer: item.peer, snapshot: data)
         }
         .sheet(item: $composeItem) { item in
             if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
@@ -53,4 +38,34 @@ struct AIMAttentionList: View {
             }
         }
     }
+    private func attentionCard(_ item: AIMCompanionSnapshot.Attention.Item) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Text(L10n.text(item.kindLabelKey)).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+                Spacer()
+                Text(AIMCompanionModel.stamp(item.date)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+            }
+            Text(item.title).font(AIMTheme.heading)
+            Text(data.participantLabel(for: item.peer)).font(AIMTheme.meta)
+            Text(item.next_action).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
+            if let proposed = data.proposedReply(for: item) {
+                Text(L10n.text("Proposed reply · draft, not approved or sent")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+                Text(proposed).font(AIMTheme.meta).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                if let owner = data.ownerThread(for: item.peer), let url = owner.verifiedURL {
+                    Button(L10n.text("Continue in Codex")) { NSWorkspace.shared.open(url) }
+                }
+                if let person = data.people.first(where: { $0.agents.contains(item.peer) }) {
+                    Button(L10n.text("History")) { selectedItem = item }
+                    if (person.writable_agents ?? []).contains(item.peer) {
+                        Button(L10n.text("Write message")) { composeItem = item }.disabled(!data.isCurrent())
+                    }
+                } else {
+                    Button(L10n.text("Connection details")) { AIMCompanionModel.open("?view=mesh&section=sources") }
+                }
+            }
+        }.padding(10).background(AIMTheme.muted.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
 }

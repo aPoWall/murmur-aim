@@ -103,6 +103,11 @@ def augment(data, monitor, share):
             if item.get('peer') in private or any(mid in private_sources for mid in item['source_ids']):
                 continue
             items.append(item)
+        priority={'owner':0,'delivery':1,'agent':2,'verify':3,'peer':4}
+        def newest(item):
+            try:return -datetime.fromisoformat(str(item.get('date')).replace('Z','+00:00')).timestamp()
+            except (ValueError,TypeError):return float('inf')
+        items.sort(key=lambda item:(not item.get('actionable'),priority.get(item.get('kind'),5),newest(item),str(item.get('id') or '')))
         attention = {**attention, 'items': items}
         if 'counts' in attention:
             attention['counts'] = {kind: sum(item.get('kind') == kind for item in items)
@@ -126,6 +131,30 @@ def augment(data, monitor, share):
         for peer in person.get('agents', []):
             if not isinstance(labels.get(peer), str) or labels[peer].strip() in {'', '-', '—', '–'}:
                 labels[peer] = AGENT_LABELS.get(peer, peer)
+    # Reviewed records retain closed outcomes and attribution independently of
+    # the open attention queue. They remain owner-only and source-bound.
+    records=[];size=0;truncated=False
+    retired=set(share.get('retired_identities',[]))
+    try: decision_projector=load('murmur_decision_projection','mesh_comms_decisions.py')
+    except FileNotFoundError: decision_projector=None
+    sources={m.get('id'):m for m in share.get('messages',[]) if m.get('store')=='murmur-sasha' and m.get('peer_identity') not in private and m.get('local_identity') not in private}
+    private_sources={m.get('id') for m in share.get('messages',[]) if m.get('peer_identity') in private or m.get('local_identity') in private}
+    for topic in topics:
+        if not isinstance(topic,dict) or not isinstance(topic.get('id'),str) or not topic.get('id') or topic.get('peer') in private|retired or not isinstance(topic.get('peer'),str) or topic.get('source_id') in private_sources:continue
+        row={k:topic.get(k) for k in ['id','title','peer','status','source_date','reviewed_at','next_action','conversation','source_id','summary','evidence','references','confirmed_decisions']}
+        for key,limit in [('title',300),('summary',2000),('next_action',3000),('evidence',300)]:
+            if isinstance(row.get(key),str):row[key]=row[key][:limit]
+        row['responsibility']=responsibility(topic.get('status'))
+        row['source_available']=any(m.get('id')==row.get('source_id') and m.get('peer_identity')==row['peer'] and m.get('store')=='murmur-sasha' for m in share.get('messages',[]))
+        # Projector has already bound each decision to this ordinary peer.
+        # Recheck current privacy boundaries when reading an older monitor.
+        row['confirmed_decisions']=decision_projector.project(topic,sources,private_sources) if decision_projector else []
+        if decision_projector:row.update(decision_projector.proposal(topic))
+        encoded=len(json.dumps(row,ensure_ascii=False).encode())
+        if len(records)>=60 or size+encoded>180000:truncated=True;break
+        records.append(row);size+=encoded
+    records.sort(key=lambda t:t.get('source_date') or '',reverse=True)
+    data.update(reviewed_topics=records if monitor.get('decision_projection',{}).get('schema')==1 else None, review_at=monitor.get('reviewed_at'),reviewed_topics_truncated=truncated)
     data.update(private_contours=contours, owner_threads=OWNER_THREADS,
                 questions=questions[:100], pending_count=len(questions),
                 decision_count=sum(q['responsibility'] == OWNER for q in questions),

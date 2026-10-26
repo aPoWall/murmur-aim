@@ -51,6 +51,13 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let conversation: String?
         public let responsibility: String?
         public let source_id: String?
+        public let summary: String?
+        public let evidence: String?
+        public let references: [Reference]?
+        public let confirmed_decisions: [Decision]?
+        public let source_available: Bool?
+        public let proposed_reply: String?
+        public let proposal_status: String?
         public var needsOwner: Bool {
             if let responsibility {
                 return responsibility == AIMEditionConfig.defaultOwnerResponsibility
@@ -96,7 +103,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let items: [Item]
         public var peerWaits: [Item] { items.filter { !$0.actionable && $0.kind == "peer" } }
         public var verificationItems: [Item] { items.filter { !$0.actionable && $0.kind != "peer" } }
-        public var yourTurn: [Item] { items.filter { $0.actionable && $0.kind == "owner" } }
+        public var yourTurn: [Item] { items.filter { $0.actionable && $0.kind == "owner" }.sorted(by: Item.newestFirst) }
         public var otherUpdates: [Item] { items.filter { $0.actionable && $0.kind != "owner" } }
     }
     public struct Budget: Decodable, Sendable {
@@ -185,6 +192,9 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     public let pending_count: Int
     public let decision_count: Int
     public let questions: [Question]
+    public let reviewed_topics: [Question]?
+    public let review_at: String?
+    public let reviewed_topics_truncated: Bool?
     public let incoming: [Incoming]
     public let attention: Attention?
     public let private_contours: [PrivateContour]?
@@ -227,6 +237,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
                       && item.source_ids.count <= 30
                   }) else { throw CocoaError(.fileReadCorruptFile) }
         }
+        try value.validateConversationContext()
         return value
     }
     public func isCurrent(now: Date = Date()) -> Bool {

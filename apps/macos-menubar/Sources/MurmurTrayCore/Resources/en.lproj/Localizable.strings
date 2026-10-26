@@ -989,3 +989,41 @@
 "Open the verified private owner chat in Codex" = "Open the verified private owner chat in Codex";
 "Awaiting fresh incoming after restart" = "Awaiting fresh incoming after restart";
 "Private handler · this Mac" = "Private handler · this Mac";
+
+"Messages" = "Messages";
+"Decisions" = "Decisions";
+"Conversation context" = "Conversation context";
+"Review date" = "Review date";
+"Recorded decisions describe their source date. They do not establish current implementation or availability." = "Recorded decisions describe their source date. They do not establish current implementation or availability.";
+"No confirmed decisions in this reviewed snapshot." = "No confirmed decisions in this reviewed snapshot.";
+"Reviewed topic" = "Reviewed topic";
+"Decided by" = "Decided by";
+"Decision date" = "Decision date";
+"Evidence" = "Evidence";
+"Scope" = "Scope";
+"Status" = "Status";
+"Read source" = "Read source";
+"No open next steps in this reviewed snapshot." = "No open next steps in this reviewed snapshot.";
+"Waiting for counterpart" = "Waiting for counterpart";
+"Our implementation" = "Our implementation";
+"Next action" = "Next action";
+"Unknown" = "Unknown";
+"Reviewed conversation context unavailable in this snapshot." = "Reviewed conversation context unavailable in this snapshot.";
+"Messages remain available through the existing history reader." = "Messages remain available through the existing history reader.";
+"Source outside retained snapshot; recorded date and status only." = "Source outside retained snapshot; recorded date and status only.";
+"Human choice relayed" = "Human choice relayed";
+"Human decision reported by counterpart" = "Human decision reported by counterpart";
+"Operator verified receipt" = "Operator verified receipt";
+"Peer review and GitHub merge verified" = "Peer review and GitHub merge verified";
+"Answered" = "Answered";
+"No reply needed" = "No reply needed";
+"Reported complete" = "Reported complete";
+"Cancelled" = "Cancelled";
+
+"Partial reviewed context · retained topic limit reached." = "Partial reviewed context · retained topic limit reached.";
+
+"Reported complete · verification pending" = "Reported complete · verification pending";
+
+"Source availability unknown in this snapshot." = "Source availability unknown in this snapshot.";
+
+"Proposed reply · draft, not approved or sent" = "Proposed reply · draft, not approved or sent";

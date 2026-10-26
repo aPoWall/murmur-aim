@@ -365,3 +365,35 @@ Number keys select Overview (1), People (2), Connections (3), Local (4) and Help
 separates owner decisions from assistant issues and verification. Settings expose
 independent notification category switches. Notifications contain names and
 counts and open the corresponding desk or connections page, without message text.
+
+### Reviewed context in the existing conversation sheet
+
+People → Read and an attention item's History retain the existing message reader and
+now include Messages (the default), Decisions and Next steps. The optional
+`reviewed_topics` projection is scoped to the exact selected ordinary agent;
+`review_at` dates the review and `reviewed_topics_truncated` identifies a partial
+projection. Older snapshots explicitly leave reviewed context unavailable. Closed
+topics retain their recorded decisions and do not enter Next steps. Responsibility
+uses the edition's configured owner plus `peer`, `agent` and `verify` groups.
+
+A confirmed decision needs explicit attribution, decision date, scope and allowed
+human/verified receipt evidence. A recommendation cannot decode as a decision.
+Source buttons use the existing on-demand owner reader; sources outside the retained
+snapshot stay disabled while recorded dates/status remain visible. Private and
+status-only peers cannot supply reviewed topics. The sheet changes no sending,
+read receipts, runtime access, policy or model behavior.
+
+For offscreen source acceptance, the existing `--aim-render <png> --aim-fixture <json>`
+accepts `--aim-history-peer <exact-agent> --aim-history-section "Decisions"` (or
+`"Messages"` / `"Next steps"`). `--aim-history-owner <configured-owner>` reproduces
+an edition's responsibility mapping when running the unstamped source executable.
+This fixture mode performs no SSH reads and does not persist edition settings.
+
+Owner attention groups exact counterparts by their newest source date, then orders
+each counterpart's topics newest first. Full person and agent labels remain visible.
+Technical updates retain their existing priority. An optional topic `proposed_reply`
+with exact `proposal_status: draft_not_approved` is displayed in Next steps and the
+matching `topic:<id>` / exact-peer Overview owner card as an unapproved, unsent
+operator draft, separate from confirmed decisions. No proposal is invented.
+The offscreen `--aim-owner-attention` option renders the existing owner list component
+for fixture acceptance without starting the companion runtime.
