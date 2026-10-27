@@ -11,6 +11,7 @@ struct AIMAttentionList: View {
     @MurmurViewState private var selectedItem: AIMCompanionSnapshot.Attention.Item?
     @MurmurViewState private var replyDraft: AIMReplyDraft?
     @MurmurViewState private var composeItem: AIMCompanionSnapshot.Attention.Item?
+    @MurmurViewState private var openItems: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -52,8 +53,12 @@ struct AIMAttentionList: View {
                 Text(AIMCompanionModel.stamp(item.date)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
             }
             Text(item.title).font(AIMTheme.heading)
-            Text(data.participantLabel(for: item.peer)).font(AIMTheme.meta)
-            Text(item.next_action).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
+            Text(data.participantLabel(for: item.peer)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+            Text(item.next_action).font(AIMTheme.meta).lineLimit(openItems.contains(item.id) ? nil : 2)
+            Button(L10n.text(openItems.contains(item.id) ? "Hide discussion" : "Read and respond")) {
+                if !openItems.insert(item.id).inserted { openItems.remove(item.id) }
+            }.buttonStyle(.plain).foregroundStyle(AIMTheme.signal)
+            if openItems.contains(item.id) {
             if let proposed = data.proposedReply(for: item) {
                 Text(L10n.text("Proposed reply · draft, not approved or sent")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
                 Text(proposed).font(AIMTheme.meta).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
@@ -74,7 +79,11 @@ struct AIMAttentionList: View {
                     Button(L10n.text("Connection details")) { AIMCompanionModel.open("?view=mesh&section=sources") }
                 }
             }
-        }.padding(10).background(AIMTheme.muted.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }.padding(.vertical, 12).padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AIMTheme.surface)
+            .overlay(alignment: .leading) { Rectangle().fill(AIMTheme.signal).frame(width: 2) }
     }
 
 }

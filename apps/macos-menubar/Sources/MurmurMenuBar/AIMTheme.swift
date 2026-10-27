@@ -9,10 +9,19 @@ import MurmurTrayCore
     /// The edition look applies only to a stamped edition build or an explicit `--aim-*` developer command.
     /// Shared stock views (profile, pairing, client setup, outbox) use system fonts and colors otherwise.
     static var active: Bool { AIMEditionConfig.current.isEnabled || AIMPreview.isRequested }
-    static var ink: Color { active ? Color(nsColor: AIMAppShellStyle.ink) : .primary }
-    static var canvas: Color { active ? Color(nsColor: AIMAppShellStyle.canvas) : Color(nsColor: .windowBackgroundColor) }
-    static var signal: Color { active ? Color(nsColor: AIMAppShellStyle.signal) : .accentColor }
-    static var muted: Color { active ? Color(nsColor: AIMAppShellStyle.muted) : .secondary }
+    static func deskColor(_ light: UInt32, _ dark: UInt32) -> NSColor {
+        NSColor(name: nil) { appearance in
+            let value = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: Double((value >> 16) & 255) / 255, green: Double((value >> 8) & 255) / 255,
+                           blue: Double(value & 255) / 255, alpha: 1)
+        }
+    }
+    static var canvasColor: NSColor { active ? deskColor(0xf2efe9, 0x0b0a0a) : .windowBackgroundColor }
+    static var ink: Color { active ? Color(nsColor: deskColor(0x141210, 0xece8e1)) : .primary }
+    static var canvas: Color { Color(nsColor: canvasColor) }
+    static var surface: Color { active ? Color(nsColor: deskColor(0xfaf8f4, 0x141312)) : Color(nsColor: .controlBackgroundColor) }
+    static var signal: Color { active ? Color(nsColor: deskColor(0xd4211b, 0xe8392f)) : .accentColor }
+    static var muted: Color { active ? Color(nsColor: deskColor(0x7a756e, 0x8f8a83)) : .secondary }
     static var body: Font { active ? Font.custom("IBMPlexMono", size: 12) : .body }
     static var heading: Font { active ? Font.custom("IBMPlexMono-SmBld", size: 13) : .headline }
     static var title: Font { active ? Font.custom("IBMPlexMono-SmBld", size: 18) : .title2.weight(.semibold) }
@@ -61,8 +70,8 @@ struct AIMQuietButtonStyle: ButtonStyle {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .foregroundStyle(AIMTheme.ink.opacity(enabled ? 1 : 0.4))
             .background(configuration.isPressed ? Color(nsColor: AIMAppShellStyle.selected) : Color(nsColor: AIMAppShellStyle.surface))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(nsColor: AIMAppShellStyle.divider), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 2))
+            .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color(nsColor: AIMAppShellStyle.divider), lineWidth: 1))
     }
 }
 
@@ -122,7 +131,7 @@ struct AIMQuietButtonStyle: ButtonStyle {
     private func renderTheme(_ mode: AIMThemePolicy.Mode) {
         AIMThemePolicy.withAppearance(mode) {
             attachedWindow?.appearance = AIMThemePolicy.appearance(mode)
-            attachedWindow?.backgroundColor = AIMAppShellStyle.canvas
+            attachedWindow?.backgroundColor = AIMTheme.canvasColor
             theme = mode
             attachedWindow?.contentView?.needsDisplay = true
             onStateChange?()

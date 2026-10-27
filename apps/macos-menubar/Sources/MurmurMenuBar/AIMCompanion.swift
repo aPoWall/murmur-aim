@@ -6,6 +6,8 @@ import MurmurTrayCore
 
 @MainActor final class AIMCompanionModel: ObservableObject {
     @Published var snapshot: AIMCompanionSnapshot?
+    @Published var cowork: AIMCoworkSnapshot?
+    @Published var coworkFailed = false
     @Published var busy = false
     @Published var failed = false
     @Published var notifications = UserDefaults.standard.bool(forKey: "aimCompanionNotifications")
@@ -66,9 +68,17 @@ import MurmurTrayCore
         guard enabled, !busy else { return }
         busy = true
         Task {
+            async let coworkRead = Self.readCowork()
             let result = await Task.detached { Result { try Self.readServer() } }.value
+            let coworkResult = await coworkRead
             busy = false
             guard enabled else { return }
+            if let coworkResult {
+                switch coworkResult {
+                case .success(let data): cowork = data; coworkFailed = false
+                case .failure: coworkFailed = true
+                }
+            }
             switch result {
             case .failure: failed = true
             case .success(let data):
@@ -114,6 +124,22 @@ import MurmurTrayCore
     }
     nonisolated private static func readServer() throws -> AIMCompanionSnapshot {
         return try AIMCompanionSnapshot.decode(AIMOwnerRead.exchange(["action": "snapshot"]))
+    }
+    nonisolated private static func readCowork() async -> Result<AIMCoworkSnapshot, Error>? {
+        let config = AIMEditionConfig.current
+        guard config.canReachServer, var parts = config.boardURL.flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }),
+              parts.scheme == "https", parts.user == nil, parts.password == nil else { return nil }
+        parts.query = nil; parts.fragment = nil
+        guard let url = parts.url?.appendingPathComponent("cowork-team-data.json") else { return nil }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        request.httpShouldHandleCookies = false
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw CocoaError(.fileReadUnknown) }
+            return .success(try AIMCoworkSnapshot.decode(data))
+        } catch { return .failure(error) }
     }
     func toggleNotifications() {
         if notifications {
@@ -191,14 +217,19 @@ struct AIMCompanionView: View {
                 }
                 if let data = model.snapshot {
                     Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
+                    AIMDeskPulse(data: data, current: model.current, imageReadEnabled: !model.previewConnected)
+                    if data.attention == nil { AIMCoworkView(data: model.cowork, failed: model.coworkFailed) }
                     if let contours = data.private_contours, !contours.isEmpty {
+                        DisclosureGroup(L10n.text("Private contours · status only")) {
                         Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)
                         ForEach(contours) { contour in
                             AIMPrivateMetadataCard(contour: contour, current: model.current)
                         }
+                        }
                     }
                     if let attention = data.attention {
                         AIMAttentionList(data: data, items: attention.yourTurn, title: "Waiting for you")
+                        AIMCoworkView(data: model.cowork, failed: model.coworkFailed)
                         if !attention.otherUpdates.isEmpty {
                             DisclosureGroup(L10n.text("Other updates") + " · \(attention.otherUpdates.count)") {
                                 AIMAttentionList(data: data, items: attention.otherUpdates, title: "Other updates")
