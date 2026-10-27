@@ -59,7 +59,7 @@ struct AIMAttentionList: View {
                 Text(proposed).font(AIMTheme.meta).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
             if let question = data.replyQuestion(for: item) {
-                AIMReplyActions(data: data, question: question) { replyDraft = $0 }
+                AIMReplyActions(data: data, question: question) { draft in if replyDraft == nil { replyDraft = draft } }
             }
             HStack {
                 if let owner = data.ownerThread(for: item.peer), let url = owner.verifiedURL {

@@ -130,7 +130,8 @@ struct AIMMessageSearchView: View {
             } else {
                 AIMConversationContextView(snapshot: snapshot, peer: selectedHistoryPeer, section: section,
                                            participant: participant(selectedHistoryPeer), enabled: enabled && !previewOnly, config: contextConfig,
-                                           selectDraft: { replyDraft = $0 }, selectSource: { selected = $0 })
+                                           selectDraft: { draft in if replyDraft == nil { replyDraft = draft } }, selectSource: { selected = $0 })
+                    .id(selectedHistoryPeer + ":" + section)
             }
         }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).aimQuietButtonStyle()
             .onExitCommand { if selected != nil { selected = nil } else { dismiss() } }
