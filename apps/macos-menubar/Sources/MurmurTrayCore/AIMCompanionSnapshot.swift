@@ -355,6 +355,11 @@ public struct AIMPeerPolicySnapshot: Decodable, Sendable {
         public let responder: String
         public let wake_status: String
         public let wake_reason: String?
+        public let wake_reason_observed_at: String?
+        public let wake_reason_fresh: Bool?
+        public let wake_source_id: String?
+        public let wake_source_date: String?
+        public let wake_reason_source: String?
         public var incomingLabelKey: String {
             switch reply_mode {
             case "manual": return "Manual review only"

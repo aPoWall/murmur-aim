@@ -234,6 +234,19 @@ func runAIMCompanionChecks() throws -> Int {
     try check(manualPolicy.peers["agent-sample"]?.reply_mode == "manual", "manual admission restriction survives the native contract")
     try check(manualPolicy.peers["agent-sample"]?.incomingLabelKey == "Manual review only" && manualPolicy.peers["agent-sample"]?.canEditIncoming == true,
               "known manual mode remains explicit and editable")
+    var budgetPaused = oldPolicy
+    budgetPaused["reply_mode"] = "technical_only"
+    budgetPaused["wake_reason"] = "ahead-of-weekly-pace"
+    budgetPaused["wake_reason_observed_at"] = "2026-10-27T17:42:08Z"
+    budgetPaused["wake_reason_fresh"] = false
+    budgetPaused["wake_source_id"] = "11111111-1111-4111-8111-111111111111"
+    budgetPaused["wake_source_date"] = "2026-10-27T17:41:39Z"
+    let admission = try JSONDecoder().decode(AIMPeerPolicySnapshot.Policy.self, from: JSONSerialization.data(withJSONObject: budgetPaused))
+    try check(admission.incomingLabelKey == "Automatic technical replies", "budget refusal does not change the existing technical reply permission")
+    try check(admission.wake_reason == "ahead-of-weekly-pace" && admission.wake_source_id == budgetPaused["wake_source_id"] as? String,
+              "native admission retains the exact reason and source ID")
+    try check(admission.wake_reason_fresh == false && admission.wake_reason_observed_at != admission.wake_source_date,
+              "wake admission observation and message date remain distinct")
     var capabilityObject = object
     capabilityObject["people"] = [["id":"person:sample", "name":"Synthetic contact", "agents":["agent-sample"], "writable_agents":["agent-sample"]]]
     capabilityObject["owner_threads"] = [String: Any]()
@@ -326,7 +339,7 @@ func runAIMCompanionChecks() throws -> Int {
     access = try capabilitySnapshot()
     try check(access.connectionSending(for: access.people[0], current: true, now: now) == .unknown,
               "a future policy reading remains unknown")
-    return 95 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
+    return 98 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
 }
 
 

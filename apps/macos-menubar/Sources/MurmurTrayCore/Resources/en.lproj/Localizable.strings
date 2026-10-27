@@ -1081,3 +1081,14 @@
 "Current work context" = "Current work context";
 "Recent incoming messages" = "Incoming awaiting review";
 "Received message" = "Received message";
+
+"Wake admission observed" = "Wake admission observed";
+"ahead-of-weekly-pace" = "Background work paused by weekly budget pace";
+"admission_not_observed" = "Wake admission reason not observed";
+"budget-unobserved" = "Budget admission not observed";
+"budget-check-timeout" = "Budget check timed out";
+"budget-check-launch-failed" = "Budget check could not start";
+"budget-check-invalid-result" = "Budget check returned no valid result";
+"quota-refresh-unavailable" = "Fresh quota observation unavailable";
+"owner-manual-review" = "Manual review is configured for this contact";
+"manual-stop" = "Background work paused by the operator";

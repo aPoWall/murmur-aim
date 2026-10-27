@@ -259,7 +259,8 @@ struct AIMCompanionView: View {
                     }
                     if data.budget.allowed != true || data.budget.fresh != true {
                         Text(L10n.text("Budget observation is separate from each contact’s responder. Check People for missing responders.")).foregroundStyle(AIMTheme.signal)
-                        Text((data.budget.reason ?? "unknown") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)).font(AIMTheme.meta)
+                        Text(L10n.text(data.budget.reason ?? "budget-unobserved") + " · " + AIMCompanionModel.stamp(data.budget.observed_at)
+                             + " · " + L10n.text(data.budget.fresh == true ? "Source fresh" : "Source stale")).font(AIMTheme.meta)
                     }
                     if let policies = data.peer_policy {
                         ForEach(policies.peers.keys.sorted(), id: \.self) { peer in

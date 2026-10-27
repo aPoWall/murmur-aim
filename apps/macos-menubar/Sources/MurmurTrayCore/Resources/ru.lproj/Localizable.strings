@@ -1081,3 +1081,14 @@
 "Current work context" = "Контекст текущей работы";
 "Recent incoming messages" = "Входящие без подтверждённого разбора";
 "Received message" = "Входящее сообщение";
+
+"Wake admission observed" = "Допуск обработчика проверен";
+"ahead-of-weekly-pace" = "Фоновая работа приостановлена по темпу недельного бюджета";
+"admission_not_observed" = "Причина отказа допуска не наблюдалась";
+"budget-unobserved" = "Допуск по бюджету не наблюдался";
+"budget-check-timeout" = "Проверка бюджета завершилась по таймауту";
+"budget-check-launch-failed" = "Не удалось запустить проверку бюджета";
+"budget-check-invalid-result" = "Проверка бюджета не вернула допустимый результат";
+"quota-refresh-unavailable" = "Свежий срез квоты недоступен";
+"owner-manual-review" = "Для этого контакта настроен ручной разбор";
+"manual-stop" = "Фоновая работа приостановлена оператором";

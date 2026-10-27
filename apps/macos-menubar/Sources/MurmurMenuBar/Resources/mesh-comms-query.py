@@ -336,6 +336,16 @@ def read_avatar(person, root=ROOT):
             'mime': allowed[1], 'data': base64.b64encode(image).decode('ascii')}
 
 
+def legacy_wake_diagnostic(item, error):
+    # New policy projections already bind a reason to one exact wire message.
+    # A second DB read must not attach another message's error to that evidence.
+    if item.get('wake_source_id'): return
+    if error.startswith('codex-app-server-final-empty:'):
+        item['wake_reason'] = 'empty_final_reply'
+    elif error == 'audit-require-approval' and item.get('wake_reason') in {None, 'recorded_error'}:
+        item['wake_reason'] = 'admission_not_observed'
+
+
 def dispatch(request, root=ROOT):
     if not isinstance(request, dict):
         raise ValueError('invalid_request')
@@ -372,10 +382,7 @@ def dispatch(request, root=ROOT):
                 for peer, item in data.get('peer_policy', {}).get('peers', {}).items():
                     row = db.execute("select wake_error from local_messages where direction='inbound' and sender=? order by created_at desc limit 1",(peer,)).fetchone()
                     error = str(row[0]) if row else ''
-                    if error.startswith('codex-app-server-final-empty:'):
-                        item['wake_reason'] = 'empty_final_reply'
-                    elif error == 'audit-require-approval':
-                        item['wake_reason'] = 'owner_approval_required'
+                    legacy_wake_diagnostic(item, error)
         except sqlite3.Error:
             pass  # Preserve the existing source's unknown/recorded_error state.
         return data

@@ -164,6 +164,11 @@ private struct AIMContactRow: View {
                             Text(L10n.text("Policy checked") + " · " + AIMCompanionModel.stamp(data.peer_policy?.observed_at)).font(AIMTheme.meta)
                             if let reason = policy.wake_reason {
                                 Text(L10n.text("Last wake") + ": " + L10n.text(reason)).font(AIMTheme.meta)
+                                if let observed = policy.wake_reason_observed_at {
+                                    Text(L10n.text("Wake admission observed") + " · " + AIMCompanionModel.stamp(observed)
+                                         + " · " + L10n.text(current && policy.wake_reason_fresh == true ? "Source fresh" : "Source stale"))
+                                        .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                                }
                             }
                         }
                     }
