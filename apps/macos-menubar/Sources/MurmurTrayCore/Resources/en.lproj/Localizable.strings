@@ -1082,9 +1082,9 @@
 "Recent incoming messages" = "Incoming awaiting review";
 "Received message" = "Received message";
 
-"Wake admission observed" = "Wake admission observed";
+"Wake admission observed" = "Wake-up admission observed";
 "ahead-of-weekly-pace" = "Background work paused by weekly budget pace";
-"admission_not_observed" = "Wake admission reason not observed";
+"admission_not_observed" = "Wake-up admission reason not observed";
 "budget-unobserved" = "Budget admission not observed";
 "budget-check-timeout" = "Budget check timed out";
 "budget-check-launch-failed" = "Budget check could not start";
