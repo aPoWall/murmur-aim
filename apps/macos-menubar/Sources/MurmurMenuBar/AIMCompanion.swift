@@ -190,7 +190,6 @@ struct AIMCompanionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("Your communication desk")).font(AIMTheme.title)
-            Text(L10n.text("See what needs your decision. Continue the work in your assistant's chat.")).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(L10n.text("Dashboard")) { AIMCompanionModel.open() }.help(L10n.text("Open the private mesh dashboard in the browser"))
                 Button(L10n.text("History")) { AIMCompanionModel.open("?view=mesh&section=history") }.help(L10n.text("Open the message history of the mesh in the dashboard"))
@@ -208,6 +207,9 @@ struct AIMCompanionView: View {
             } else {
                 HStack {
                     Text(AIMEditionConfig.current.serverLabel).font(AIMTheme.heading)
+                    if let data = model.snapshot {
+                        Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+                    }
                     Spacer()
                     Button(L10n.text("Refresh")) { model.refresh() }.help(L10n.text("Read the server overview again now")).disabled(model.busy)
                 }
@@ -216,9 +218,7 @@ struct AIMCompanionView: View {
                     Text(L10n.text("Server overview unavailable. Check the network and the SSH alias. Retained observations are stale.")).foregroundStyle(AIMTheme.signal)
                 }
                 if let data = model.snapshot {
-                    Text((model.current ? L10n.text("Snapshot") : L10n.text("Stale snapshot")) + " · " + AIMCompanionModel.stamp(data.snapshot_at)).font(AIMTheme.meta)
                     AIMDeskPulse(data: data, current: model.current, imageReadEnabled: !model.previewConnected)
-                    if data.attention == nil { AIMCoworkView(data: model.cowork, failed: model.coworkFailed) }
                     if let contours = data.private_contours, !contours.isEmpty {
                         DisclosureGroup(L10n.text("Private contours · status only")) {
                         Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)
@@ -229,7 +229,6 @@ struct AIMCompanionView: View {
                     }
                     if let attention = data.attention {
                         AIMAttentionList(data: data, items: attention.yourTurn, title: "Waiting for you")
-                        AIMCoworkView(data: model.cowork, failed: model.coworkFailed)
                         if !attention.otherUpdates.isEmpty {
                             DisclosureGroup(L10n.text("Other updates") + " · \(attention.otherUpdates.count)") {
                                 AIMAttentionList(data: data, items: attention.otherUpdates, title: "Other updates")
@@ -246,6 +245,10 @@ struct AIMCompanionView: View {
                         if !attention.receipts_ok {
                             Text(L10n.text("Reply evidence unavailable. Check the source before acting.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
                         }
+                    }
+                    AIMRecentInboxView(data: data)
+                    DisclosureGroup(L10n.text("Current work context")) {
+                        AIMCoworkView(data: model.cowork, failed: model.coworkFailed)
                     }
                     DisclosureGroup(L10n.text("Connection and access details")) {
                     Text("Murmur \(data.server_version) · " + L10n.text("Transport") + ": \(data.transport) · " + L10n.text("Codex service") + ": \(data.responder)").font(AIMTheme.meta)

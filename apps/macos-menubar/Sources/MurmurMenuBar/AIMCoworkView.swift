@@ -2,6 +2,39 @@ import SwiftUI
 import AppKit
 import MurmurTrayCore
 
+struct AIMRecentInboxView: View {
+    let data: AIMCompanionSnapshot
+    @MurmurViewState private var selectedPeer: String?
+    private var rows: [AIMCompanionSnapshot.Incoming] {
+        data.incoming.filter { item in
+            data.people.contains { person in person.contact_state != "status_only" && person.agents.contains(item.peer) }
+        }.sorted { (AIMCompanionSnapshot.date($0.date) ?? .distantPast) > (AIMCompanionSnapshot.date($1.date) ?? .distantPast) }.prefix(6).map { $0 }
+    }
+    var body: some View {
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L10n.text("Recent incoming messages")).font(AIMTheme.heading)
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    Button { selectedPeer = row.peer } label: {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(data.people.first { $0.agents.contains(row.peer) }?.name ?? row.peer)
+                            Spacer()
+                            Text(AIMCompanionModel.stamp(row.date)).foregroundStyle(AIMTheme.muted)
+                            Text(L10n.text("Read") + " ↗").foregroundStyle(AIMTheme.signal)
+                        }.font(AIMTheme.meta).padding(.vertical, 7)
+                    }.buttonStyle(.plain).help(L10n.text("Read conversation"))
+                    Divider()
+                }
+            }.padding(.vertical, 10)
+                .sheet(isPresented: Binding(get: { selectedPeer != nil }, set: { if !$0 { selectedPeer = nil } })) {
+                    if let peer = selectedPeer {
+                        AIMMessageSearchView(enabled: true, people: data.people, historyPeer: peer, snapshot: data)
+                    }
+                }
+        }
+    }
+}
+
 struct AIMDeskPulse: View {
     let data: AIMCompanionSnapshot
     let current: Bool
@@ -12,7 +45,6 @@ struct AIMDeskPulse: View {
             HStack(spacing: 24) {
                 metric("People", value: data.people.count)
                 metric("Waiting for you", value: data.ownerAttentionCount)
-                metric("Technical issues and verification", value: data.technicalAttentionCount)
                 Spacer(minLength: 0)
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3), alignment: .leading, spacing: 8) {

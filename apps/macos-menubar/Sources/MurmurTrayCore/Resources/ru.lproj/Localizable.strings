@@ -1077,3 +1077,7 @@
 "Reported done · verify" = "Готово со слов участника · проверить";
 
 "Verified" = "Проверено";
+
+"Current work context" = "Контекст текущей работы";
+"Recent incoming messages" = "Последние входящие";
+"Received message" = "Входящее сообщение";
