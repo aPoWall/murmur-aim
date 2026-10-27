@@ -9,6 +9,7 @@ struct AIMConversationContextView: View {
     let participant: String
     let enabled: Bool
     var config: AIMEditionConfig = .current
+    var selectDraft: ((AIMReplyDraft) -> Void)? = nil
     let selectSource: (AIMMessageSearchResult.Match) -> Void
 
     private var topics: [AIMCompanionSnapshot.Question]? { snapshot?.reviewedTopics(for: peer, config: config) }
@@ -36,9 +37,12 @@ struct AIMConversationContextView: View {
                                         Text(L10n.text("Source date") + " · " + AIMCompanionModel.stamp(decision.source_date)).font(AIMTheme.meta)
                                         Text(L10n.text("Review date") + " · " + AIMCompanionModel.stamp(decision.reviewed_at ?? topic.reviewed_at)).font(AIMTheme.meta)
                                         Text(L10n.text("Evidence") + " · " + L10n.text(decision.evidenceLabelKey)).font(AIMTheme.meta)
+                                        Text(L10n.text(decision.originLabelKey)).font(AIMTheme.meta)
                                         Text(L10n.text("Scope") + " · " + decision.scope).font(AIMTheme.meta)
                                         Text(L10n.text("Status") + " · " + L10n.text(topic.statusLabelKey)).font(AIMTheme.meta)
-                                        source(decision.sourceMatch(peer: peer), id: decision.source_id, availability: decision.source_available)
+                                        if decision.evidence_kind == "direct_human_choice_recorded" {
+                                            Text(L10n.text("Source: owner chat. This record does not confirm delivery to the contact.")).font(AIMTheme.meta)
+                                        } else { source(decision.sourceMatch(peer: peer), id: decision.source_id, availability: decision.source_available) }
                                     }
                                     Divider()
                                 }
@@ -57,6 +61,9 @@ struct AIMConversationContextView: View {
                                             if let proposed = topic.draftProposedReply {
                                                 Text(L10n.text("Proposed reply · draft, not approved or sent")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
                                                 Text(proposed).textSelection(.enabled)
+                                            }
+                                            if let snapshot, let selectDraft {
+                                                AIMReplyActions(data: snapshot, question: topic, enabled: enabled, config: config, selectDraft: selectDraft)
                                             }
                                             Text(L10n.text("Next action") + " · " + (topic.next_action ?? L10n.text("Unknown")))
                                             Text(L10n.text("Status") + " · " + L10n.text(topic.statusLabelKey)).font(AIMTheme.meta)

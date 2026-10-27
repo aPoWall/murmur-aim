@@ -68,7 +68,7 @@ func runConversationContextChecks() throws -> Int {
     }
     object["people"] = [["id":"person:private", "name":"Private", "agents":["agent-sample"], "contact_state":"status_only"]]
     topic["peer"] = "agent-sample"; object["reviewed_topics"] = [topic]; try rejected("status-only reviewed topic")
-    return count + (try runAttentionOrderChecks())
+    return count + (try runAttentionOrderChecks()) + (try runReplyDraftChecks())
 }
 
 

@@ -9,6 +9,7 @@ struct AIMAttentionList: View {
     var title = "Communication needs attention"
     @MurmurViewState private var expanded = false
     @MurmurViewState private var selectedItem: AIMCompanionSnapshot.Attention.Item?
+    @MurmurViewState private var replyDraft: AIMReplyDraft?
     @MurmurViewState private var composeItem: AIMCompanionSnapshot.Attention.Item?
 
     var body: some View {
@@ -37,6 +38,11 @@ struct AIMAttentionList: View {
                 AIMComposeView(person: person, initialPeer: item.peer)
             }
         }
+        .sheet(item: $replyDraft) { draft in
+            if let person = data.people.first(where: { $0.agents.contains(draft.peer) }) {
+                AIMComposeView(person: person, initialPeer: draft.peer, draft: draft)
+            }
+        }
     }
     private func attentionCard(_ item: AIMCompanionSnapshot.Attention.Item) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -51,6 +57,9 @@ struct AIMAttentionList: View {
             if let proposed = data.proposedReply(for: item) {
                 Text(L10n.text("Proposed reply · draft, not approved or sent")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
                 Text(proposed).font(AIMTheme.meta).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            }
+            if let question = data.replyQuestion(for: item) {
+                AIMReplyActions(data: data, question: question) { replyDraft = $0 }
             }
             HStack {
                 if let owner = data.ownerThread(for: item.peer), let url = owner.verifiedURL {

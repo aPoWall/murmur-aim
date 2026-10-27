@@ -40,7 +40,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
             return photo
         }
     }
-    public struct Question: Decodable, Identifiable, Sendable {
+    public struct Question: Decodable, Identifiable, Sendable, Equatable {
         public let id: String
         public let title: String?
         public let peer: String?
@@ -58,6 +58,8 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let source_available: Bool?
         public let proposed_reply: String?
         public let proposal_status: String?
+        public let reply_context: AIMReplyContext?
+        public let reply_options: [ReplyOption]?
         public var needsOwner: Bool {
             if let responsibility {
                 return responsibility == AIMEditionConfig.defaultOwnerResponsibility

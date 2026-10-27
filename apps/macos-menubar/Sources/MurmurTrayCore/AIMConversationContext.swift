@@ -1,11 +1,11 @@
 import Foundation
 
 extension AIMCompanionSnapshot {
-    public struct Reference: Decodable, Sendable {
+    public struct Reference: Decodable, Sendable, Equatable {
         public let id: String
         public let label: String
     }
-    public struct Decision: Decodable, Identifiable, Sendable {
+    public struct Decision: Decodable, Identifiable, Sendable, Equatable {
         public let id: String
         public let label: String
         public let decided_by: String
@@ -19,18 +19,26 @@ extension AIMCompanionSnapshot {
 
         public var evidenceLabelKey: String {
             switch evidence_kind {
+            case "direct_human_choice_recorded": return "Human choice recorded in owner chat"
             case "direct_human_choice_relayed": return "Human choice relayed"
             case "human_decision_reported_by_peer": return "Human decision reported by counterpart"
             case "operator_verified_receipt": return "Operator verified receipt"
             default: return "Peer review and GitHub merge verified"
             }
         }
+        public var originLabelKey: String {
+            evidence_kind == "direct_human_choice_recorded" ? "Owner chat decision" : "Murmur source"
+        }
         public func sourceMatch(peer: String) -> AIMMessageSearchResult.Match? {
-            guard source_available else { return nil }
+            guard source_available, evidence_kind != "direct_human_choice_recorded" else { return nil }
             return .init(id: source_id, store: "murmur-sasha", date: source_date,
                          peer_identity: peer, local_identity: nil, direction: nil,
                          conversation_id: nil, excerpt: label)
         }
+    }
+    public struct ReplyOption: Decodable, Identifiable, Sendable, Equatable {
+        public let id: String
+        public let text: String
     }
     public enum NextStepGroup: String, CaseIterable, Sendable {
         case owner = "Your decision", peer = "Waiting for counterpart", agent = "Our implementation", verify = "Needs verification"
@@ -52,7 +60,9 @@ extension AIMCompanionSnapshot {
                   guard let peer = topic.peer, !privatePeers.contains(peer),
                         people.contains(where: { $0.agents.contains(peer) }),
                         Self.contextText(topic.id, limit: 160),
-                        topic.proposed_reply == nil || topic.proposal_status == "draft_not_approved",
+                        (topic.proposed_reply == nil && (topic.reply_options ?? []).isEmpty) || topic.proposal_status == "draft_not_approved",
+                        Self.validReplyOptions(topic.reply_options ?? []),
+                        topic.reply_context.map({ Self.validReplyContext($0, topic: topic, privatePeers: privatePeers) }) ?? true,
                         [topic.title, topic.summary, topic.evidence, topic.next_action, topic.proposed_reply].allSatisfy({ $0.map { Self.contextText($0, limit: 4096) } ?? true }),
                         [topic.source_date, topic.reviewed_at].allSatisfy({ $0.map { Self.date($0) != nil } ?? true }),
                         topic.source_id.map({ Self.contextText($0, limit: 160) }) ?? true,
@@ -67,15 +77,17 @@ extension AIMCompanionSnapshot {
                       && Self.contextText(decision.source_id, limit: 160) && Self.date(decision.decided_at) != nil
                       && [decision.source_date, decision.reviewed_at].allSatisfy({ $0.map { Self.date($0) != nil } ?? true })
                       && Self.validDecisionEvidence(decision.evidence_kind)
+                      && (decision.evidence_kind != "direct_human_choice_recorded"
+                          || (UUID(uuidString: decision.source_id) != nil && !decision.source_available))
                   }
               }) else { throw CocoaError(.fileReadCorruptFile) }
     }
-    private static func contextText(_ text: String, limit: Int) -> Bool {
+    fileprivate static func contextText(_ text: String, limit: Int) -> Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && text.count <= limit
             && !text.unicodeScalars.contains { CharacterSet.controlCharacters.subtracting(.newlines).contains($0) }
     }
     private static func validDecisionEvidence(_ kind: String) -> Bool {
-        if ["direct_human_choice_relayed", "human_decision_reported_by_peer", "operator_verified_receipt"].contains(kind) { return true }
+        if ["direct_human_choice_relayed", "direct_human_choice_recorded", "human_decision_reported_by_peer", "operator_verified_receipt"].contains(kind) { return true }
         let prefix = "peer_review_and_github_merge_verified_"
         guard kind.hasPrefix(prefix) else { return false }
         let suffix = String(kind.dropFirst(prefix.count))
@@ -89,8 +101,18 @@ extension AIMCompanionSnapshot {
 }
 
 extension AIMCompanionSnapshot.Question {
+    public var isClosed: Bool {
+        ["answered", "no_reply_needed", "reported_complete", "cancelled", "superseded"].contains(status ?? "")
+    }
     public var draftProposedReply: String? {
-        proposal_status == "draft_not_approved" ? proposed_reply : nil
+        guard !isClosed, proposal_status == "draft_not_approved", let proposed_reply,
+              AIMCompanionSnapshot.contextText(proposed_reply, limit: 4096) else { return nil }
+        return proposed_reply
+    }
+    public var draftReplyOptions: [AIMCompanionSnapshot.ReplyOption] {
+        guard !isClosed, proposal_status == "draft_not_approved",
+              let reply_options, AIMCompanionSnapshot.validReplyOptions(reply_options) else { return [] }
+        return reply_options
     }
     public var statusLabelKey: String {
         switch status {
@@ -99,6 +121,7 @@ extension AIMCompanionSnapshot.Question {
         case "reported_complete": return "Reported complete"
         case "reported_complete_with_gap": return "Reported complete · verification pending"
         case "cancelled": return "Cancelled"
+        case "superseded": return "Superseded"
         case "awaiting_user", "needs_owner_decision": return "Your decision"
         case "awaiting_peer", "awaiting_peer_human", "awaiting_external_owner": return "Waiting for counterpart"
         case "awaiting_agent", "awaiting_implementation_owner": return "Our implementation"
@@ -106,7 +129,7 @@ extension AIMCompanionSnapshot.Question {
         }
     }
     public func nextStepGroup(config: AIMEditionConfig = .current) -> AIMCompanionSnapshot.NextStepGroup? {
-        guard !["answered", "no_reply_needed", "reported_complete", "cancelled"].contains(status ?? "") else { return nil }
+        guard !isClosed else { return nil }
         switch responsibility {
         case config.ownerResponsibility: return .owner
         case "peer": return .peer
@@ -168,5 +191,88 @@ extension AIMCompanionSnapshot {
         guard item.actionable, item.kind == "owner", item.id.hasPrefix("topic:") else { return nil }
         let topicID = String(item.id.dropFirst("topic:".count))
         return reviewedTopics(for: item.peer)?.first { $0.id == topicID }?.draftProposedReply
+    }
+}
+
+
+/// A read-only binding to one retained ordinary Murmur source. No path or recipient is encoded.
+public struct AIMReplyContext: Codable, Equatable, Sendable {
+    public let store: String
+    public let local_identity: String
+    public let source_id: String
+    public let conversation_id: String
+
+    public init(store: String, local_identity: String, source_id: String, conversation_id: String) {
+        self.store = store; self.local_identity = local_identity
+        self.source_id = source_id; self.conversation_id = conversation_id
+    }
+}
+
+/// The id identifies a presented sheet only. The composer owns any send request UUID.
+public struct AIMReplyDraft: Identifiable, Sendable {
+    public let id: String
+    public let peer: String
+    public let text: String
+    public let context: AIMReplyContext
+    public let title: String?
+}
+
+extension AIMCompanionSnapshot {
+    fileprivate static func validReplyOptions(_ options: [ReplyOption]) -> Bool {
+        options.isEmpty || (options.count == 2 && Set(options.map(\.id)) == Set(["yes", "no"])
+            && options.allSatisfy { contextText($0.text, limit: 4096) })
+    }
+    private static func boundIdentifier(_ id: String, limit: Int) -> Bool {
+        id.count <= limit && id.range(of: "^[A-Za-z0-9][A-Za-z0-9._:-]*$", options: .regularExpression) != nil
+    }
+    private static func validReplyContext(_ context: AIMReplyContext, topic: Question, privatePeers: Set<String>) -> Bool {
+        guard let peer = topic.peer, context.store == "murmur-sasha",
+              peer.range(of: AIMEditionConfig.peerPattern, options: .regularExpression) != nil,
+              context.local_identity.range(of: AIMEditionConfig.peerPattern, options: .regularExpression) != nil,
+              !privatePeers.contains(peer), !privatePeers.contains(context.local_identity),
+              context.local_identity != peer,
+              boundIdentifier(context.source_id, limit: 160), boundIdentifier(context.conversation_id, limit: 160),
+              context.source_id == topic.source_id, context.conversation_id == topic.conversation
+        else { return false }
+        return true
+    }
+    /// Returns the current retained question only when an ordinary writable reply route exists.
+    /// Fresh sending policy is still checked by the existing composer and server on submit.
+    private func replyReadyQuestion(_ question: Question, config: AIMEditionConfig, now: Date) -> Question? {
+        guard isCurrent(now: now), let peer = question.peer,
+              let current = reviewedTopics(for: peer, config: config)?.first(where: { $0.id == question.id }),
+              current == question, !current.isClosed, current.source_available == true,
+              question.source_id == current.source_id, question.conversation == current.conversation,
+              question.reply_context == current.reply_context,
+              let person = people.first(where: { $0.agents.contains(peer) }), !isStatusOnly(person, config: config),
+              (person.writable_agents ?? []).contains(peer),
+              let context = current.reply_context
+        else { return nil }
+        let privatePeers = config.privatePeers.union(["shaper-viola", "agent-viola-alex"])
+            .union(people.filter { $0.contact_state == "status_only" }.flatMap(\.agents))
+        guard Self.validReplyContext(context, topic: current, privatePeers: privatePeers) else { return nil }
+        return current
+    }
+    public func replyQuestion(for item: Attention.Item, config: AIMEditionConfig = .current, now: Date = Date()) -> Question? {
+        guard item.id.hasPrefix("topic:"),
+              let topic = reviewedTopics(for: item.peer, config: config)?.first(where: { "topic:" + $0.id == item.id })
+        else { return nil }
+        return replyReadyQuestion(topic, config: config, now: now)
+    }
+    public func replyDraft(for question: Question, choice: String, config: AIMEditionConfig = .current, now: Date = Date()) -> AIMReplyDraft? {
+        guard let current = replyReadyQuestion(question, config: config, now: now),
+              let peer = current.peer, let context = current.reply_context else { return nil }
+        let text: String
+        switch choice {
+        case "custom": text = ""
+        case "proposal":
+            guard let proposed = current.draftProposedReply else { return nil }
+            text = proposed
+        case "yes", "no":
+            guard let option = current.draftReplyOptions.first(where: { $0.id == choice }) else { return nil }
+            text = option.text
+        default: return nil
+        }
+        return AIMReplyDraft(id: UUID().uuidString, peer: peer, text: text, context: context, title: current.title)
     }
 }

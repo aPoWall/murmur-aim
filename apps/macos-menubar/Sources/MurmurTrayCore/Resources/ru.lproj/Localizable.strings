@@ -1027,3 +1027,29 @@
 "Source availability unknown in this snapshot." = "Доступность источника в этом снимке неизвестна.";
 
 "Proposed reply · draft, not approved or sent" = "Вариант ответа · драфт, не одобрен и не отправлен";
+
+"Use proposed reply" = "Использовать предложенный ответ";
+
+"No" = "Нет";
+
+"Custom reply" = "Свой ответ";
+
+"Opens an editable draft. Send separately after reviewing it." = "Откроется черновик для редактирования. Отправьте его отдельной кнопкой после проверки.";
+
+"Reply source or route is unavailable. Refresh the desk and check contact settings." = "Источник или маршрут ответа недоступен. Обновите данные и проверьте настройки контакта.";
+
+"Reply in the source conversation" = "Ответ в исходной беседе";
+
+"Draft only. Review and edit before pressing Send message." = "Это черновик. Проверьте и поправьте текст перед нажатием «Отправить сообщение».";
+
+"Reply source details" = "Источник ответа";
+
+"Human choice recorded in owner chat" = "Решение человека записано в чате владельца";
+
+"Owner chat decision" = "Решение из чата владельца";
+
+"Murmur source" = "Источник в Murmur";
+
+"Superseded" = "Заменено новым решением";
+
+"Source: owner chat. This record does not confirm delivery to the contact." = "Источник: чат владельца. Эта запись не подтверждает доставку контакту.";

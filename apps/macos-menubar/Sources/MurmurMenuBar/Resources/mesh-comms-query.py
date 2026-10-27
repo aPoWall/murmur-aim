@@ -51,7 +51,7 @@ OWNER_THREADS = {agent: {'title': row['title'], 'url': row['url']}
 AGENT_LABELS = {agent: label for agent, label in _owner_file('agent-labels.json').items() if isinstance(label, str)}
 AVATARS = {'person:' + pid: '/mesh-comms-avatar-' + pid + '.jpg' for pid in AVATAR_IDS}
 MAX_AVATAR_BYTES = 262144
-CLOSED = {'answered', 'no_reply_needed', 'reported_complete', 'cancelled'}
+CLOSED = {'answered', 'no_reply_needed', 'reported_complete', 'cancelled', 'superseded'}
 
 
 def load(name, filename, root=ROOT):
@@ -137,7 +137,12 @@ def augment(data, monitor, share):
     retired=set(share.get('retired_identities',[]))
     try: decision_projector=load('murmur_decision_projection','mesh_comms_decisions.py')
     except FileNotFoundError: decision_projector=None
-    sources={m.get('id'):m for m in share.get('messages',[]) if m.get('store')=='murmur-sasha' and m.get('peer_identity') not in private and m.get('local_identity') not in private}
+    # A duplicated ID cannot establish a reply route, even across peers.
+    source_rows={}
+    for message in share.get('messages',[]):
+        if message.get('store')=='murmur-sasha' and message.get('peer_identity') not in private and message.get('local_identity') not in private:
+            source_rows.setdefault(message.get('id'),[]).append(message)
+    sources={sid:rows[0] for sid,rows in source_rows.items() if sid and len(rows)==1}
     private_sources={m.get('id') for m in share.get('messages',[]) if m.get('peer_identity') in private or m.get('local_identity') in private}
     for topic in topics:
         if not isinstance(topic,dict) or not isinstance(topic.get('id'),str) or not topic.get('id') or topic.get('peer') in private|retired or not isinstance(topic.get('peer'),str) or topic.get('source_id') in private_sources:continue
@@ -145,11 +150,15 @@ def augment(data, monitor, share):
         for key,limit in [('title',300),('summary',2000),('next_action',3000),('evidence',300)]:
             if isinstance(row.get(key),str):row[key]=row[key][:limit]
         row['responsibility']=responsibility(topic.get('status'))
-        row['source_available']=any(m.get('id')==row.get('source_id') and m.get('peer_identity')==row['peer'] and m.get('store')=='murmur-sasha' for m in share.get('messages',[]))
+        row['source_available']=sources.get(row.get('source_id'),{}).get('peer_identity')==row['peer']
         # Projector has already bound each decision to this ordinary peer.
         # Recheck current privacy boundaries when reading an older monitor.
         row['confirmed_decisions']=decision_projector.project(topic,sources,private_sources) if decision_projector else []
         if decision_projector:row.update(decision_projector.proposal(topic))
+        source=sources.get(row.get('source_id'),{})
+        if row['source_available'] and source.get('local_identity') not in private and isinstance(source.get('local_identity'),str) and source['local_identity'] and isinstance(source.get('conversation_id'),str) and source['conversation_id']:
+            row['conversation']=source['conversation_id']
+            row['reply_context']={k:source.get(v) for k,v in [('store','store'),('local_identity','local_identity'),('source_id','id'),('conversation_id','conversation_id')]}
         encoded=len(json.dumps(row,ensure_ascii=False).encode())
         if len(records)>=60 or size+encoded>180000:truncated=True;break
         records.append(row);size+=encoded

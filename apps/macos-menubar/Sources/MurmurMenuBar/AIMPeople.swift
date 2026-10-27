@@ -176,6 +176,7 @@ private struct AIMContactRow: View {
 /// One explicit submit, one stable UUID. An uncertain result is checked without resending.
 struct AIMComposeView: View {
     let person: AIMCompanionSnapshot.Person
+    private let replyDraft: AIMReplyDraft?
     @Environment(\.dismiss) private var dismiss
     @MurmurViewState private var peer: String
     @MurmurViewState private var message = ""
@@ -185,9 +186,11 @@ struct AIMComposeView: View {
     @MurmurViewState private var attempted = false
     @MurmurViewState private var busy = false
     @MurmurViewState private var receipt: String?
-    init(person: AIMCompanionSnapshot.Person, initialPeer: String? = nil) {
+    init(person: AIMCompanionSnapshot.Person, initialPeer: String? = nil, draft: AIMReplyDraft? = nil) {
         self.person = person
-        _peer = State(initialValue: initialPeer.flatMap { person.writable_agents?.contains($0) == true ? $0 : nil } ?? person.writable_agents?.first ?? "")
+        self.replyDraft = draft
+        _message = State(initialValue: draft?.text ?? "")
+        _peer = State(initialValue: draft.map { person.writable_agents?.contains($0.peer) == true ? $0.peer : "" } ?? initialPeer.flatMap { person.writable_agents?.contains($0) == true ? $0 : nil } ?? person.writable_agents?.first ?? "")
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -197,10 +200,18 @@ struct AIMComposeView: View {
                 ForEach(person.writable_agents ?? [], id: \.self) { agent in
                     Text("\(person.agent_labels?[agent] ?? agent) · \(agent)").tag(agent)
                 }
-            }.disabled(attempted).help(L10n.text("Which agent of this person receives the message"))
+            }.disabled(attempted || replyDraft != nil).help(L10n.text("Which agent of this person receives the message"))
             Text(L10n.text("From your identity · encrypted Murmur delivery")).font(AIMTheme.meta)
             Text(L10n.text("Only this written message is shared. An approved brief needs a separate choice for this send; vault and file access are managed separately."))
                 .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted).fixedSize(horizontal: false, vertical: true)
+            if let replyDraft {
+                Text(L10n.text("Reply in the source conversation") + " · " + (replyDraft.title ?? "")).font(AIMTheme.meta)
+                Text(L10n.text("Draft only. Review and edit before pressing Send message.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+                DisclosureGroup(L10n.text("Reply source details")) {
+                    Text(replyDraft.context.conversation_id).font(AIMTheme.meta).textSelection(.enabled)
+                    Text(replyDraft.context.source_id).font(AIMTheme.meta).textSelection(.enabled)
+                }.font(AIMTheme.meta)
+            }
             TextEditor(text: $message).font(AIMTheme.body).frame(height: 180).border(Color.gray.opacity(0.25)).disabled(attempted)
             Text("\(message.count) / 8000").font(AIMTheme.meta)
             if selectedPolicy?.context == "approved_brief" {
@@ -227,8 +238,18 @@ struct AIMComposeView: View {
             .task(id: peer) { includeContext = false; selectedPolicy = nil; if let result = try? await Task.detached(operation: { try AIMPolicyTransport.load() }).value { selectedPolicy = result.peers[peer] } }
     }
     private func submit(statusOnly: Bool) {
+        guard statusOnly || (person.writable_agents?.contains(peer) == true && selectedPolicy?.send_allowed == true
+            && !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && message.count <= 8000
+            && (replyDraft == nil || replyDraft?.peer == peer)) else { return }
         busy = true; attempted = true
-        let request: [String: Any] = ["action": statusOnly ? "status" : "send", "request_id": requestID, "peer": peer, "text": message, "include_context": includeContext, "policy_revision": selectedPolicy?.revision ?? -1]
+        var request: [String: Any] = ["action": "status", "request_id": requestID]
+        if !statusOnly {
+            request = ["action": "send", "source": "mac_companion", "request_id": requestID, "peer": peer, "text": message, "include_context": includeContext, "policy_revision": selectedPolicy?.revision ?? -1]
+            if let context = replyDraft?.context {
+                request["reply_context"] = ["store": context.store, "local_identity": context.local_identity,
+                    "source_id": context.source_id, "conversation_id": context.conversation_id]
+            }
+        }
         guard let payload = try? JSONSerialization.data(withJSONObject: request) else { busy = false; return }
         let id = requestID
         Task {

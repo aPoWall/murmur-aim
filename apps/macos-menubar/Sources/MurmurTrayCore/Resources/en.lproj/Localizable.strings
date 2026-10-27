@@ -1027,3 +1027,29 @@
 "Source availability unknown in this snapshot." = "Source availability unknown in this snapshot.";
 
 "Proposed reply · draft, not approved or sent" = "Proposed reply · draft, not approved or sent";
+
+"Use proposed reply" = "Use proposed reply";
+
+"No" = "No";
+
+"Custom reply" = "Custom reply";
+
+"Opens an editable draft. Send separately after reviewing it." = "Opens an editable draft. Send separately after reviewing it.";
+
+"Reply source or route is unavailable. Refresh the desk and check contact settings." = "Reply source or route is unavailable. Refresh the desk and check contact settings.";
+
+"Reply in the source conversation" = "Reply in the source conversation";
+
+"Draft only. Review and edit before pressing Send message." = "Draft only. Review and edit before pressing Send message.";
+
+"Reply source details" = "Reply source details";
+
+"Human choice recorded in owner chat" = "Human choice recorded in owner chat";
+
+"Owner chat decision" = "Owner chat decision";
+
+"Murmur source" = "Murmur source";
+
+"Superseded" = "Superseded";
+
+"Source: owner chat. This record does not confirm delivery to the contact." = "Source: owner chat. This record does not confirm delivery to the contact.";

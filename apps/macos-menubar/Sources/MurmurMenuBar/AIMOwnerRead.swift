@@ -65,6 +65,7 @@ struct AIMMessageSearchView: View {
     @MurmurViewState private var selected: AIMMessageSearchResult.Match?
     @MurmurViewState private var selectedHistoryPeer = ""
     @MurmurViewState private var section = "Messages"
+    @MurmurViewState private var replyDraft: AIMReplyDraft?
 
     init(enabled: Bool, people: [AIMCompanionSnapshot.Person], historyPeer: String? = nil,
          snapshot: AIMCompanionSnapshot? = nil, initialSection: String = "Messages", previewOnly: Bool = false,
@@ -129,11 +130,16 @@ struct AIMMessageSearchView: View {
             } else {
                 AIMConversationContextView(snapshot: snapshot, peer: selectedHistoryPeer, section: section,
                                            participant: participant(selectedHistoryPeer), enabled: enabled && !previewOnly, config: contextConfig,
-                                           selectSource: { selected = $0 })
+                                           selectDraft: { replyDraft = $0 }, selectSource: { selected = $0 })
             }
         }.padding(24).frame(width: 660, height: 600).font(AIMTheme.body).aimQuietButtonStyle()
             .onExitCommand { if selected != nil { selected = nil } else { dismiss() } }
-            .sheet(item: $selected) { match in AIMMessageDetailView(match: match, participant: participant(match.peer_identity)) }
+            .sheet(item: $replyDraft) { draft in
+            if let person = people.first(where: { $0.agents.contains(draft.peer) }) {
+                AIMComposeView(person: person, initialPeer: draft.peer, draft: draft)
+            }
+        }
+        .sheet(item: $selected) { match in AIMMessageDetailView(match: match, participant: participant(match.peer_identity)) }
             .task(id: selectedHistoryPeer) { if !selectedHistoryPeer.isEmpty { loadHistory() } }
     }
 
