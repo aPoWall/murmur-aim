@@ -20,10 +20,13 @@ struct AIMReplyActions: View {
                 if question.draftProposedReply != nil {
                     Button(L10n.text("Use proposed reply")) { choose("proposal") }.disabled(!ready)
                 }
-                ForEach(question.draftReplyOptions, id: \.id) { option in
-                    Button(L10n.text(option.id == "yes" ? "Yes" : "No")) { choose(option.id) }.disabled(!ready)
-                }
                 Button(L10n.text("Custom reply")) { choose("custom") }.disabled(!ready)
+            }
+            ForEach(question.draftReplyOptions, id: \.id) { option in
+                HStack(alignment: .top, spacing: 10) {
+                    Button(L10n.text(option.id == "yes" ? "Yes" : "No")) { choose(option.id) }.disabled(!ready)
+                    Text(option.text).font(AIMTheme.meta).fixedSize(horizontal: false, vertical: true)
+                }
             }
             Text(L10n.text("Opens an editable draft. Send separately after reviewing it.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
             if !ready { Text(L10n.text("Reply source or route is unavailable. Refresh the desk and check contact settings.")).font(AIMTheme.meta).foregroundStyle(AIMTheme.muted) }
