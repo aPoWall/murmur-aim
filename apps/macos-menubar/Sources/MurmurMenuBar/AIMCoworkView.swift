@@ -49,13 +49,16 @@ struct AIMDeskPulse: View {
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3), alignment: .leading, spacing: 8) {
                 ForEach(data.people) { row in
-                    Button { person = row } label: {
+                    Button {
+                        if let url = data.privateOwnerURL(for: row, current: current) { NSWorkspace.shared.open(url) }
+                        else if data.communicationPeer(for: row) != nil { person = row }
+                    } label: {
                         HStack(spacing: 7) {
                             AIMPersonAvatar(person: row, imageReadEnabled: imageReadEnabled).scaleEffect(0.6).frame(width: 24, height: 24)
                             Text(row.name).font(AIMTheme.meta).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                         }
-                    }.buttonStyle(.plain).disabled(data.communicationPeer(for: row) == nil)
-                        .help(L10n.text("Read conversation") + " · " + row.name)
+                    }.buttonStyle(.plain).disabled(data.communicationPeer(for: row) == nil && data.privateOwnerURL(for: row, current: current) == nil)
+                        .help(L10n.text(data.isStatusOnly(row) ? "Open the verified private owner chat in Codex" : "Read conversation") + " · " + row.name)
                 }
             }
         }.padding(14).background(AIMTheme.surface)

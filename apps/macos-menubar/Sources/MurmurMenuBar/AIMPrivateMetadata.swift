@@ -30,6 +30,10 @@ struct AIMPrivateMetadataCard: View {
                 Text(contour.source_age_seconds.map { L10n.text("Source age at snapshot: %@ seconds", String($0)) }
                      ?? L10n.text("Source age unknown"))
             }.font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+            if let reason = contour.admissionLabelKey {
+                Text(L10n.text("Historical admission observation") + " · " + L10n.text(reason) + " · " + AIMCompanionModel.stamp(contour.wake_admission_at))
+                    .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
+            }
             Text(L10n.text("Source observations do not establish current availability."))
                 .font(AIMTheme.meta).foregroundStyle(AIMTheme.muted)
             if let owner = contour.owner_thread, let url = owner.verifiedURL {

@@ -1092,3 +1092,9 @@
 "quota-refresh-unavailable" = "Fresh quota observation unavailable";
 "owner-manual-review" = "Manual review is configured for this contact";
 "manual-stop" = "Background work paused by the operator";
+
+"Historical admission observation" = "Historical admission observation";
+"Admission blocked · quota reserve" = "Admission blocked · quota reserve";
+"Admission blocked · weekly pace" = "Admission blocked · weekly pace";
+"Admission blocked · cooldown" = "Admission blocked · cooldown";
+"Admission blocked · quota check unavailable" = "Admission blocked · quota check unavailable";

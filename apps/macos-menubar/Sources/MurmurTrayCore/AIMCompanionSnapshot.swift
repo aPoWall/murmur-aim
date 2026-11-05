@@ -143,6 +143,19 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let work_code: String?
         public let work_at: String?
         public let processor_location: String?
+        public let wake_admission_reason: String?
+        public let wake_admission_at: String?
+
+        public var admissionLabelKey: String? {
+            guard let at = wake_admission_at, AIMCompanionSnapshot.date(at) != nil else { return nil }
+            switch wake_admission_reason {
+            case "reserve-20-percent": return "Admission blocked · quota reserve"
+            case "ahead-of-weekly-pace": return "Admission blocked · weekly pace"
+            case "rapid-burn-cooldown": return "Admission blocked · cooldown"
+            case "quota-refresh-unavailable", "quota-check-already-running", "budget-check-timeout", "budget-check-unavailable", "budget-response-invalid", "codex-cli-unavailable": return "Admission blocked · quota check unavailable"
+            default: return nil
+            }
+        }
         public let owner_thread: OwnerThread?
 
         /// Display only the bounded public vocabulary, never free-form private work text.
@@ -303,7 +316,12 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
     /// Explicit roster binding only; names and agent ordering never infer a private owner.
     public func privateContour(for person: Person) -> PrivateContour? {
         guard isStatusOnly(person), let id = person.contour?.id else { return nil }
-        return private_contours?.first { $0.id == id }
+        let matches = (private_contours ?? []).filter { $0.id == id }
+        return matches.count == 1 ? matches[0] : nil
+    }
+    public func privateOwnerURL(for person: Person, current: Bool) -> URL? {
+        guard current else { return nil }
+        return privateContour(for: person)?.owner_thread?.verifiedURL
     }
     public func ownerThread(for peer: String?) -> OwnerThread? {
         guard let peer else { return nil }

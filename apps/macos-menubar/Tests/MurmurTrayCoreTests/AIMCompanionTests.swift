@@ -377,6 +377,16 @@ private func runPrivateMetadataChecks() throws -> Int {
     try need(item.processorLocationLabelKey == nil, "unknown private processor location is never displayed")
     contour.removeValue(forKey:"processor_location")
     try need(snapshot.privateContour(for: snapshot.people[0])?.id == "private-test", "private person maps by exact contour ID")
+    try need(snapshot.privateOwnerURL(for: snapshot.people[0], current:true)?.absoluteString == link, "roster opens only bound private owner")
+    try need(snapshot.privateOwnerURL(for: snapshot.people[0], current:false) == nil, "stale snapshot cannot open private owner")
+    contour["wake_admission_reason"] = "reserve-20-percent"; contour["wake_admission_at"] = "2026-10-21T09:00:00Z"
+    item = try decode().private_contours![0]
+    try need(item.admissionLabelKey == "Admission blocked · quota reserve", "known admission reason has bounded historical label")
+    contour["wake_admission_reason"] = "private arbitrary text"; item = try decode().private_contours![0]
+    try need(item.admissionLabelKey == nil, "unknown admission reason is not displayed")
+    contour["wake_admission_reason"] = "reserve-20-percent"; contour["wake_admission_at"] = "bad"
+    item = try decode().private_contours![0]
+    try need(item.admissionLabelKey == nil, "invalid admission date is not displayed")
     try need(snapshot.communicationPeer(for: snapshot.people[0]) == nil
              && snapshot.connectionSending(for: snapshot.people[0], current:true) == .statusOnly
              && snapshot.contactAttention(for: snapshot.people[0]).isEmpty,
@@ -399,6 +409,8 @@ private func runPrivateMetadataChecks() throws -> Int {
     try need(item.sourceFreshnessLabelKey(snapshotCurrent:true) == "Source freshness unknown", "bad source date remains unknown")
     contour.removeValue(forKey:"owner_thread"); item = try decode().private_contours![0]
     try need(item.owner_thread == nil, "older private projection does not invent an owner route")
+    snapshot = try decode()
+    try need(snapshot.privateOwnerURL(for:snapshot.people[0], current:true) == nil, "missing private owner disables roster route")
     for url in ["https://example.com", "codex://threads/not-a-uuid", link + "/extra", link + "?x=1", link + "#fragment",
                 "codex://user@threads/00000000-0000-4000-8000-000000000001", "codex://threads:99/00000000-0000-4000-8000-000000000001",
                 "codex://threads/%300000000-0000-4000-8000-000000000001"] {
@@ -412,6 +424,6 @@ private func runPrivateMetadataChecks() throws -> Int {
     contour.removeValue(forKey:"source_age_seconds")
     object["people"] = [["id":"person:other", "name":"Same name", "agents":[], "contact_state":"status_only", "contour":["id":"different"]]]
     snapshot = try decode()
-    try need(snapshot.privateContour(for:snapshot.people[0]) == nil, "unmapped private contact does not borrow another contour owner")
+    try need(snapshot.privateContour(for:snapshot.people[0]) == nil && snapshot.privateOwnerURL(for:snapshot.people[0], current:true) == nil, "unmapped private contact does not borrow another contour owner")
     return checks
 }

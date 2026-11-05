@@ -1092,3 +1092,9 @@
 "quota-refresh-unavailable" = "Свежий срез квоты недоступен";
 "owner-manual-review" = "Для этого контакта настроен ручной разбор";
 "manual-stop" = "Фоновая работа приостановлена оператором";
+
+"Historical admission observation" = "Историческое наблюдение допуска";
+"Admission blocked · quota reserve" = "Допуск заблокирован · резерв квоты";
+"Admission blocked · weekly pace" = "Допуск заблокирован · недельный темп";
+"Admission blocked · cooldown" = "Допуск заблокирован · период ожидания";
+"Admission blocked · quota check unavailable" = "Допуск заблокирован · проверка квоты недоступна";
