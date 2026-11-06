@@ -284,8 +284,9 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
             + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" }).union(privateOwnerNotificationKeys)
     }
     public var attentionCount: Int {
-        attention.map { $0.items.filter(\.actionable).count }
-            ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count })
+        (attention.map { $0.items.filter(\.actionable).count }
+            ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count }))
+            + privateOwnerReviews.reduce(0) { $0 + $1.ownerInboxCount }
     }
     /// The owner's decisions and transport/assistant work have separate entrances.
     public var privateOwnerReviews: [PrivateContour] { (private_contours ?? []).filter { $0.ownerInboxCount > 0 } }

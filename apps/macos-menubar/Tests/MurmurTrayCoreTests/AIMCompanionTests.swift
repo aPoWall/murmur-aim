@@ -54,7 +54,7 @@ func runAIMCompanionChecks() throws -> Int {
         "owner_review_next_actor":"owner", "owner_review_at":"2026-09-29T17:00:00Z"]]
     reviewedPrivate["attention"] = ["schema":1, "receipts_ok":true, "items":[[String:Any]]()]
     let privateInbox = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: reviewedPrivate))
-    try check(privateInbox.ownerAttentionCount == 5 && privateInbox.privateOwnerReviews.count == 1,
+    try check(privateInbox.ownerAttentionCount == 5 && privateInbox.attentionCount == 5 && privateInbox.privateOwnerReviews.count == 1,
               "source-bound private owner questions and drafts count beside ordinary owner questions")
     try check(privateInbox.notificationKeys(owner:true,technical:false).contains { $0.hasPrefix("private-owner:") },
               "private queue changes can notify without carrying a private message body")
