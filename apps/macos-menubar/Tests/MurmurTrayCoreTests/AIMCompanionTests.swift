@@ -351,7 +351,7 @@ func runAIMCompanionChecks() throws -> Int {
     access = try capabilitySnapshot()
     try check(access.connectionSending(for: access.people[0], current: true, now: now) == .unknown,
               "a future policy reading remains unknown")
-    return 98 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
+    return 101 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
 }
 
 
