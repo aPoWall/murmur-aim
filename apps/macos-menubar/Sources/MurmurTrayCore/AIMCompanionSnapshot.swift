@@ -277,23 +277,27 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
     }
+    public var privateIncomingReviews: [PrivateContour] { (private_contours ?? []).filter {
+        $0.incoming_unreviewed == true && Self.date($0.last_inbound_at) != nil
+    } }
+    public var privateIncomingNotificationKeys: Set<String> { Set(privateIncomingReviews.map { "private-incoming:\($0.id):\($0.last_inbound_at ?? "")" }) }
     public var privateOwnerNotificationKeys: Set<String> { Set(privateOwnerReviews.map { "private-owner:\($0.id):\($0.owner_review_at ?? ""):\($0.ownerInboxCount)" }) }
     public var attentionKeys: Set<String> {
-        if let attention { return Set(attention.items.filter(\.alert).map(\.notificationKey)).union(privateOwnerNotificationKeys) }
+        if let attention { return Set(attention.items.filter(\.alert).map(\.notificationKey)).union(privateOwnerNotificationKeys).union(privateIncomingNotificationKeys) }
         return Set(incoming.flatMap { item in item.ids.map { "message:\(item.peer):\($0)" } }
-            + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" }).union(privateOwnerNotificationKeys)
+            + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" }).union(privateOwnerNotificationKeys).union(privateIncomingNotificationKeys)
     }
     public var attentionCount: Int {
         (attention.map { $0.items.filter(\.actionable).count }
             ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count }))
-            + privateOwnerReviews.reduce(0) { $0 + $1.ownerInboxCount }
+            + privateOwnerReviews.reduce(0) { $0 + $1.ownerInboxCount } + privateIncomingReviews.count
     }
     /// The owner's decisions and transport/assistant work have separate entrances.
     public var privateOwnerReviews: [PrivateContour] { (private_contours ?? []).filter { $0.ownerInboxCount > 0 } }
     public var ownerAttentionCount: Int { (attention?.yourTurn.count ?? decision_count) + privateOwnerReviews.reduce(0) { $0 + $1.ownerInboxCount } }
-    public var technicalAttentionCount: Int { attention?.otherUpdates.count ?? agentQuestions.count }
+    public var technicalAttentionCount: Int { (attention?.otherUpdates.count ?? agentQuestions.count) + privateIncomingReviews.count }
     public func notificationKeys(owner: Bool, technical: Bool) -> Set<String> {
-        let privateKeys: Set<String> = owner ? privateOwnerNotificationKeys : []
+        let privateKeys: Set<String> = (owner ? privateOwnerNotificationKeys : []).union(technical ? privateIncomingNotificationKeys : [])
         guard let attention else { return (owner ? attentionKeys : []).union(privateKeys) }
         return Set(attention.items.filter { $0.alert && $0.actionable && ($0.kind == "owner" ? owner : technical) }.map(\.notificationKey)).union(privateKeys)
     }

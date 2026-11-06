@@ -64,6 +64,9 @@ struct AIMPrivateOwnerReviewCard: View {
             Text(contour.name + " · " + L10n.text("Private replies to review")).font(AIMTheme.heading)
             Text(L10n.text("Owner questions: %@ · Reply drafts: %@", String(contour.owner_review_count ?? 0), String(contour.owner_draft_count ?? 0))).font(AIMTheme.body)
             Text(L10n.text("Next: owner review · nothing sent")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+            if contour.incoming_unreviewed == true {
+                Text(L10n.text("Latest incoming needs review")).font(AIMTheme.meta).foregroundStyle(AIMTheme.signal)
+            }
             Text(L10n.text("Work observed") + " · " + AIMCompanionModel.stamp(contour.owner_review_at)).font(AIMTheme.meta)
             if let url = contour.owner_thread?.verifiedURL {
                 Button(L10n.text("Open private owner chat")) { NSWorkspace.shared.open(url) }.disabled(!current)

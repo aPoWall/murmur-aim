@@ -60,6 +60,14 @@ func runAIMCompanionChecks() throws -> Int {
               "private queue changes can notify without carrying a private message body")
     try check(privateInbox.privateOwnerNotificationKeys.isSubset(of: privateInbox.attentionKeys),
               "the persisted notification baseline includes private owner inbox keys")
+    reviewedPrivate["private_contours"] = [["id":"private-1", "name":"Private line", "privacy":"status-only",
+        "incoming_unreviewed":true, "last_inbound_at":"2026-09-29T17:00:00Z", "last_wake_status":"muted"]]
+    let unprocessedPrivate = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: reviewedPrivate))
+    try check(unprocessedPrivate.ownerAttentionCount == 0 && unprocessedPrivate.technicalAttentionCount == 1
+              && unprocessedPrivate.attentionCount == 1, "budget-muted incoming is visible as work to review, without inventing an owner decision")
+    try check(unprocessedPrivate.privateIncomingNotificationKeys.isSubset(of: unprocessedPrivate.attentionKeys)
+              && !unprocessedPrivate.notificationKeys(owner:false,technical:true).isEmpty,
+              "unprocessed private incoming has an independent metadata-only notification key")
     object["owner_threads"] = ["agent-demo": ["title":"Wrong", "url":"https://example.com"]]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe owner URL accepted") }
     catch is CocoaError {}
@@ -351,7 +359,7 @@ func runAIMCompanionChecks() throws -> Int {
     access = try capabilitySnapshot()
     try check(access.connectionSending(for: access.people[0], current: true, now: now) == .unknown,
               "a future policy reading remains unknown")
-    return 101 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
+    return 103 + (try runPrivateMetadataChecks()) + (try runConversationContextChecks())
 }
 
 

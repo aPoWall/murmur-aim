@@ -108,6 +108,9 @@ import MurmurTrayCore
                     let privateOwnerChanges = data.privateOwnerNotificationKeys.filter { key in
                         selectedAdded.contains(SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined())
                     }.count
+                    let privateIncomingChanges = data.privateIncomingNotificationKeys.filter { key in
+                        selectedAdded.contains(SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined())
+                    }.count
                     let counts: [(String, Int)]
                     if let attention = data.attention {
                         counts = ["owner", "agent", "delivery", "verify", "peer"].compactMap { kind in
@@ -116,8 +119,8 @@ import MurmurTrayCore
                                 let hash = SHA256.hash(data: Data(item.notificationKey.utf8)).map { String(format: "%02x", $0) }.joined()
                                 return selectedAdded.contains(hash)
                             }
-                            let count = matches.count + (kind == "owner" ? privateOwnerChanges : 0)
-                            return count > 0 ? (matches.first?.kindLabelKey ?? "Private replies to review", count) : nil
+                            let count = matches.count + (kind == "owner" ? privateOwnerChanges : kind == "verify" ? privateIncomingChanges : 0)
+                            return count > 0 ? (matches.first?.kindLabelKey ?? (kind == "owner" ? "Private replies to review" : "Latest incoming needs review"), count) : nil
                         }
                     } else { counts = [("Communication needs attention", selectedAdded.count)] }
                     notify(ownerCount: ownerCount, counts: counts,
@@ -223,10 +226,13 @@ struct AIMCompanionView: View {
                 }
                 if let data = model.snapshot {
                     AIMDeskPulse(data: data, current: model.current, imageReadEnabled: !model.previewConnected)
-                    if !data.privateOwnerReviews.isEmpty {
+                    if !data.privateOwnerReviews.isEmpty || !data.privateIncomingReviews.isEmpty {
                         Text(L10n.text("Private replies to review")).font(AIMTheme.heading)
                         ForEach(data.privateOwnerReviews) { contour in
                             AIMPrivateOwnerReviewCard(contour: contour, current: model.current)
+                        }
+                        ForEach(data.privateIncomingReviews.filter { $0.ownerInboxCount == 0 }) { contour in
+                            AIMPrivateMetadataCard(contour: contour, current: model.current)
                         }
                     }
                     if let contours = data.private_contours, !contours.isEmpty {
