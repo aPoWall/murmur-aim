@@ -287,11 +287,7 @@ def contact_history(peer, root, stores):
 
 
 def add_avatars(data, people, share):
-    """Only current ordinary people with existing operator-approved exact assets."""
-    private = set(PRIVATE_PEERS)
-    for contour in share.get('private_contours', []):
-        private.update((contour.get('local_identity'), contour.get('peer_identity')))
-    private_people = {b.get('person') for b in people.get('bindings', []) if b.get('agent') in private}
+    """Explicit approved portraits are independent of private conversation visibility."""
     source = {p.get('id'): p for p in people.get('people', [])}
     for person in data.get('people', []):
         for key in ('photo', 'photo_note', 'photo_privacy'):
@@ -301,8 +297,7 @@ def add_avatars(data, people, share):
         if (people.get('privacy') != 'operator_metadata_only_tailnet' or
             share.get('privacy') != 'metadata-only' or data.get('privacy') != 'owner-metadata' or
             not photo or p.get('photo') != photo or p.get('history') or
-            p.get('privacy') in {'private', 'status-only'} or person.get('id') in private_people or
-            person.get('contact_state') == 'status_only' or any(peer in private for peer in person.get('agents', []))):
+            p.get('privacy') == 'private'):
             continue
         person.update(photo=photo, photo_privacy='owner-approved-avatar',
                       photo_note=p.get('photo_note') if isinstance(p.get('photo_note'), str) else None)

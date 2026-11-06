@@ -28,13 +28,11 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let photo_privacy: String?
         public let flows: [String: Flow]?
         public let flow_window: String?
-        /// A portrait is shown only for a person the edition lists, never for a private-contour binding.
+        /// An exact approved portrait is independent of private conversation visibility.
         public var approvedPhoto: String? { approvedPhoto(in: .current) }
         public func approvedPhoto(in config: AIMEditionConfig) -> String? {
-            let privatePeers = config.privatePeers.union(["shaper-viola", "agent-viola-alex"])
             guard id.hasPrefix("person:"), config.avatarPeople.contains(String(id.dropFirst(7))),
-                  photo_privacy == "owner-approved-avatar", contact_state != "status_only",
-                  agents.allSatisfy({ !privatePeers.contains($0) }),
+                  photo_privacy == "owner-approved-avatar",
                   let photo, photo == "/mesh-comms-avatar-" + id.dropFirst(7) + ".jpg"
             else { return nil }
             return photo
@@ -145,6 +143,20 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let processor_location: String?
         public let wake_admission_reason: String?
         public let wake_admission_at: String?
+        public let owner_review_count: Int?
+        public let owner_draft_count: Int?
+        public let owner_review_store_ok: Bool?
+        public let owner_review_at: String?
+        public let owner_review_next_actor: String?
+        public let incoming_unreviewed: Bool?
+        public var ownerInboxCount: Int {
+            guard owner_review_store_ok == true, owner_review_next_actor == "owner",
+                  AIMCompanionSnapshot.date(owner_review_at) != nil,
+                  let questions = owner_review_count, let drafts = owner_draft_count,
+                  (0...1000).contains(questions), (0...1000).contains(drafts) else { return 0 }
+            return questions + drafts
+        }
+
 
         public var admissionLabelKey: String? {
             guard let at = wake_admission_at, AIMCompanionSnapshot.date(at) != nil else { return nil }
@@ -265,21 +277,24 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
     }
+    public var privateOwnerNotificationKeys: Set<String> { Set(privateOwnerReviews.map { "private-owner:\($0.id):\($0.owner_review_at ?? ""):\($0.ownerInboxCount)" }) }
     public var attentionKeys: Set<String> {
-        if let attention { return Set(attention.items.filter(\.alert).map(\.notificationKey)) }
+        if let attention { return Set(attention.items.filter(\.alert).map(\.notificationKey)).union(privateOwnerNotificationKeys) }
         return Set(incoming.flatMap { item in item.ids.map { "message:\(item.peer):\($0)" } }
-            + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" })
+            + questions.filter(\.needsOwner).map { "decision:\($0.id):\($0.source_date ?? "")" }).union(privateOwnerNotificationKeys)
     }
     public var attentionCount: Int {
         attention.map { $0.items.filter(\.actionable).count }
             ?? (decision_count + incoming.reduce(0) { $0 + $1.ids.count })
     }
     /// The owner's decisions and transport/assistant work have separate entrances.
-    public var ownerAttentionCount: Int { attention?.yourTurn.count ?? decision_count }
+    public var privateOwnerReviews: [PrivateContour] { (private_contours ?? []).filter { $0.ownerInboxCount > 0 } }
+    public var ownerAttentionCount: Int { (attention?.yourTurn.count ?? decision_count) + privateOwnerReviews.reduce(0) { $0 + $1.ownerInboxCount } }
     public var technicalAttentionCount: Int { attention?.otherUpdates.count ?? agentQuestions.count }
     public func notificationKeys(owner: Bool, technical: Bool) -> Set<String> {
-        guard let attention else { return owner ? attentionKeys : [] }
-        return Set(attention.items.filter { $0.alert && $0.actionable && ($0.kind == "owner" ? owner : technical) }.map(\.notificationKey))
+        let privateKeys: Set<String> = owner ? privateOwnerNotificationKeys : []
+        guard let attention else { return (owner ? attentionKeys : []).union(privateKeys) }
+        return Set(attention.items.filter { $0.alert && $0.actionable && ($0.kind == "owner" ? owner : technical) }.map(\.notificationKey)).union(privateKeys)
     }
     public func attentionItems(for person: Person) -> [Attention.Item] {
         (attention?.items ?? []).filter { person.agents.contains($0.peer) && $0.actionable }

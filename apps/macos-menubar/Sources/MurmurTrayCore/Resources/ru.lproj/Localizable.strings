@@ -1098,3 +1098,13 @@
 "Admission blocked · weekly pace" = "Допуск заблокирован · недельный темп";
 "Admission blocked · cooldown" = "Допуск заблокирован · период ожидания";
 "Admission blocked · quota check unavailable" = "Допуск заблокирован · проверка квоты недоступна";
+
+"Private replies to review" = "Приватные ответы на проверку";
+
+"Owner questions: %@ · Reply drafts: %@" = "Вопросы владельцу: %@ · Драфты ответов: %@";
+
+"Next: owner review · nothing sent" = "Следующий шаг: проверка владельцем · ничего не отправлено";
+
+"Latest incoming needs review" = "Последнее входящее требует разбора";
+
+"Private review inbox unavailable" = "Приватная очередь проверки недоступна";

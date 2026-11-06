@@ -105,6 +105,9 @@ import MurmurTrayCore
                     let ownerKeys = data.notificationKeys(owner: true, technical: false)
                     let ownerHashes = Set(ownerKeys.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() })
                     let ownerCount = selectedAdded.intersection(ownerHashes).count
+                    let privateOwnerChanges = data.privateOwnerNotificationKeys.filter { key in
+                        selectedAdded.contains(SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined())
+                    }.count
                     let counts: [(String, Int)]
                     if let attention = data.attention {
                         counts = ["owner", "agent", "delivery", "verify", "peer"].compactMap { kind in
@@ -113,7 +116,8 @@ import MurmurTrayCore
                                 let hash = SHA256.hash(data: Data(item.notificationKey.utf8)).map { String(format: "%02x", $0) }.joined()
                                 return selectedAdded.contains(hash)
                             }
-                            return matches.first.map { ($0.kindLabelKey, matches.count) }
+                            let count = matches.count + (kind == "owner" ? privateOwnerChanges : 0)
+                            return count > 0 ? (matches.first?.kindLabelKey ?? "Private replies to review", count) : nil
                         }
                     } else { counts = [("Communication needs attention", selectedAdded.count)] }
                     notify(ownerCount: ownerCount, counts: counts,
@@ -219,6 +223,12 @@ struct AIMCompanionView: View {
                 }
                 if let data = model.snapshot {
                     AIMDeskPulse(data: data, current: model.current, imageReadEnabled: !model.previewConnected)
+                    if !data.privateOwnerReviews.isEmpty {
+                        Text(L10n.text("Private replies to review")).font(AIMTheme.heading)
+                        ForEach(data.privateOwnerReviews) { contour in
+                            AIMPrivateOwnerReviewCard(contour: contour, current: model.current)
+                        }
+                    }
                     if let contours = data.private_contours, !contours.isEmpty {
                         DisclosureGroup(L10n.text("Private contours · status only")) {
                         Text(L10n.text("Private contours · status only")).font(AIMTheme.heading)

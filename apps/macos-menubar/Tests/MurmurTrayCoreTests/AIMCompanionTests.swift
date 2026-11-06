@@ -48,6 +48,18 @@ func runAIMCompanionChecks() throws -> Int {
     try check(classified.ownerThread(for: "agent-demo")?.verifiedURL != nil && classified.ownerThread(for: "agent-sample") == nil,
               "only the exact linked agent receives an owner chat")
     try check(classified.private_contours?.first?.privacy == "status-only", "private contour contains status only")
+    var reviewedPrivate = object
+    reviewedPrivate["private_contours"] = [["id":"private-1", "name":"Private line", "privacy":"status-only",
+        "owner_review_store_ok":true, "owner_review_count":2, "owner_draft_count":3,
+        "owner_review_next_actor":"owner", "owner_review_at":"2026-09-29T17:00:00Z"]]
+    reviewedPrivate["attention"] = ["schema":1, "receipts_ok":true, "items":[[String:Any]]()]
+    let privateInbox = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: reviewedPrivate))
+    try check(privateInbox.ownerAttentionCount == 5 && privateInbox.privateOwnerReviews.count == 1,
+              "source-bound private owner questions and drafts count beside ordinary owner questions")
+    try check(privateInbox.notificationKeys(owner:true,technical:false).contains { $0.hasPrefix("private-owner:") },
+              "private queue changes can notify without carrying a private message body")
+    try check(privateInbox.privateOwnerNotificationKeys.isSubset(of: privateInbox.attentionKeys),
+              "the persisted notification baseline includes private owner inbox keys")
     object["owner_threads"] = ["agent-demo": ["title":"Wrong", "url":"https://example.com"]]
     do { _ = try AIMCompanionSnapshot.decode(JSONSerialization.data(withJSONObject: object)); throw CheckFailure(message: "unsafe owner URL accepted") }
     catch is CocoaError {}
@@ -132,8 +144,8 @@ func runAIMCompanionChecks() throws -> Int {
         ["id":"person:demo", "name":"Demo", "agents":["agent-demo"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"],
         ["id":"person:demo", "name":"Private", "agents":["agent-private"], "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"]]]) { _, new in new })).people
     try check(portrait[0].approvedPhoto(in: edition) != nil && portrait[0].approvedPhoto(in: stock) == nil
-              && portrait[1].approvedPhoto(in: edition) == nil,
-              "portraits follow the edition roster and never show for a private identity")
+              && portrait[1].approvedPhoto(in: edition) != nil,
+              "exact approved portraits follow the edition roster independently of private conversation access")
     var attentionObject = try JSONSerialization.jsonObject(with: data) as! [String: Any]
     let attentionItem: [String: Any] = ["id":"topic:q", "peer":"agent-demo", "kind":"owner", "title":"Synthetic decision", "date":"2026-09-29T15:00:00Z", "next_action":"Review source", "source_ids":["source-demo"], "conversation":"dm:agent-demo:agent-self", "actionable":true, "alert":true]
     attentionObject["attention"] = ["schema":1, "receipts_ok":true, "items":[attentionItem]]
@@ -313,7 +325,7 @@ func runAIMCompanionChecks() throws -> Int {
     let privatePortrait = try JSONDecoder().decode(AIMCompanionSnapshot.Person.self, from: JSONSerialization.data(withJSONObject: [
         "id":"person:demo", "name":"Synthetic private", "agents":[String](), "contact_state":"status_only",
         "photo":"/mesh-comms-avatar-demo.jpg", "photo_privacy":"owner-approved-avatar"]))
-    try check(privatePortrait.approvedPhoto(in: edition) == nil, "explicit status-only denies even an approved unbound portrait")
+    try check(privatePortrait.approvedPhoto(in: edition) != nil, "approved portrait does not grant access to the private conversation")
     capabilityObject["people"] = [["id":"person:sample", "name":"Synthetic multi-agent", "agents":["agent-one","agent-two"],
         "writable_agents":["agent-one","agent-two"], "flows":[
             "agent-one":["inbound_count":3,"outbound_count":0,"scope":"retained_snapshot","source_at":"2026-09-29T17:00:00Z"],

@@ -1098,3 +1098,13 @@
 "Admission blocked · weekly pace" = "Admission blocked · weekly pace";
 "Admission blocked · cooldown" = "Admission blocked · cooldown";
 "Admission blocked · quota check unavailable" = "Admission blocked · quota check unavailable";
+
+"Private replies to review" = "Private replies to review";
+
+"Owner questions: %@ · Reply drafts: %@" = "Owner questions: %@ · Reply drafts: %@";
+
+"Next: owner review · nothing sent" = "Next: owner review · nothing sent";
+
+"Latest incoming needs review" = "Latest incoming needs review";
+
+"Private review inbox unavailable" = "Private review inbox unavailable";
