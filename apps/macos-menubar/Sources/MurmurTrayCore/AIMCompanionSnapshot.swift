@@ -123,6 +123,7 @@ public struct AIMCompanionSnapshot: Decodable, Sendable {
         public let privacy: String
         public let service_active: Bool?
         public let last_at: String?
+        public let last_inbound_at: String?
         public let updated_at: String?
         public let inbound_count: Int?
         public let outbound_count: Int?
